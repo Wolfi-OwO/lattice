@@ -1,0 +1,22 @@
+{
+  "name": "{{projectName}}",
+  "version": "0.1.0",
+  "description": "{{projectTitle}}",
+  "type": "module",
+  "bin": {
+    "{{projectName}}": "bin/cli.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": ["bin", "src"],
+  "scripts": {
+    "start": "node bin/cli.js",
+    "test": "node --test tests/*.test.js",
+    "lint": "eslint src bin"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.8.0",
+    "eslint": "^9.8.0"
+  }
+}

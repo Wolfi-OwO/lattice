@@ -1,0 +1,32 @@
+{
+  "name": "create-lattice",
+  "version": "1.0.0",
+  "description": "Scaffold backend, frontend, fullstack, GUI, mobile, CLI and ML projects — pick a stack, pick a database, get a project that already runs",
+  "type": "module",
+  "bin": {
+    "create-lattice": "bin/lattice.js",
+    "lattice": "bin/lattice.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin",
+    "src",
+    "stacks"
+  ],
+  "scripts": {
+    "start": "node bin/lattice.js",
+    "list": "node bin/lattice.js --list",
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": [
+    "scaffold",
+    "template",
+    "generator",
+    "boilerplate",
+    "starter",
+    "create-app"
+  ],
+  "license": "MIT"
+}

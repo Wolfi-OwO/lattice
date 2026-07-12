@@ -1,0 +1,438 @@
+#!/usr/bin/env node
+/**
+ * lattice — scaffold a project from the stack library, set it up, and install it.
+ *
+ *   npm create lattice@latest                    fully interactive
+ *   npm create lattice@latest my-api             name given, rest interactive
+ *   lattice my-api --stack express --db postgres
+ *   lattice shop  --stack express --db file --format ndjson --client react-vite-ts
+ *   lattice --list
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+import { fileURLToPath } from 'node:url';
+
+import { parseArgs } from '../src/args.js';
+import { c, select, text, PromptCancelled } from '../src/prompts.js';
+import { buildVars, copyTemplate, isEmptyDir } from '../src/scaffold.js';
+import { STORAGE, storageChoices, depsFor } from '../src/storage.js';
+import {
+  detectPackageManager,
+  findFreePort,
+  hasDocker,
+  install,
+  mergeDeps,
+  pruneAdapters,
+  startDatabase,
+  writeCompose,
+  writeEnv,
+} from '../src/setup.js';
+import {
+  CATEGORIES,
+  FULLSTACK_BACKENDS,
+  FULLSTACK_FRONTENDS,
+  TEMPLATES,
+  findTemplate,
+  frameworksFor,
+  languagesFor,
+} from '../src/registry.js';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const STACK_ROOT = path.join(ROOT, 'stacks');
+
+// --------------------------------------------------------------------- output
+
+function printList() {
+  console.log(`\n${c.bold('Available stacks')}\n`);
+  for (const category of CATEGORIES) {
+    if (category.composed) continue;
+    const items = TEMPLATES.filter((t) => t.category === category.id);
+    if (items.length === 0) continue;
+
+    console.log(`  ${c.cyan(category.label)}`);
+    for (const t of items) {
+      console.log(
+        `    ${c.bold(t.framework.padEnd(18))} ${c.gray(`${t.languageLabel} · ${t.frameworkLabel}`)}`,
+      );
+    }
+    console.log('');
+  }
+
+  console.log(`  ${c.cyan('Databases')} ${c.gray('(--db, for stacks that persist)')}`);
+  for (const [id, s] of Object.entries(STORAGE)) {
+    console.log(`    ${c.bold(id.padEnd(18))} ${c.gray(s.hint)}`);
+  }
+  console.log(
+    `\n  ${c.cyan('Fullstack')}  ${c.gray('--stack <backend> --client <frontend>')}\n` +
+      `    ${c.gray(`backends:  ${FULLSTACK_BACKENDS.join(', ')}`)}\n` +
+      `    ${c.gray(`frontends: ${FULLSTACK_FRONTENDS.join(', ')}`)}\n`,
+  );
+}
+
+function version() {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  return pkg.version;
+}
+
+function printVersion() {
+  console.log(version());
+}
+
+function printHelp() {
+  console.log(`
+  ${c.bold('lattice')} ${c.gray(`v${version()} — scaffold a project, set it up, install it`)}
+
+  ${c.bold('Usage')}
+    npm create lattice@latest [name] [options]
+
+  ${c.bold('Options')}
+    --stack <id>      stack id (see --list)
+    --db <id>         ${Object.keys(STORAGE).join(' | ')}
+    --format <fmt>    json | ndjson | yaml   ${c.gray('(only with --db file)')}
+    --client <id>     frontend for a fullstack project, placed in client/
+    --package <pkg>   Java/Kotlin base package (default at.htlvillach.<name>)
+    --port <n>        backend port (default 3000)
+    --no-install      skip dependency installation
+    --no-db-start     do not "docker compose up -d db"
+    --force           scaffold into a non-empty directory
+    --list            show all stacks and databases
+    --version         print the version
+    --help            show this
+`);
+}
+
+// ------------------------------------------------------------------ prompts
+
+const NAME_RE = /^[a-z0-9][a-z0-9._-]*$/;
+
+function validateName(value) {
+  if (!value) return 'Project name is required.';
+  if (!NAME_RE.test(value)) {
+    return 'Use lowercase letters, digits, dashes; must not start with a dash.';
+  }
+  return null;
+}
+
+function validatePackage(value) {
+  if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(value)) {
+    return 'Use a reverse-domain package like at.htlvillach.myapp (at least two segments).';
+  }
+  return null;
+}
+
+function validatePort(value) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1 || n > 65535) return 'Port must be 1–65535.';
+  return null;
+}
+
+/** Walk category -> language -> framework, or resolve straight from flags. */
+async function resolveTemplate(flags) {
+  const stackFlag = flags.stack ?? flags.template; // --template kept as an alias
+
+  if (typeof stackFlag === 'string') {
+    const template = findTemplate(stackFlag);
+    if (!template) {
+      throw new Error(`Unknown stack "${stackFlag}". Run with --list to see the options.`);
+    }
+
+    const client = typeof flags.client === 'string' ? findTemplate(flags.client) : null;
+    if (typeof flags.client === 'string' && !client) {
+      throw new Error(`Unknown client stack "${flags.client}".`);
+    }
+    if (client && !FULLSTACK_FRONTENDS.includes(client.framework)) {
+      throw new Error(
+        `"${client.framework}" cannot be used as a fullstack client.\n` +
+          `  Clients: ${FULLSTACK_FRONTENDS.join(', ')}`,
+      );
+    }
+    if (client && !FULLSTACK_BACKENDS.includes(template.framework)) {
+      throw new Error(
+        `--client needs a backend at the root, and "${template.framework}" is not one.\n` +
+          `  Backends: ${FULLSTACK_BACKENDS.join(', ')}`,
+      );
+    }
+    return { template, client };
+  }
+
+  const category = await select(
+    'What are you building?',
+    CATEGORIES.map((cat) => ({ value: cat.id, label: cat.label, hint: cat.hint })),
+  );
+
+  if (category === 'fullstack') {
+    const backend = await select(
+      'Backend:',
+      FULLSTACK_BACKENDS.map(findTemplate).map((t) => ({
+        value: t.framework,
+        label: `${t.languageLabel} · ${t.frameworkLabel}`,
+        hint: t.hint,
+      })),
+    );
+    const frontend = await select(
+      'Frontend (goes into client/):',
+      FULLSTACK_FRONTENDS.map(findTemplate).map((t) => ({
+        value: t.framework,
+        label: `${t.languageLabel} · ${t.frameworkLabel}`,
+        hint: t.hint,
+      })),
+    );
+    return { template: findTemplate(backend), client: findTemplate(frontend) };
+  }
+
+  const languages = languagesFor(category);
+  const language =
+    languages.length === 1
+      ? languages[0].id
+      : await select(
+          'Language:',
+          languages.map((l) => ({ value: l.id, label: l.label })),
+        );
+
+  const frameworks = frameworksFor(category, language);
+  const framework =
+    frameworks.length === 1
+      ? frameworks[0].framework
+      : await select(
+          'Framework:',
+          frameworks.map((t) => ({
+            value: t.framework,
+            label: t.frameworkLabel,
+            hint: t.hint,
+          })),
+        );
+
+  return { template: findTemplate(framework), client: null };
+}
+
+/** The storage question, asked only for stacks that actually persist anything. */
+async function resolveStorage(template, flags) {
+  if (!template.storage) {
+    // Accepting --db here and ignoring it would hand back a project wired to a
+    // different database than the one that was asked for, with nothing said.
+    // These stacks have their persistence fixed by the template (FastAPI ships
+    // SQLAlchemy, Spring ships JPA); only the storage-agnostic ones take --db.
+    if (typeof flags.db === 'string') {
+      throw new Error(
+        `The ${template.framework} stack does not take a --db — its database is fixed by the template.\n` +
+          `  Storage is a choice on: ${TEMPLATES.filter((t) => t.storage)
+            .map((t) => t.framework)
+            .join(', ')}`,
+      );
+    }
+    return { storage: null, fileFormat: null };
+  }
+
+  let storage = typeof flags.db === 'string' ? flags.db : null;
+  if (storage && !STORAGE[storage]) {
+    throw new Error(
+      `Unknown database "${storage}". Expected one of: ${Object.keys(STORAGE).join(', ')}`,
+    );
+  }
+
+  storage ??= await select('Database:', storageChoices());
+
+  let fileFormat = null;
+
+  if (storage === 'file') {
+    fileFormat = typeof flags.format === 'string' ? flags.format : null;
+
+    const allowed = STORAGE.file.formats;
+    if (fileFormat && !allowed.some((f) => f.value === fileFormat)) {
+      throw new Error(
+        `Unknown format "${fileFormat}". Expected one of: ${allowed.map((f) => f.value).join(', ')}`,
+      );
+    }
+
+    fileFormat ??= await select('File format:', allowed);
+  } else if (typeof flags.format === 'string') {
+    throw new Error(`--format only means something with --db file (you asked for --db ${storage}).`);
+  }
+
+  return { storage, fileFormat };
+}
+
+// --------------------------------------------------------------------- main
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+
+  if (args.flags.help) return printHelp();
+  if (args.flags.version) return printVersion();
+  if (args.flags.list) return printList();
+
+  console.log(`\n${c.bold(c.cyan('◆ lattice'))} ${c.gray('· project scaffolder')}\n`);
+
+  const projectName = args._[0] ?? (await text('Project name:', 'my-app', validateName));
+  const nameError = validateName(projectName);
+  if (nameError) throw new Error(nameError);
+
+  const { template, client } = await resolveTemplate(args.flags);
+  const { storage, fileFormat } = await resolveStorage(template, args.flags);
+
+  // Extra vars — only ask for what this stack actually declares.
+  const needs = new Set([...(template.vars ?? []), ...(client?.vars ?? [])]);
+  const answers = { projectName, storage: storage ?? 'memory', fileFormat: fileFormat ?? 'json' };
+
+  if (needs.has('javaPackage')) {
+    answers.javaPackage =
+      typeof args.flags.package === 'string'
+        ? args.flags.package
+        : await text(
+            'Base package:',
+            `at.htlvillach.${projectName.replace(/[^a-z0-9]/g, '')}`,
+            validatePackage,
+          );
+    const packageError = validatePackage(answers.javaPackage);
+    if (packageError) throw new Error(packageError);
+  }
+
+  if (needs.has('port')) {
+    answers.port =
+      typeof args.flags.port === 'string'
+        ? args.flags.port
+        : await text('Backend port:', '3000', validatePort);
+    const portError = validatePort(answers.port);
+    if (portError) throw new Error(portError);
+  }
+
+  const target = path.resolve(process.cwd(), projectName);
+  if (!isEmptyDir(target) && !args.flags.force) {
+    throw new Error(
+      `Directory "${projectName}" already exists and is not empty. Pass --force to scaffold into it anyway.`,
+    );
+  }
+
+  // Pick the database's host port before rendering anything, so the compose
+  // file and .env are written against a port that is actually free.
+  const spec = storage ? STORAGE[storage] : null;
+  if (spec?.server) {
+    answers.dbPort = await findFreePort(spec.defaultPort);
+  }
+
+  const vars = buildVars(answers);
+
+  // ------------------------------------------------------------- scaffold
+
+  const files = copyTemplate(path.join(STACK_ROOT, template.dir), target, vars);
+
+  let clientFiles = [];
+  if (client) {
+    clientFiles = copyTemplate(path.join(STACK_ROOT, client.dir), path.join(target, 'client'), {
+      ...vars,
+      projectName: `${vars.projectName}-client`,
+    });
+  }
+
+  console.log(
+    `\n${c.green('✔')} Scaffolded ${c.bold(projectName)} ` +
+      `${c.gray(`(${files.length + clientFiles.length} files)`)}\n` +
+      `  ${c.gray('stack   ')}  ${template.languageLabel} · ${template.frameworkLabel}` +
+      (client ? `\n  ${c.gray('client  ')}  ${client.languageLabel} · ${client.frameworkLabel}` : '') +
+      (storage
+        ? `\n  ${c.gray('database')}  ${STORAGE[storage].label}` +
+          (fileFormat ? ` (${fileFormat})` : '') +
+          (answers.dbPort ? c.gray(` · host port ${answers.dbPort}`) : '')
+        : ''),
+  );
+
+  // ---------------------------------------------------------------- wire up
+
+  if (storage) {
+    // Keep only the chosen adapter, then add exactly the deps it needs.
+    pruneAdapters(target, STORAGE[storage].adapter);
+    mergeDeps(target, depsFor(storage, fileFormat));
+
+    writeEnv(target, {
+      base: template.env?.(vars) ?? {},
+      storage,
+      vars: { ...vars, fileFormat },
+    });
+
+    const composed = writeCompose(target, { storage, vars });
+    console.log(
+      `${c.green('✔')} Wired up ${c.gray(`(.env written, ${STORAGE[storage].adapter} adapter${composed ? ', compose file' : ''})`)}`,
+    );
+  }
+
+  // ---------------------------------------------------------------- install
+
+  const wantsInstall = args.flags['no-install'] !== true;
+  const pm = detectPackageManager();
+
+  if (wantsInstall && template.installer === 'npm') {
+    const targets = [{ dir: target, label: projectName }];
+    if (client) targets.push({ dir: path.join(target, 'client'), label: 'client' });
+
+    for (const { dir, label } of targets) {
+      process.stdout.write(`${c.gray('⋯')} Installing dependencies (${pm}) in ${label}…\r`);
+      const result = install(dir, pm, true);
+
+      if (result.ok) {
+        console.log(`${c.green('✔')} Installed dependencies in ${label} ${c.gray(`(${pm})`)}      `);
+      } else {
+        console.log(`${c.yellow('!')} ${pm} install failed in ${label}       `);
+        console.log(c.gray(result.error.split('\n').map((l) => `    ${l}`).join('\n')));
+        console.log(c.gray(`    Run "${pm} install" in ${label} yourself once that is fixed.`));
+      }
+    }
+  } else if (wantsInstall && template.installer) {
+    // Python/Maven/Gradle: report rather than guess at the user's toolchain.
+    console.log(
+      `${c.gray('·')} ${c.gray(`Skipping auto-install — run the ${template.installer} steps below.`)}`,
+    );
+  }
+
+  // --------------------------------------------------------------- database
+
+  const wantsDbStart = args.flags['no-db-start'] !== true;
+
+  if (spec?.server && wantsDbStart) {
+    if (!hasDocker()) {
+      console.log(
+        `${c.yellow('!')} Docker is not running — start ${spec.label} yourself, then ${c.bold('npm run dev')}.`,
+      );
+    } else {
+      process.stdout.write(`${c.gray('⋯')} Starting ${spec.label} (docker compose up -d db)…\r`);
+      const result = startDatabase(target);
+
+      if (result.ok) {
+        console.log(`${c.green('✔')} ${spec.label} is running ${c.gray('(docker compose)')}          `);
+      } else {
+        console.log(`${c.yellow('!')} Could not start ${spec.label}          `);
+        console.log(c.gray(result.error.split('\n').map((l) => `    ${l}`).join('\n')));
+      }
+    }
+  }
+
+  // ----------------------------------------------------------------- report
+
+  console.log(`\n${c.bold('Next steps')}\n`);
+  console.log(`  cd ${projectName}`);
+  for (const step of template.post ?? []) console.log(`  ${step}`);
+
+  if (client) {
+    console.log(`\n  ${c.gray('# in a second terminal')}`);
+    console.log(`  cd ${projectName}/client`);
+    for (const step of client.post ?? []) console.log(`  ${step}`);
+  }
+
+  if (spec && !spec.durable) {
+    console.log(
+      `\n  ${c.yellow('Note')} ${c.gray(`${spec.label} keeps nothing across restarts — swap the adapter in src/db/ when you need it to.`)}`,
+    );
+  }
+
+  console.log('');
+}
+
+main().catch((error) => {
+  if (error instanceof PromptCancelled) {
+    console.log(c.gray('Cancelled.'));
+    process.exit(130);
+  }
+  console.error(`\n${c.red('✖')} ${error.message}\n`);
+  process.exit(1);
+});

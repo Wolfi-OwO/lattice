@@ -1,0 +1,18 @@
+.root {
+    -fx-font-family: "system-ui", "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+}
+
+.toolbar {
+    -fx-background-color: -fx-background;
+    -fx-border-color: transparent transparent #d0d0d0 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.status {
+    -fx-text-fill: #c0392b;
+}
+
+.table-view {
+    -fx-border-color: transparent;
+}

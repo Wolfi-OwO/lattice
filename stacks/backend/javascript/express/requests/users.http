@@ -1,0 +1,17 @@
+@host = http://localhost:{{port}}/api
+
+### List users
+GET {{host}}/users?page=1&limit=20
+
+### Create a user
+POST {{host}}/users
+Content-Type: application/json
+
+{
+  "email": "ada@example.com",
+  "name": "Ada Lovelace",
+  "password": "supersecret"
+}
+
+### Readiness probe
+GET {{host}}/health/ready

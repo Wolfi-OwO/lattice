@@ -1,0 +1,20 @@
+# Every number that changes a result lives here, not in a notebook cell.
+# That is what makes a run reproducible from the command line.
+seed: 42
+
+data:
+  raw_path: data/raw/dataset.csv
+  processed_path: data/processed/dataset.parquet
+  target: target
+  test_size: 0.2
+
+model:
+  name: random_forest
+  params:
+    n_estimators: 300
+    max_depth: 12
+    min_samples_leaf: 2
+
+output:
+  model_path: models/model.joblib
+  metrics_path: reports/metrics.json

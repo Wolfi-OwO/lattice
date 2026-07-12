@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+
+# Data and artifacts are not source. Track them with DVC or object storage.
+data/raw/*
+data/processed/*
+models/*
+reports/figures/*
+!**/.gitkeep

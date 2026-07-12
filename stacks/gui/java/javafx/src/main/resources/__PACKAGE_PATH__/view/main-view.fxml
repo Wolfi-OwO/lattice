@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="{{javaPackage}}.controller.MainController">
+
+  <top>
+    <HBox spacing="8.0" styleClass="toolbar">
+      <padding>
+        <Insets top="12.0" right="16.0" bottom="12.0" left="16.0"/>
+      </padding>
+
+      <TextField fx:id="titleField" promptText="New task…" HBox.hgrow="ALWAYS"/>
+      <Button text="Add" onAction="#onAdd" defaultButton="true"/>
+      <Button text="Delete" onAction="#onDelete"/>
+    </HBox>
+  </top>
+
+  <center>
+    <TableView fx:id="taskTable">
+      <columns>
+        <TableColumn fx:id="titleColumn" text="Task" prefWidth="600.0"/>
+        <TableColumn fx:id="doneColumn" text="Done" prefWidth="80.0"/>
+      </columns>
+      <columnResizePolicy>
+        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+      </columnResizePolicy>
+    </TableView>
+  </center>
+
+  <bottom>
+    <Label fx:id="statusLabel" styleClass="status">
+      <padding>
+        <Insets top="8.0" right="16.0" bottom="8.0" left="16.0"/>
+      </padding>
+    </Label>
+  </bottom>
+</BorderPane>

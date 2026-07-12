@@ -1,0 +1,7 @@
+ENVIRONMENT=development
+PORT={{port}}
+
+DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/{{projectName}}
+
+JWT_SECRET=change-me-to-a-long-random-string
+JWT_EXPIRE_MINUTES=60

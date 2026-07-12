@@ -1,0 +1,11 @@
+# Floors with major-version caps: exact pins rot fast and break on newer
+# Pythons. Generate a real lockfile for deploys (pip-compile / uv lock).
+numpy>=2.0,<3.0
+pandas>=2.2,<3.0
+scikit-learn>=1.5,<2.0
+matplotlib>=3.9,<4.0
+seaborn>=0.13,<1.0
+jupyterlab>=4.2,<5.0
+pyyaml>=6.0,<7.0
+joblib>=1.4,<2.0
+pyarrow>=17.0

@@ -1,0 +1,16 @@
+# Lattice is dependency-free; node_modules only appears in scaffolded output.
+node_modules/
+npm-debug.log*
+
+# Scratch output from running the scaffolder locally
+/tmp-*/
+/demo/
+/frames/
+
+# Env files never belong in the repo. The templates ship `_env.example`,
+# which the scaffolder renames — that one is meant to be committed.
+.env
+.env.*
+!_env.example
+
+.DS_Store
