@@ -1,0 +1,157 @@
+name: CI
+
+# A scaffolder cannot be tested by testing the scaffolder. The only claim that
+# matters is "the project it emits actually runs", so the jobs below scaffold
+# real projects and run *their* test suites — against real databases, in real
+# containers, the same way a user's first five minutes go.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit · node ${{ matrix.node }} · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # `npm test` runs `node --test tests/*.test.js`, and cmd.exe does not
+      # expand globs — on Windows node would receive the literal string. Quoting
+      # it here hands the glob to node, which expands it itself on every OS.
+      # Lattice has no dependencies, so there is nothing to install first.
+      - run: node --test "tests/*.test.js"
+
+  scaffold:
+    name: Scaffold express · --db ${{ matrix.db }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every storage the express template can be scaffolded with. The point
+        # is the invariant from STRUCTURE.md: the same generated test suite has
+        # to pass against all six, because neither the tests nor the code under
+        # them know which adapter is underneath.
+        db: [memory, file, sqlite, postgres, mysql, mongodb]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # No flags beyond the choice itself: this is the real path a user takes.
+      # The CLI installs dependencies and, for the server-backed adapters, runs
+      # `docker compose up -d --wait db` on its own. Docker is present on the
+      # ubuntu runner, so the database is a real container, not a mock.
+      - name: Scaffold, install and start the database
+        run: node bin/lattice.js demo --stack express --db ${{ matrix.db }}
+
+      - name: Run the generated project's own tests
+        working-directory: demo
+        run: npm test
+
+  templates:
+    name: Template · ${{ matrix.stack }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - stack: react-vite
+            check: npm run build
+          - stack: react-vite-ts
+            check: npm run build # tsc -b under strict, then vite build
+          - stack: node-cli
+            check: npm test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node bin/lattice.js demo --stack ${{ matrix.stack }}
+      - working-directory: demo
+        run: ${{ matrix.check }}
+
+  python:
+    name: Template · ${{ matrix.stack }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [fastapi, ml-project]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The CLI only auto-installs for npm stacks; for Python it prints the
+      # steps and stops. CI therefore runs those steps verbatim — if this drifts
+      # from what the CLI tells the user to type, that is itself the bug.
+      #
+      # --no-db-start because these suites do not touch a server-backed database;
+      # the real docker path is already covered by the `scaffold` job above.
+      - run: node bin/lattice.js demo --stack ${{ matrix.stack }} --no-db-start
+      - name: Install and test
+        working-directory: demo
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+          pytest -q
+
+  java:
+    name: Template · ${{ matrix.stack }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Both templates target JDK 17. Spring Boot's suite runs for real;
+          # JavaFX only compiles, because its tests want a display server.
+          - stack: spring-boot
+            check: mvn -B test
+          - stack: javafx
+            check: mvn -B -DskipTests package
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      # No --db here: these stacks reject it. Their database is fixed by the
+      # template, and the CLI errors out rather than silently ignoring the flag.
+      # Both suites run without a live database, so nothing needs starting.
+      - run: node bin/lattice.js demo --stack ${{ matrix.stack }} --package at.htlvillach.demo --no-db-start
+      - working-directory: demo
+        run: ${{ matrix.check }}
+
+  # android-compose is deliberately absent. It needs the Android SDK and a
+  # Gradle wrapper, and the templates ship no wrappers on purpose (they are
+  # binaries — see "Things deliberately left out" in STRUCTURE.md). A job that
+  # generated a wrapper just to run would be testing Gradle, not lattice.

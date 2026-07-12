@@ -149,5 +149,35 @@ lattice/
 `lattice` has **no dependencies of its own**. That is why `npm create
 lattice@latest` starts instantly.
 
+## CI
+
+`.github/workflows/ci.yml` runs on every push and pull request. It does not
+merely test the scaffolder — a scaffolder cannot be tested by testing the
+scaffolder — it **scaffolds real projects and runs their suites**:
+
+| Job         | What it proves                                                            |
+| ----------- | ------------------------------------------------------------------------- |
+| `unit`      | The CLI's own 30 tests, on Node 20/22/24 × Linux/macOS/Windows.            |
+| `scaffold`  | `express` scaffolded against **all six databases**, installed, and the generated suite run — with Postgres, MySQL and Mongo as real containers the CLI starts itself. |
+| `templates` | `react-vite`, `react-vite-ts` build; `node-cli` tests pass.                |
+| `python`    | `fastapi` and `ml-project` install and pass pytest.                        |
+| `java`      | `spring-boot` runs `mvn test`; `javafx` packages.                          |
+
+## Releasing
+
+Releases are cut **by hand**. Nothing pushes to this repository on your behalf,
+so no bot ever lands in the history or the contributor list.
+
+1. Bump `version` in `package.json`, commit, push.
+2. Draft a Release on GitHub with the tag `vX.Y.Z` and publish it.
+
+Publishing the Release triggers `.github/workflows/release.yml`, which checks the
+tag against `package.json` (a mismatch fails loudly — npm will not let you
+re-publish a version), re-runs the tests, and publishes to npm with
+[provenance](https://docs.npmjs.com/generating-provenance-statements), so anyone
+can verify the tarball was built from this repo.
+
+Requires one secret: `NPM_TOKEN`, an npm automation token.
+
 See [STRUCTURE.md](./STRUCTURE.md) for why the templates are shaped the way they
 are — it is grounded in an audit of every project in `htl-villach`.

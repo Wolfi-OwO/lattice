@@ -225,6 +225,16 @@ Everything here was actually run, not just written:
 - `fastapi` — 4 pytest tests green.
 - `ml-project` — tests green; `python -m src.models.train` trains end to end.
 - `node-cli` — tests green, CLI runs.
-- `spring-boot` / `javafx` / `android-compose` — **not compiled**; there is no
-  Maven or Gradle on this machine. Both Java templates target **JDK 17** to match
-  the installed JDK.
+- `spring-boot` — **3 JUnit tests green** under `mvn test`, run in a
+  `maven:3.9-eclipse-temurin-17` container (there is no Maven on this machine).
+- `javafx` — compiles and packages (`mvn -DskipTests package`). Its tests want a
+  display server, so CI builds it rather than running them.
+- `android-compose` — **still not built**. It needs the Android SDK and a Gradle
+  wrapper, and the templates ship no wrappers on purpose. This is the one
+  template whose claim rests on review rather than execution.
+
+Both JVM templates target **JDK 17**.
+
+All of the above runs on every push: `.github/workflows/ci.yml` scaffolds real
+projects and runs *their* suites, because a scaffolder cannot be tested by
+testing the scaffolder.
