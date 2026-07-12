@@ -72,25 +72,27 @@ test('capturing a big install does not kill it', () => {
   // the output — it kills the child with ENOBUFS. A native build (better-sqlite3
   // runs node-gyp) prints past 1 MB, so the install died half-written and the
   // scaffolded project was missing packages its own tests needed.
+  // The fake package manager is node itself. `install` runs the manager with
+  // ['install'] and cwd set to the target, so `node install` executes the file
+  // below — a shell script would have made this test Linux-only.
   const dir = tempDir();
-  const noisy = path.join(dir, 'noisy-pm');
-
   fs.writeFileSync(
-    noisy,
-    `#!/bin/sh\nnode -e "process.stdout.write('x'.repeat(3 * 1024 * 1024))"\nexit 0\n`,
-    { mode: 0o755 },
+    path.join(dir, 'install'),
+    "process.stdout.write('x'.repeat(3 * 1024 * 1024));\n",
   );
 
-  const result = install(dir, noisy, true);
+  const result = install(dir, process.execPath, true);
   assert.equal(result.ok, true, `install reported failure: ${result.error}`);
 });
 
 test('a failing install is reported, not thrown', () => {
   const dir = tempDir();
-  const broken = path.join(dir, 'broken-pm');
-  fs.writeFileSync(broken, '#!/bin/sh\necho "boom" >&2\nexit 1\n', { mode: 0o755 });
+  fs.writeFileSync(
+    path.join(dir, 'install'),
+    "console.error('boom');\nprocess.exit(1);\n",
+  );
 
-  const result = install(dir, broken, true);
+  const result = install(dir, process.execPath, true);
   assert.equal(result.ok, false);
   assert.match(result.error, /boom/);
 });
