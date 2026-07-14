@@ -102,6 +102,29 @@ jobs:
           echo "tag=$tag"         >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      # The checkout above is `main`, but the Release was cut from a *tag*. If
+      # those two are not the same commit, everything downstream is quietly wrong:
+      # the tests would run against main, the tarball would be built from main, and
+      # npm would receive main's code under the tag's version number — a published
+      # vX.Y.Z whose contents were never the thing anyone tagged. And npm does not
+      # take it back.
+      #
+      # Rather than guess which of the two is meant, refuse. Cutting a Release from
+      # main's HEAD is the only workflow this repository has, so a mismatch is not
+      # an exotic configuration — it is main having moved on while the Release was
+      # being drafted, which is exactly the case that must not publish.
+      - name: Refuse a Release cut from anything but main's HEAD
+        run: |
+          tagged="${{ github.sha }}"
+          head="$(git rev-parse HEAD)"
+
+          if [ "$tagged" != "$head" ]; then
+            echo "::error::${{ steps.v.outputs.tag }} points at $tagged, but main is at $head."
+            echo "::error::Publishing would ship main's code as ${{ steps.v.outputs.tag }}. Delete the Release and the tag, then cut it again from main's HEAD."
+            exit 1
+          fi
+          echo "main and ${{ steps.v.outputs.tag }} are the same commit ($head)."
+
       # npm would reject the duplicate anyway, but it would do so *after* the
       # release had already been cut and half this job had run. Failing here says
       # plainly what went wrong: that version is already gone, pick the next one.

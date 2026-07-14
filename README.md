@@ -180,8 +180,11 @@ version number, the changelog, npm — happens on its own.
 
 Publishing the Release triggers `.github/workflows/release.yml`, which:
 
-- **refuses early** if `vX.Y.Z` is already on npm, or if `[Unreleased]` is empty —
-  both *before* anything is written, because `npm publish` cannot be undone;
+- **refuses early** if `vX.Y.Z` is already on npm, if `[Unreleased]` is empty, or if
+  the Release was cut from anything other than `main`'s HEAD — all *before* anything
+  is written, because `npm publish` cannot be undone. (That last one matters: the
+  job publishes `main`, so a tag pointing at an older commit would ship code nobody
+  tagged, under a version number that can never be reused.)
 - re-runs the full unit matrix on the code being shipped;
 - **sets the version** from the tag, so the tag is the single source of truth and
   `package.json` cannot drift from it;
