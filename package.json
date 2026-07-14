@@ -1,7 +1,7 @@
 {
   "name": "create-lattice",
   "version": "1.0.0",
-  "description": "Scaffold backend, frontend, fullstack, GUI, mobile, CLI and ML projects — pick a stack, pick a database, get a project that already runs",
+  "description": "Pick a stack, pick a database, get a project that already runs. Scaffolds backend, frontend, fullstack, desktop GUI, mobile, CLI and ML projects across JavaScript, TypeScript, Java, Python, C#, Rust, Kotlin, Swift and Dart — installed, wired up and booting.",
   "type": "module",
   "bin": {
     "create-lattice": "bin/lattice.js",
@@ -13,20 +13,73 @@
   "files": [
     "bin",
     "src",
-    "stacks"
+    "stacks",
+    "CHANGELOG.md",
+    "CONVENTIONS.md",
+    "STRUCTURE.md"
   ],
   "scripts": {
     "start": "node bin/lattice.js",
     "list": "node bin/lattice.js --list",
-    "test": "node --test tests/cli.test.js tests/scaffold.test.js tests/storage.test.js"
+    "test": "node --test tests/cli.test.js tests/scaffold.test.js tests/storage.test.js tests/registry.test.js tests/changelog.test.js"
   },
   "keywords": [
     "scaffold",
-    "template",
-    "generator",
+    "scaffolding",
+    "project-generator",
     "boilerplate",
     "starter",
-    "create-app"
+    "starter-kit",
+    "template",
+    "create-app",
+    "generator",
+    "cli",
+    "express",
+    "fastify",
+    "nestjs",
+    "spring-boot",
+    "fastapi",
+    "aspnet",
+    "axum",
+    "react",
+    "vue",
+    "svelte",
+    "sveltekit",
+    "angular",
+    "nextjs",
+    "nuxt",
+    "electron",
+    "tauri",
+    "avalonia",
+    "javafx",
+    "pyside",
+    "flutter",
+    "react-native",
+    "swiftui",
+    "jetpack-compose",
+    "kotlin-multiplatform",
+    "fullstack",
+    "rest-api",
+    "postgres",
+    "mongodb",
+    "mysql",
+    "sqlite",
+    "docker",
+    "zero-dependency"
   ],
-  "license": "MIT"
+  "author": "Wolfi-OwO",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Wolfi-OwO/lattice.git"
+  },
+  "homepage": "https://wolfi-owo.github.io/lattice/",
+  "bugs": {
+    "url": "https://github.com/Wolfi-OwO/lattice/issues"
+  },
+  "funding": "https://github.com/sponsors/Wolfi-OwO",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
 }

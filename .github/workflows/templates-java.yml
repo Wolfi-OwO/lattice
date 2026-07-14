@@ -1,0 +1,52 @@
+name: Templates · Java
+
+# Both templates target JDK 17. Spring Boot's suite runs for real; JavaFX only
+# compiles, because its tests want a display server and a headless runner has
+# none — a job that spun up Xvfb would be testing Xvfb, not lattice.
+#
+# android-compose is deliberately absent. It needs the Android SDK and a Gradle
+# wrapper, and the templates ship no wrappers on purpose (they are binaries —
+# see "Things deliberately left out" in STRUCTURE.md). A job that generated a
+# wrapper just to have something to run would be testing Gradle, not lattice.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: templates-java-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  template:
+    name: ${{ matrix.stack }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - stack: spring-boot
+            check: mvn -B test
+          - stack: javafx
+            check: mvn -B -DskipTests package
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      # No --database here: these stacks reject it. Their storage is fixed by the
+      # template, and the CLI errors out rather than silently ignoring the flag.
+      # Both checks run without a live database, so nothing needs starting.
+      - run: node bin/lattice.js demo --stack ${{ matrix.stack }} --package at.htlvillach.demo --no-database-start
+      - working-directory: demo
+        run: ${{ matrix.check }}

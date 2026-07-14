@@ -1,0 +1,26 @@
+version: 2
+
+# Dependabot has exactly one job in this repository, and it is not the obvious one.
+#
+# lattice has no dependencies — that is the point of it, and it is why
+# `npm create lattice@latest` starts instantly. So the npm ecosystem is left out
+# deliberately: there is nothing in package.json for Dependabot to bump, and
+# pointing it at the *templates* would be worse than useless. A template pins
+# floors, not exact versions (`fastapi>=0.112,<1.0` — see STRUCTURE.md), because a
+# scaffolder that pins exact versions ships a project that is already out of date
+# the week after it is generated. A bot raising "bump express to 4.19.3" against a
+# template is a bot asking you to make that mistake once a week.
+#
+# What it *does* watch is the workflows. A pinned `actions/checkout@v4` goes stale
+# silently, and the failure mode is a deprecation warning that becomes a hard error
+# on GitHub's schedule rather than yours.
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencies

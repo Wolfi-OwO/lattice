@@ -1,0 +1,62 @@
+name: Storages
+
+# The invariant from STRUCTURE.md, tested rather than asserted: the *same*
+# generated test suite has to pass against all six storages, because neither the
+# generated tests nor the code under them know which adapter is underneath.
+#
+# If that ever stops being true, the storage seam has leaked — and this is the
+# only job that would notice.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: storages-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  storage:
+    name: ${{ matrix.stack }} · --database ${{ matrix.database }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both backends that let you choose. They ship the same six adapters
+        # behind the same repository interface, so both have to hold the line —
+        # covering only express would let fastify's seam rot unnoticed.
+        stack: [express, fastify]
+        database: [memory, file, sqlite, postgres, mysql, mongodb]
+
+        # Both axes are real matrix keys, so these two are the full cross product:
+        # twelve jobs. `include` below only *decorates* the combinations that
+        # already exist — it must never be the thing that introduces `database`,
+        # or the entries collapse into each other instead of multiplying out.
+        include:
+          # A file-backed project has to pick a format and the CLI refuses to
+          # guess: with no TTY, an unanswerable choice is an error rather than a
+          # silent default. That refusal is the feature, and passing --format on
+          # exactly these two jobs is what proves it stays one.
+          - database: file
+            extra: --format json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # No flags beyond the choice itself: this is the real path a user takes.
+      # The CLI installs dependencies and, for the server-backed adapters, brings
+      # the database up with `docker compose up -d --wait database` on its own.
+      # Docker is present on the ubuntu runner, so this is a real container and
+      # not a mock — the five minutes a new user actually lives through.
+      - name: Scaffold, install and start the database
+        run: node bin/lattice.js demo --stack ${{ matrix.stack }} --database ${{ matrix.database }} ${{ matrix.extra }}
+
+      - name: Run the generated project's own tests
+        working-directory: demo
+        run: npm test

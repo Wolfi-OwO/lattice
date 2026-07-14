@@ -1,0 +1,44 @@
+name: Templates · JavaScript
+
+# The JavaScript and TypeScript templates that do not choose a storage. The two
+# that do — express and fastify — are covered by the Storages job instead, which
+# runs each of them against all six adapters; scaffolding them here without a
+# --database would just make the CLI (correctly) refuse to guess.
+#
+# The claim here is narrower and still worth proving: the template builds, and
+# its own suite passes, from nothing but a scaffold.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: templates-javascript-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  template:
+    name: ${{ matrix.stack }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - stack: react-vite
+            check: npm run build
+          - stack: react-vite-ts
+            check: npm run build # tsc -b under strict, then vite build
+          - stack: node-cli
+            check: npm test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node bin/lattice.js demo --stack ${{ matrix.stack }}
+      - working-directory: demo
+        run: ${{ matrix.check }}

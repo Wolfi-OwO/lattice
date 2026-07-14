@@ -151,31 +151,56 @@ lattice@latest` starts instantly.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every push and pull request. It does not
-merely test the scaffolder — a scaffolder cannot be tested by testing the
-scaffolder — it **scaffolds real projects and runs their suites**:
+Every push and pull request runs the workflows below. They do not merely test the
+scaffolder — a scaffolder cannot be tested by testing the scaffolder — they
+**scaffold real projects and run their suites**:
 
-| Job         | What it proves                                                            |
-| ----------- | ------------------------------------------------------------------------- |
-| `unit`      | The CLI's own 30 tests, on Node 20/22/24 × Linux/macOS/Windows.            |
-| `scaffold`  | `express` scaffolded against **all six databases**, installed, and the generated suite run — with Postgres, MySQL and Mongo as real containers the CLI starts itself. |
-| `templates` | `react-vite`, `react-vite-ts` build; `node-cli` tests pass.                |
-| `python`    | `fastapi` and `ml-project` install and pass pytest.                        |
-| `java`      | `spring-boot` runs `mvn test`; `javafx` packages.                          |
+| Workflow                  | What it proves                                                  |
+| ------------------------- | --------------------------------------------------------------- |
+| `unit.yml`                | The CLI's own suite, on Node 20/22/24 × Linux/macOS/Windows.     |
+| `storages.yml`            | `express` **and** `fastify`, each scaffolded against **all six databases**, installed, and the generated suite run — with Postgres, MySQL and Mongo as real containers the CLI starts itself. Twelve jobs. |
+| `templates-javascript.yml`| `react-vite`, `react-vite-ts` build; `node-cli` tests pass.      |
+| `templates-python.yml`    | `fastapi` and `ml-project` install and pass pytest.              |
+| `templates-java.yml`      | `spring-boot` runs `mvn test`; `javafx` packages.                |
+
+`release.yml` reuses `unit.yml` rather than restating the matrix, so the suite
+that guards a publish is the same suite that guards a pull request — by
+construction, not by discipline.
 
 ## Releasing
 
-Releases are cut **by hand**. Nothing pushes to this repository on your behalf,
-so no bot ever lands in the history or the contributor list.
+You write down what changed, and you publish a Release. Everything else — the
+version number, the changelog, npm — happens on its own.
 
-1. Bump `version` in `package.json`, commit, push.
+1. As you work, add entries under `## [Unreleased]` in
+   [CHANGELOG.md](./CHANGELOG.md). This is the only manual step, and it is
+   deliberate: notes written at release time are notes nobody can write, because
+   by then nobody remembers.
 2. Draft a Release on GitHub with the tag `vX.Y.Z` and publish it.
 
-Publishing the Release triggers `.github/workflows/release.yml`, which checks the
-tag against `package.json` (a mismatch fails loudly — npm will not let you
-re-publish a version), re-runs the tests, and publishes to npm with
-[provenance](https://docs.npmjs.com/generating-provenance-statements), so anyone
-can verify the tarball was built from this repo.
+Publishing the Release triggers `.github/workflows/release.yml`, which:
+
+- **refuses early** if `vX.Y.Z` is already on npm, or if `[Unreleased]` is empty —
+  both *before* anything is written, because `npm publish` cannot be undone;
+- re-runs the full unit matrix on the code being shipped;
+- **sets the version** from the tag, so the tag is the single source of truth and
+  `package.json` cannot drift from it;
+- **cuts the changelog**: `[Unreleased]` becomes `## [X.Y.Z] - <today>`, and a
+  fresh empty `[Unreleased]` is left above it for the next change;
+- publishes to npm with
+  [provenance](https://docs.npmjs.com/generating-provenance-statements), so anyone
+  can verify the tarball was built from this repo;
+- commits the version and the changelog to `main` **as you**, moves the tag onto
+  that commit, and sets the Release body to the notes it just wrote.
+
+The version bump and the release notes land in one commit on purpose: a version
+that shipped and the notes saying what was in it are the same fact.
+
+No bot writes to this repository. The commit is authored by you — the token only
+authorises the push — so `github-actions[bot]` never lands in the contributor
+list. That is also why there is no `release-please` or `semantic-release` here:
+both work by having a bot open and merge a release PR, which is the one thing this
+setup is built to avoid.
 
 Requires one secret: `NPM_TOKEN`, an npm automation token.
 

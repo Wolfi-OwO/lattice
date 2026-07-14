@@ -1,0 +1,107 @@
+/**
+ * The release edits CHANGELOG.md unattended, with npm already holding the
+ * tarball. These tests are what stands between that and a mangled file.
+ */
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { cut, parseChangelog, hasEntries, repositoryUrl } from '../scripts/release-changelog.js';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const REPOSITORY = 'https://github.com/Wolfi-OwO/lattice';
+
+/** The text under one `## [heading]`, up to the next one. */
+function sectionOf(text, heading) {
+  const start = text.indexOf(`## [${heading}]`);
+  assert.notEqual(start, -1, `no section "## [${heading}]" in the file`);
+  const next = text.indexOf('\n## [', start + 1);
+  return text.slice(start, next === -1 ? undefined : next);
+}
+
+const CHANGELOG = `# Changelog
+
+Some standing preamble that must survive every release.
+
+## [Unreleased]
+
+### Added
+
+- A thing.
+
+### Fixed
+
+- Another thing.
+
+[Unreleased]: ${REPOSITORY}/commits/main
+`;
+
+test('a release moves [Unreleased] under the version, dated, and leaves [Unreleased] empty', () => {
+  const { text, notes } = cut(CHANGELOG, { version: '1.0.0', date: '2026-07-14', repository: REPOSITORY });
+
+  assert.match(text, /## \[1\.0\.0\] - 2026-07-14/);
+  assert.match(text, /## \[Unreleased\]\n\n## \[1\.0\.0\]/, 'the next change needs an empty [Unreleased] to land in');
+
+  // The entries moved — they are under the version now, and not above it.
+  assert.match(sectionOf(text, '1.0.0'), /- A thing\./);
+  assert.match(sectionOf(text, '1.0.0'), /- Another thing\./);
+  assert.doesNotMatch(sectionOf(text, 'Unreleased'), /- A thing\./);
+
+  assert.match(text, /Some standing preamble/, 'the preamble is not a release note and must not be eaten');
+  assert.equal(notes.includes('- A thing.'), true, 'stdout carries the notes for the GitHub Release body');
+});
+
+test('the first release links to its tag; the next one links to a compare range', () => {
+  const first = cut(CHANGELOG, { version: '1.0.0', date: '2026-07-14', repository: REPOSITORY }).text;
+
+  assert.match(first, new RegExp(`\\[1\\.0\\.0\\]: ${REPOSITORY}/releases/tag/v1\\.0\\.0`));
+  assert.match(first, new RegExp(`\\[Unreleased\\]: ${REPOSITORY}/compare/v1\\.0\\.0\\.\\.\\.HEAD`));
+
+  // Now someone adds a change on top of the released file, and cuts 1.1.0.
+  const withNewWork = first.replace('## [Unreleased]\n', '## [Unreleased]\n\n### Added\n\n- Something newer.\n');
+  const second = cut(withNewWork, { version: '1.1.0', date: '2026-08-01', repository: REPOSITORY }).text;
+
+  assert.match(second, new RegExp(`\\[1\\.1\\.0\\]: ${REPOSITORY}/compare/v1\\.0\\.0\\.\\.\\.v1\\.1\\.0`));
+  assert.match(second, new RegExp(`\\[1\\.0\\.0\\]: ${REPOSITORY}/releases/tag/v1\\.0\\.0`), 'old links are carried, not dropped');
+
+  // Both releases are in the file, newest first, and 1.0.0 kept its own notes.
+  assert.ok(second.indexOf('## [1.1.0]') < second.indexOf('## [1.0.0]'), 'newest release first');
+  assert.match(sectionOf(second, '1.1.0'), /- Something newer\./);
+  assert.match(sectionOf(second, '1.0.0'), /- A thing\./, '1.0.0 keeps its own notes');
+});
+
+test('a release with nothing under [Unreleased] is refused', () => {
+  // This is the whole reason --check runs *before* npm publish. If it ran after,
+  // the tarball would be on a registry that never forgets, and the file recording
+  // what was in it would be the thing that failed.
+  const released = cut(CHANGELOG, { version: '1.0.0', date: '2026-07-14', repository: REPOSITORY }).text;
+
+  assert.throws(
+    () => cut(released, { version: '1.0.1', date: '2026-07-15', repository: REPOSITORY }),
+    /no entries under \[Unreleased\]/,
+    'releasing twice with no new notes must fail, not produce an empty section',
+  );
+});
+
+test('a heading with no bullets under it is not a release note', () => {
+  // "### Added" and nothing beneath it is someone who started and stopped.
+  assert.equal(hasEntries(['### Added', '']), false);
+  assert.equal(hasEntries(['### Added', '', '- A real one.']), true);
+});
+
+test('the repository URL is browsable, not the git+…​.git form npm stores', () => {
+  assert.equal(
+    repositoryUrl({ repository: { url: 'git+https://github.com/Wolfi-OwO/lattice.git' } }),
+    REPOSITORY,
+  );
+});
+
+test('the real CHANGELOG.md parses and has an [Unreleased] heading to write into', () => {
+  // Not "has entries" — right after a release it is legitimately empty. The
+  // invariant that always holds is that the heading is there for the next change.
+  const text = fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8');
+  assert.doesNotThrow(() => parseChangelog(text));
+});

@@ -1,0 +1,48 @@
+name: Templates · Python
+
+# The CLI only auto-installs for npm stacks; for Python it prints the steps and
+# stops. This job therefore runs those steps *verbatim* — so if it ever drifts
+# from what the CLI tells the user to type, that drift is itself the bug, and it
+# fails here rather than in someone's terminal.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: templates-python-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  template:
+    name: ${{ matrix.stack }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [fastapi, ml-project]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # --no-database-start because these suites do not touch a server-backed
+      # database; the real Docker path is already covered by the Storages job.
+      - run: node bin/lattice.js demo --stack ${{ matrix.stack }} --no-database-start
+
+      - name: Install and test
+        working-directory: demo
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+          pytest -q

@@ -1,0 +1,45 @@
+name: Unit
+
+# The scaffolder's own suite: argument parsing, the registry, the storage seam
+# and the render step. Fast, hermetic, no Docker, no network.
+#
+# It is split across three operating systems because a scaffolder is mostly path
+# handling, and path handling is exactly what breaks on Windows and nowhere else.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Release calls this instead of restating the matrix. The suite that guards a
+  # publish is then the same suite, by construction, that guards a pull request —
+  # they cannot drift apart, because there is only one of them.
+  workflow_call:
+
+concurrency:
+  group: unit-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: node ${{ matrix.node }} · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # `npm test` names its test files explicitly rather than globbing. A shell
+      # glob would not expand under cmd.exe on the Windows runner, and handing the
+      # pattern to node instead only works from Node 22 — node 20 does not expand
+      # globs in --test. An explicit list is the one form that works everywhere.
+      # Lattice has no dependencies, so there is nothing to install first.
+      - run: npm test

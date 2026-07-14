@@ -235,6 +235,6 @@ Everything here was actually run, not just written:
 
 Both JVM templates target **JDK 17**.
 
-All of the above runs on every push: `.github/workflows/ci.yml` scaffolds real
-projects and runs *their* suites, because a scaffolder cannot be tested by
-testing the scaffolder.
+All of the above runs on every push: the workflows in `.github/workflows/`
+scaffold real projects and run *their* suites, because a scaffolder cannot be
+tested by testing the scaffolder. See the CI table in the README.
