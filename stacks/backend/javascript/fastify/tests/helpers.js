@@ -15,7 +15,12 @@ export async function buildTestApp() {
 }
 
 export async function teardown(app) {
-  await app.close();
+  // `before` can fail — a database that will not come up, a migration that throws —
+  // and then `app` was never assigned. A teardown that dereferences it anyway
+  // replaces the real failure with "Cannot read properties of undefined (reading
+  // 'close')", which is the one message that tells you nothing about what broke.
+  // The connection still has to be released either way, or the runner hangs.
+  if (app) await app.close();
   await disconnectDatabase();
 }
 

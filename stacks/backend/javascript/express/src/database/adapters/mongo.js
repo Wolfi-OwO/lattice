@@ -35,7 +35,7 @@ export async function createAdapter({ url }) {
 
   // mongoose.connection is an EventEmitter: a post-connect failure emits `error`,
   // and unhandled, it takes the process down. Log instead — the driver retries,
-  // and /api/health/ready reports 503 in the meantime.
+  // and /api/health/readiness reports 503 in the meantime.
   mongoose.connection.on('error', (error) => {
     logger.error(`mongodb connection error: ${error.message}`);
   });

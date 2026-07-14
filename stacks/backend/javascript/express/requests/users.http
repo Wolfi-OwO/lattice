@@ -14,4 +14,4 @@ Content-Type: application/json
 }
 
 ### Readiness probe
-GET {{host}}/health/ready
+GET {{host}}/health/readiness

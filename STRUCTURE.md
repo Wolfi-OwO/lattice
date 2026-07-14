@@ -106,8 +106,16 @@ asymmetry is the whole point:
 
 | | Served by | While draining | Why |
 | --- | --- | --- | --- |
-| `/api/health/live` | Express | **200** | A failing liveness probe makes Kubernetes SIGKILL the pod. If it failed during a drain, graceful shutdown would be killed mid-drain — the exact thing it exists to prevent. |
-| `/api/health/ready` | terminus | **503** | Tells the load balancer to stop routing *before* the socket closes. A readiness route inside Express keeps answering 200 all the way through the drain, so traffic keeps arriving at a process that is about to die. |
+| `/api/health/liveness` | Express / Fastify | **200** | A failing liveness probe makes Kubernetes SIGKILL the pod. If it failed during a drain, graceful shutdown would be killed mid-drain — the exact thing it exists to prevent. |
+| `/api/health/readiness` | terminus | **503** | Tells the load balancer to stop routing *before* the socket closes. A readiness route inside the framework keeps answering 200 all the way through the drain, so traffic keeps arriving at a process that is about to die. |
+
+Both JavaScript backends use `@godaddy/terminus` for this, and for the same
+reason. Fastify originally hand-rolled it — a `process.once('SIGTERM')` handler
+that set a `draining` flag which a Fastify route then read. That works, and it is
+still wrong: the route lives *inside* the app, so the ordering between "start
+failing readiness" and "stop accepting connections" becomes something you maintain
+by hand, in a signal handler, forever. Terminus puts readiness on the http.Server,
+underneath the framework, where the ordering is structural rather than remembered.
 
 Liveness therefore must not touch the database. If it did, a slow database would
 read as a dead process, every replica would fail liveness at once, and the
@@ -215,10 +223,11 @@ Everything here was actually run, not just written:
   Mongo runs hitting real containers that the CLI started itself. The server was
   booted and the CRUD surface exercised over HTTP (create, paginate, validation
   errors, 401 guard).
-- **Graceful shutdown** — the real generated server was drained under SIGTERM:
-  `/ready` flips to 503 while `/live` stays 200, then the process exits cleanly.
+- **Graceful shutdown** — the real generated server was drained under SIGTERM, in
+  both JavaScript backends: `/readiness` flips to 503 while `/liveness` stays 200,
+  then the process exits cleanly.
 - **Database outage** — Postgres was stopped underneath a running app: the
-  process survived, `/ready` reported `storage: down` (503), and it recovered to
+  process survived, `/readiness` reported `storage: down` (503), and it recovered to
   200 by itself when the database came back, with no restart.
 - `react-vite-ts` as a fullstack client — `tsc -b` under `strict` + `vite build`
   clean, installed automatically alongside the backend.

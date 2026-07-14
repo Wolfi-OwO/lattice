@@ -20,6 +20,46 @@ const SCHEMA = `
   );
 `;
 
+/**
+ * An arbitrary but fixed key. Advisory locks are just numbers Postgres agrees to
+ * queue on; nothing else in this application takes one, so any constant does — it
+ * only has to be the *same* constant in every process.
+ */
+const SCHEMA_LOCK = 4_021_977;
+
+/**
+ * `CREATE TABLE IF NOT EXISTS` is not safe to run concurrently, which is not what
+ * the name suggests. The existence check and the create are not one atomic step:
+ * two connections can both find no table, both proceed, and the loser dies on the
+ * unique index behind `pg_type` — the table's row type is inserted there, so the
+ * collision surfaces as `pg_type_typname_nsp_index`, a message that says nothing
+ * about tables at all.
+ *
+ * Mocha runs this suite's files sequentially in one process, so the race is not
+ * reachable from here today. It is reachable the moment anything else boots the
+ * app twice at once — a second worker, a seed script running beside the server —
+ * and it is reachable from Fastify, which shares this seam and whose runner uses
+ * a process per file. That is where it failed in CI. The adapter is what has to
+ * be right, not the test runner that happens to hide it.
+ *
+ * An advisory lock makes the DDL serial across processes: the second one waits,
+ * then finds the table and does nothing. The lock is *session*-scoped, so it has
+ * to be taken and released on one pinned connection — taking it on a pool would
+ * be free to unlock on a different connection than it locked, which releases
+ * nothing and holds the original forever.
+ */
+async function ensureSchema(pool) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('SELECT pg_advisory_lock($1)', [SCHEMA_LOCK]);
+    await client.query(SCHEMA);
+  } finally {
+    await client.query('SELECT pg_advisory_unlock($1)', [SCHEMA_LOCK]);
+    client.release();
+  }
+}
+
 const COLUMNS = {
   email: 'email',
   name: 'name',
@@ -56,10 +96,23 @@ async function ensureDatabase(url) {
   await client.connect();
 
   try {
-    const { rowCount } = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [name]);
     // Identifiers cannot be bound as parameters; the name comes from our own
     // connection string, and doubling any quote closes the injection path.
-    if (rowCount === 0) await client.query(`CREATE DATABASE "${name.replace(/"/g, '""')}"`);
+    await client.query(`CREATE DATABASE "${name.replace(/"/g, '""')}"`);
+  } catch (error) {
+    // Postgres has no CREATE DATABASE IF NOT EXISTS, and the obvious stand-in —
+    // SELECT from pg_database, then create if absent — is a check-then-act race:
+    // two runners can both look, both see nothing, and both create. Trying and
+    // forgiving is the only form of this that is actually atomic, since the
+    // uniqueness is enforced by the index over pg_database.datname rather than by
+    // our check. The loser is reported as 42P04, or as a raw 23505 on that index
+    // when the two CREATEs collide inside the same instant.
+    //
+    // Mocha runs this suite's files sequentially in one process, so the race is
+    // not reachable from here today — but the seam is shared with Fastify, whose
+    // node:test runner uses a process per file, and there it failed in CI. The
+    // adapter, not the test runner, is what has to be right.
+    if (error.code !== '42P04' && error.code !== '23505') throw error;
   } finally {
     await client.end();
   }
@@ -79,13 +132,13 @@ export async function createAdapter({ url, autoCreate = false }) {
    * So without this listener the server *crashes* the moment the database
    * blips — which is exactly the situation the readiness probe exists to report.
    * Swallow it and log: the pool discards the dead client and reconnects on the
-   * next query, and until it can, /api/health/ready answers 503.
+   * next query, and until it can, /api/health/readiness answers 503.
    */
   pool.on('error', (error) => {
     logger.error(`postgres pool error: ${error.message}`);
   });
 
-  await pool.query(SCHEMA);
+  await ensureSchema(pool);
 
   const users = {
     async list({ page, limit, q }) {

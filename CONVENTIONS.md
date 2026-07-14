@@ -85,8 +85,8 @@ GET    /api/users/:id                      one
 POST   /api/users                          create            201
 PATCH  /api/users/:id                      update            authenticated
 DELETE /api/users/:id                      delete   204      authenticated
-GET    /api/health/live                    liveness
-GET    /api/health/ready                   readiness
+GET    /api/health/liveness               liveness
+GET    /api/health/readiness              readiness
 ```
 
 The user, in every language:

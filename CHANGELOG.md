@@ -32,10 +32,36 @@ whose `[Unreleased]` section is empty is refused before it can reach npm.
 
 - **The storage seam is spelled `database` everywhere** — `src/database/`, not
   `src/db/`. One word for one concept, in every language and every template.
+- **The health probes are spelled out**: `/api/health/liveness` and
+  `/api/health/readiness`, replacing `/live` and `/ready`. Rule 1 applies to URLs
+  too, and Spring Boot's Actuator already served the long names — the other three
+  backends were the ones out of step.
+- **Fastify drains through terminus**, like Express, instead of a hand-rolled
+  `process.once('SIGTERM')` handler that flipped a flag a route read. Readiness
+  now lives on the http.Server *underneath* Fastify, which is the only place it
+  can answer 503 from the instant a signal lands while the app above goes on
+  serving the requests already in flight. Verified against a real booted server:
+  readiness flips to 503 under SIGTERM while liveness stays 200, then the process
+  exits cleanly.
 - **CI scaffolds real projects and runs *their* suites**, across six storages and
   two backends. A scaffolder cannot be tested by testing the scaffolder.
 
 ### Fixed
+
+- **Two Postgres races that only a parallel test runner could find.** `node:test`
+  runs test files in a process each, so two processes booted the app against a
+  fresh database at once, and both `CREATE DATABASE` and `CREATE TABLE IF NOT
+  EXISTS` turned out to be check-then-act races — the second one despite its name.
+  The losers died on `pg_database_datname_index` and `pg_type_typname_nsp_index`,
+  neither of which mentions the thing that actually collided. Creating the database
+  now tries and forgives, and the schema is created under an advisory lock, which
+  are the only forms of each that are atomic. It failed roughly one CI run in two;
+  it now survives a fresh database six times out of six. Fixed in Express as well
+  as Fastify: Mocha's sequential files hid it there, but the adapter is what has to
+  be right, not the runner that happens to hide it.
+- A failed `before` hook in the Fastify template reported `Cannot read properties
+  of undefined (reading 'close')` from its teardown, burying the error that
+  actually caused it.
 
 - The CLI told you to run `docker compose up -d db`, but the service it generates
   is named `database` — the command it printed errored out. It also pointed at

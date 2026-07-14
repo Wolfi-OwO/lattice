@@ -14,7 +14,7 @@ const server = http.createServer(createApp());
  * Terminus owns readiness and the shutdown sequence.
  *
  * The single thing it buys that a hand-rolled `server.close()` cannot: once a
- * signal arrives, it answers /ready with 503 *while still serving traffic*. A
+ * signal arrives, it answers /readiness with 503 *while still serving traffic*. A
  * readiness route served by Express keeps returning 200 all the way through the
  * drain, so the load balancer happily routes new requests at a process that is
  * seconds from closing the socket. That is the bug this prevents.
@@ -30,7 +30,7 @@ createTerminus(server, {
   timeout: 10_000,
 
   healthChecks: {
-    '/api/health/ready': async () => {
+    '/api/health/readiness': async () => {
       const up = await ping();
       // Throwing is how terminus is told to answer 503.
       if (!up) throw new HealthCheckError('storage unreachable', { storage: 'down' });

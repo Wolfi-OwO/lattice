@@ -1,37 +1,25 @@
-import { ping } from '../../database/index.js';
-
 /**
- * Liveness and readiness are different questions, and conflating them is how a
- * database blip becomes an outage.
+ * Liveness — "is this process alive", and nothing more.
  *
- *   /live   "is this process alive?"        — never touches the database
- *   /ready  "should traffic be sent here?"  — does
+ * Two rules this endpoint must obey, both of which are load-bearing:
  *
- * If liveness checked the database, a slow database would read as a dead
- * process; every replica would fail liveness at once and the orchestrator would
- * restart the entire fleet. Dependency health is a readiness question.
+ *   1. It must not touch the database. A liveness probe that checks a dependency
+ *      turns a slow database into a restart loop: the database blips, every
+ *      replica reports dead, the orchestrator kills them all, and now the outage
+ *      is yours too. Dependency health is *readiness*, which is in server.js.
+ *
+ *   2. It must keep answering 200 while the process is shutting down. Terminus
+ *      fails every probe it owns once a signal arrives — correct for readiness,
+ *      fatal for liveness, because a failing liveness probe makes the kubelet
+ *      SIGKILL the pod *mid-drain*, which is precisely what graceful shutdown
+ *      exists to prevent. So liveness is deliberately served here by Fastify and
+ *      not handed to terminus.
+ *
+ * /api/health/readiness is therefore NOT in this file. It is registered on the
+ * http.Server by terminus, underneath Fastify — the only place it can answer 503
+ * from the instant a signal lands while the app above goes on serving the
+ * requests already in flight.
  */
-
-let draining = false;
-
-/** Called by the shutdown handler in server.js, before the socket closes. */
-export function setDraining() {
-  draining = true;
-}
-
 export async function healthRoutes(app) {
-  app.get('/live', async () => ({ status: 'ok', uptime: process.uptime() }));
-
-  app.get('/ready', async (_request, reply) => {
-    if (draining) {
-      return reply.status(503).send({ status: 'shutting_down', storage: 'draining' });
-    }
-
-    const up = await ping();
-    if (!up) {
-      return reply.status(503).send({ status: 'error', storage: 'down' });
-    }
-
-    return { status: 'ok', storage: 'up' };
-  });
+  app.get('/liveness', async () => ({ status: 'ok', uptime: process.uptime() }));
 }

@@ -23,7 +23,7 @@ Authorization: Bearer REPLACE_WITH_TOKEN
 }
 
 ### Liveness — 200 even while draining
-GET {{host}}/api/health/live
+GET {{host}}/api/health/liveness
 
 ### Readiness — 503 while draining, or if the database is unreachable
-GET {{host}}/api/health/ready
+GET {{host}}/api/health/readiness

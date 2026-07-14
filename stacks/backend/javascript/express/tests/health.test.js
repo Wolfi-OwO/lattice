@@ -4,9 +4,9 @@ import { createApp } from '../src/app.js';
 
 const app = createApp();
 
-describe('GET /api/health/live', () => {
+describe('GET /api/health/liveness', () => {
   it('reports the process alive without consulting storage', async () => {
-    const res = await request(app).get('/api/health/live').expect(200);
+    const res = await request(app).get('/api/health/liveness').expect(200);
 
     assert.equal(res.body.status, 'ok');
     assert.equal(typeof res.body.uptime, 'number');
@@ -19,12 +19,12 @@ describe('GET /api/health/live', () => {
 });
 
 /**
- * /api/health/ready has no test here on purpose: terminus registers it on the
+ * /api/health/readiness has no test here on purpose: terminus registers it on the
  * http.Server, below Express, so `supertest(createApp())` cannot reach it —
  * and that is the point. It has to answer 503 during shutdown, which a route
  * inside the Express app cannot do.
  *
  * It is exercised against a real booted server instead:
  *   npm run dev
- *   curl -i localhost:{{port}}/api/health/ready
+ *   curl -i localhost:{{port}}/api/health/readiness
  */

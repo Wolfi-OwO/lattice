@@ -6,13 +6,13 @@ from app.api.deps import DatabaseSession
 router = APIRouter(prefix="/health", tags=["health"])
 
 
-@router.get("/live")
+@router.get("/liveness")
 def liveness() -> dict:
     """Is the process up at all."""
     return {"status": "ok"}
 
 
-@router.get("/ready")
+@router.get("/readiness")
 def readiness(database: DatabaseSession, response: Response) -> dict:
     """Can we actually serve traffic — i.e. is the database reachable."""
     try:

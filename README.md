@@ -37,15 +37,15 @@ The Express stack is storage-agnostic. The database is a choice made at scaffold
 time, not a rewrite:
 
 ```bash
-lattice my-api --stack express --db postgres
-lattice my-api --stack express --db mongodb
-lattice notes  --stack express --db file --format ndjson   # no database at all
-lattice demo   --stack express --db memory                 # nothing persisted
+lattice my-api --stack express --database postgres
+lattice my-api --stack express --database mongodb
+lattice notes  --stack express --database file --format ndjson   # no database at all
+lattice demo   --stack express --database memory                 # nothing persisted
 ```
 
 Six options: **MongoDB · PostgreSQL · MySQL · SQLite · plain files · in-memory.**
 
-`--db file` persists rows to disk as **JSON**, **NDJSON** or **YAML**. Writes are
+`--database file` persists rows to disk as **JSON**, **NDJSON** or **YAML**. Writes are
 atomic (temp file, then rename) and serialised through a queue, so a crash
 mid-write cannot corrupt the file and two concurrent requests cannot clobber
 each other's rows.
@@ -59,17 +59,17 @@ pick. All eight combinations are verified green.
 ```
 src/
   api/users/          routes → controller → service     (never touches a driver)
-  db/
-    index.js          the seam: db.users, connectDatabase(), ping()
+  database/
+    index.js          the seam: database.users, connectDatabase(), ping()
     serialize.js      toPublicUser — the reason passwordHash cannot leak
     adapters/
       postgres.js     ← exactly one of these survives scaffolding
 ```
 
-Everything above `src/db/` talks to `db.users` and imports no driver, which is
-enforceable by grep: no `mongoose` / `pg` / `mysql2` import exists anywhere
-outside `src/db/adapters/`. Swapping Postgres for Mongo is one adapter file, and
-no service or controller changes.
+Everything above `src/database/` talks to `database.users` and imports no driver,
+which is enforceable by grep: no `mongoose` / `pg` / `mysql2` import exists
+anywhere outside `src/database/adapters/`. Swapping Postgres for Mongo is one
+adapter file, and no service or controller changes.
 
 Adding a seventh database is one entry in `src/storage.js` plus one adapter file.
 
@@ -78,28 +78,28 @@ Adding a seventh database is one entry in `src/storage.js` plus one adapter file
 ```bash
 lattice [name] [options]
 
-  --stack <id>      see --list
-  --db <id>         mongodb | postgres | mysql | sqlite | file | memory
-  --format <fmt>    json | ndjson | yaml        (only with --db file)
-  --client <id>     frontend for a fullstack project, placed in client/
-  --port <n>        backend port (default 3000)
-  --no-install      skip dependency installation
-  --no-db-start     do not "docker compose up -d db"
-  --force           scaffold into a non-empty directory
-  --list            show all stacks and databases
-  --version         print the version
+  --stack <id>          see --list
+  --database <id>       mongodb | postgres | mysql | sqlite | file | memory
+  --format <fmt>        json | ndjson | yaml    (only with --database file)
+  --client <id>         frontend for a fullstack project, placed in client/
+  --port <n>            backend port (default 3000)
+  --no-install          skip dependency installation
+  --no-database-start   do not "docker compose up -d database"
+  --force               scaffold into a non-empty directory
+  --list                show all stacks and databases
+  --version             print the version
 ```
 
 Fullstack composes a backend at the root with a frontend in `client/`, and
 installs both:
 
 ```bash
-lattice shop --stack express --db sqlite --client react-vite-ts
+lattice shop --stack express --database sqlite --client react-vite-ts
 ```
 
 Fully flagged, it is non-interactive — safe to run in a script or in CI. An
 underspecified run there does not hang and does not guess: a missing choice
-(`--db` on a stack that has one) exits non-zero and names the flag, because
+(`--database` on a stack that has one) exits non-zero and names the flag, because
 silently taking the first option would build the project against a database
 nobody asked for.
 
@@ -108,8 +108,8 @@ nobody asked for.
 Generated backends expose two probes, served by different layers on purpose:
 
 ```
-GET /api/health/live    Express   — 200 while alive, even while draining
-GET /api/health/ready   terminus  — 503 while draining, or if storage is down
+GET /api/health/liveness    Express   — 200 while alive, even while draining
+GET /api/health/readiness   terminus  — 503 while draining, or if storage is down
 ```
 
 Readiness turning 503 the moment a SIGTERM lands is what lets a load balancer

@@ -64,8 +64,8 @@ adapters, same guarantees — only the HTTP layer differs.
 ## Health probes
 
 ```
-GET /api/health/live    200 while the process is alive, even while draining
-GET /api/health/ready   503 while draining, or if the database is unreachable
+GET /api/health/liveness    200 while the process is alive, even while draining
+GET /api/health/readiness   503 while draining, or if the database is unreachable
 ```
 
 Liveness never touches the database. If it did, a slow database would read as a
