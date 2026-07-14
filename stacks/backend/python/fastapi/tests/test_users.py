@@ -1,3 +1,6 @@
+from app.core.security import create_access_token
+
+
 def test_creates_user_and_never_returns_the_password_hash(client):
     response = client.post(
         "/api/users",
@@ -32,3 +35,30 @@ def test_refuses_a_duplicate_email(client):
 def test_delete_requires_authentication(client):
     response = client.delete("/api/users/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 401
+
+
+def test_carries_both_timestamps_and_touches_updated_at_on_a_write(client):
+    """The user shape is the same in every backend in this repository
+    (CONVENTIONS rule 3), so a missing `updated_at` here is a broken promise,
+    not a cosmetic omission."""
+    created = client.post(
+        "/api/users",
+        json={"email": "grace@example.com", "name": "Grace", "password": "supersecret"},
+    ).json()
+
+    assert created["created_at"]
+    assert created["updated_at"]
+
+    token = create_access_token(subject=created["id"], role="user")
+    patched = client.patch(
+        f"/api/users/{created['id']}",
+        json={"name": "Grace Hopper"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert patched.status_code == 200
+    body = patched.json()
+    assert body["name"] == "Grace Hopper"
+    assert "password_hash" not in body
+    assert body["created_at"] == created["created_at"]
+    assert body["updated_at"] > created["updated_at"]

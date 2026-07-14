@@ -1,0 +1,10 @@
+# Active only under `mvn spring-boot:run -Dspring-boot.run.profiles=seed`.
+#
+# Seeding boots the whole application, web layer included: SecurityConfig declares
+# a SecurityFilterChain, and the HttpSecurity it needs only exists in a servlet
+# context — `web-application-type: none` would fail the context outright.
+#
+# Port 0 is the price of that. It keeps the seed from colliding with a copy of the
+# app already holding {{port}}, which is exactly the situation you seed in.
+server:
+  port: 0

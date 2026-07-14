@@ -1,6 +1,6 @@
 # {{projectTitle}}
 
-REST API — Express 4, Joi, JWT, Winston. Storage: **{{dbLabel}}**.
+REST API — Express 4, Joi, JWT, Winston. Storage: **{{databaseLabel}}**.
 
 ## Getting started
 
@@ -38,7 +38,7 @@ src/
 │       ├── user.service.js      Business logic, no Express types
 │       └── user.validation.js   Joi schemas
 ├── middlewares/       auth, validate, error, requestLogger
-├── db/                The storage seam — see below
+├── database/          The storage seam — see below
 └── utils/             ApiError, asyncHandler, logger
 ```
 
@@ -54,15 +54,15 @@ belongs in the service.
 ## The storage seam
 
 ```
-src/db/
-├── index.js         exposes db.users, connectDatabase(), ping()
+src/database/
+├── index.js         exposes database.users, connectDatabase(), ping()
 ├── serialize.js     toPublicUser — the reason passwordHash cannot leak
 └── adapters/
-    └── {{dbAdapter}}.js
+    └── {{databaseAdapter}}.js
 ```
 
-Nothing above `src/db/` imports a database driver. The service layer calls
-`db.users.list / findById / findByEmail / create / update / remove`, and the
+Nothing above `src/database/` imports a database driver. The service layer calls
+`database.users.list / findById / findByEmail / create / update / remove`, and the
 adapter underneath decides whether that means a Mongo query, a SQL statement, or
 a JSON file.
 

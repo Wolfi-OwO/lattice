@@ -78,6 +78,28 @@ export const TEMPLATES = [
   },
   {
     category: 'backend',
+    language: 'javascript',
+    languageLabel: 'JavaScript',
+    framework: 'fastify',
+    frameworkLabel: 'Fastify 4 (any database)',
+    dir: 'backend/javascript/fastify',
+    hint: 'Schema-first REST API, JSON Schema validation, JWT, node:test',
+    vars: ['port'],
+    // Fastify reuses Express's storage seam verbatim — same six adapters, same
+    // repository interface — so it takes the same --database choice.
+    storage: true,
+    installer: 'npm',
+    env: (v) => ({
+      NODE_ENV: 'development',
+      PORT: v.port,
+      JWT_EXPIRES_IN: '1h',
+      CORS_ORIGIN: `http://localhost:${v.clientPort}`,
+      LOG_LEVEL: 'debug',
+    }),
+    post: ['npm run dev'],
+  },
+  {
+    category: 'backend',
     language: 'java',
     languageLabel: 'Java',
     framework: 'spring-boot',

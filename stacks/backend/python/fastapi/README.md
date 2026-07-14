@@ -9,11 +9,11 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 cp .env.example .env
 
-docker compose up -d db          # Postgres on :5432
-alembic revision --autogenerate -m "create users"
-alembic upgrade head
+docker compose up -d database    # Postgres on :5432
+alembic upgrade head             # creates the users table — the migration ships with the template
 
-uvicorn app.main:app --reload    # http://localhost:{{port}}/docs
+python database/fill_demo_data.py   # six demo users you can log in as
+uvicorn app.main:app --reload       # http://localhost:{{port}}/docs
 pytest
 ```
 
@@ -21,16 +21,18 @@ pytest
 
 ```
 app/
-├── main.py           App assembly: middleware, error handlers, router
-├── core/             config (pydantic-settings), security (JWT/bcrypt), errors
+├── main.py                 App assembly: middleware, error handlers, router
+├── core/                   config (pydantic-settings), security (JWT/bcrypt), errors
 ├── api/
-│   ├── router.py     Mounts every route module
-│   ├── deps.py       Reusable dependencies: DbSession, CurrentUser, require_admin
-│   └── routes/       One file per resource — HTTP surface only
-├── services/         Business rules. No FastAPI types cross this boundary.
-├── models/           SQLAlchemy ORM (the database)
-├── schemas/          Pydantic (the API contract)
-└── db/session.py     Engine, SessionLocal, Base, get_db
+│   ├── router.py           Mounts every route module
+│   ├── deps.py             Reusable dependencies: DatabaseSession, CurrentUser, require_admin
+│   └── routes/             One file per resource — HTTP surface only
+├── services/               Business rules. No FastAPI types cross this boundary.
+├── models/                 SQLAlchemy ORM (the database)
+├── schemas/                Pydantic (the API contract)
+└── database/session.py     Engine, SessionLocal, Base, get_database
+
+database/                   Demo data and its loader — see database/README.md
 ```
 
 The split that does the work here is **models vs schemas**. The ORM object is
@@ -38,14 +40,35 @@ never returned from a route — a `UserRead` schema is. That is why
 `password_hash` cannot leak: it has nowhere to go.
 
 Routes stay thin because everything reusable is a dependency (`app/api/deps.py`).
-`DbSession` and `CurrentUser` are just annotated types — add them to a signature
-and FastAPI wires them up.
+`DatabaseSession` and `CurrentUser` are just annotated types — add them to a
+signature and FastAPI wires them up.
+
+## Demo data
+
+```bash
+python database/fill_demo_data.py            # add the demo rows that are missing
+python database/fill_demo_data.py --reset    # delete every row first, then load
+```
+
+The loader goes through `app/services/user_service.py`, so it works against
+whatever storage this project is pointed at. It is idempotent — running it twice
+creates no duplicates. `database/README.md` explains how to add a domain.
 
 ## Migrations
 
-`alembic revision --autogenerate -m "..."` after every model change, then
-`alembic upgrade head`. Autogenerate only sees models imported in
-`alembic/env.py` — add new model modules to the import there.
+The migrations own the schema; the models never create it. The initial
+migration — `alembic/versions/0001_create_users.py` — ships with the template,
+so a fresh project needs nothing but `alembic upgrade head` to run.
+
+After a model change, autogenerate the next revision:
+
+```bash
+alembic revision --autogenerate -m "..."   # writes alembic/versions/<id>_....py
+alembic upgrade head
+```
+
+Read the generated file before applying it. Autogenerate only sees models
+imported in `alembic/env.py` — add new model modules to the import there.
 
 ## Docs
 

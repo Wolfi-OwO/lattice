@@ -1,8 +1,8 @@
 /**
  * The storage seam.
  *
- * Everything above this file — routes, controllers, services — talks to `db`
- * and never imports a driver. Swapping {{dbLabel}} for another store means
+ * Everything above this file — routes, controllers, services — talks to `database`
+ * and never imports a driver. Swapping {{databaseLabel}} for another store means
  * changing the adapter import below and nothing else.
  *
  * An adapter implements:
@@ -22,27 +22,27 @@
 
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
-import { createAdapter } from './adapters/{{dbAdapter}}.js';
+import { createAdapter } from './adapters/{{databaseAdapter}}.js';
 
-/** Populated by connectDatabase(). Imported by services as `db.users`. */
-export const db = {
+/** Populated by connectDatabase(). Imported by services as `database.users`. */
+export const database = {
   users: null,
   close: async () => {},
 };
 
 export async function connectDatabase() {
-  const adapter = await createAdapter(config.db);
+  const adapter = await createAdapter(config.database);
 
-  db.users = adapter.users;
-  db.close = adapter.close ?? (async () => {});
+  database.users = adapter.users;
+  database.close = adapter.close ?? (async () => {});
 
-  logger.info(`Storage ready — {{dbLabel}}`);
-  return db;
+  logger.info(`Storage ready — {{databaseLabel}}`);
+  return database;
 }
 
 export async function disconnectDatabase() {
-  await db.close();
-  db.users = null;
+  await database.close();
+  database.users = null;
   logger.info('Storage closed');
 }
 
@@ -53,9 +53,9 @@ export async function disconnectDatabase() {
  * offers. If it comes back, the storage can genuinely serve traffic.
  */
 export async function ping() {
-  if (!db.users) return false;
+  if (!database.users) return false;
   try {
-    await db.users.list({ page: 1, limit: 1, q: '' });
+    await database.users.list({ page: 1, limit: 1, q: '' });
     return true;
   } catch {
     return false;

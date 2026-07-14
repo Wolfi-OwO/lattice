@@ -20,14 +20,16 @@ export const BOOLEAN_FLAGS = new Set([
   'version',
   'force',
   'no-install',
-  'no-db-start',
+  'no-database-start',
+  'no-db-start', // alias for --no-database-start
 ]);
 
 /** Flags that take a value, either `--key value` or `--key=value`. */
 export const VALUE_FLAGS = new Set([
   'stack',
   'template', // alias for --stack
-  'db',
+  'database',
+  'db', // alias for --database
   'format',
   'client',
   'package',

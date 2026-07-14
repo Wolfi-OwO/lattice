@@ -20,6 +20,7 @@
     <java.version>17</java.version>
     <mapstruct.version>1.5.5.Final</mapstruct.version>
     <jjwt.version>0.12.6</jjwt.version>
+    <build-helper.version>3.6.0</build-helper.version>
   </properties>
 
   <dependencies>
@@ -103,10 +104,46 @@
 
   <build>
     <plugins>
+      <!-- CONVENTIONS.md rule 5 puts the demo-data loader in `database/` at the
+           project root, next to the JSON it loads. Maven only compiles
+           src/main/java, so without this the loader would be a .java file that
+           never becomes a class. Rather than bend the convention, we bend Maven:
+           `database/` is a second source root.
+
+           The one thing this costs: FillDemoData.java declares the package
+           {{javaPackage}}.database while sitting in a directory that does not
+           mirror it. javac accepts that — Maven hands it the file explicitly
+           rather than searching a sourcepath — and the class lands in the right
+           package in target/classes, where Spring's component scan finds it.
+           That is the rule being bent, and this comment is it being bent loudly. -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>${build-helper.version}</version>
+        <executions>
+          <execution>
+            <id>add-database-seed-source</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${project.basedir}/database</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
         <configuration>
+          <!-- The loader resolves database/data/*.json against the working
+               directory. Pinning it to the project root means `database:seed`
+               behaves the same however Maven was invoked. -->
+          <workingDirectory>${project.basedir}</workingDirectory>
           <excludes>
             <exclude>
               <groupId>org.projectlombok</groupId>

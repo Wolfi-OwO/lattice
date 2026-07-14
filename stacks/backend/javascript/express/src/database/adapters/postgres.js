@@ -43,7 +43,7 @@ function row(r) {
 /**
  * CREATE DATABASE cannot run from a connection to the database being created,
  * so this connects to the `postgres` maintenance database to do it. Called only
- * when config.db.autoCreate is set, which is test-only.
+ * when config.database.autoCreate is set, which is test-only.
  */
 async function ensureDatabase(url) {
   const target = new URL(url);

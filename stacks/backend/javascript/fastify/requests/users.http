@@ -1,0 +1,29 @@
+@host = http://localhost:{{port}}
+
+### List users
+GET {{host}}/api/users?page=1&limit=20
+
+### Create a user
+POST {{host}}/api/users
+Content-Type: application/json
+
+{
+  "email": "ada@example.com",
+  "name": "Ada Lovelace",
+  "password": "correct-horse-battery"
+}
+
+### Update a user (needs a token)
+PATCH {{host}}/api/users/REPLACE_WITH_ID
+Content-Type: application/json
+Authorization: Bearer REPLACE_WITH_TOKEN
+
+{
+  "name": "Ada King"
+}
+
+### Liveness — 200 even while draining
+GET {{host}}/api/health/live
+
+### Readiness — 503 while draining, or if the database is unreachable
+GET {{host}}/api/health/ready

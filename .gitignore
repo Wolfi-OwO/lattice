@@ -7,6 +7,18 @@ npm-debug.log*
 /demo/
 /frames/
 
+# Build output from *running* a template in place while working on it. A template
+# ships source and nothing else — a test in tests/registry.test.js fails the build
+# if any of this is ever committed, and these lines are what stop it getting that
+# far. Scoped to stacks/ so a legitimately-named source directory elsewhere is
+# not swallowed by the same pattern.
+stacks/**/target/
+stacks/**/build/
+stacks/**/dist/
+stacks/**/.gradle/
+stacks/**/__pycache__/
+stacks/**/.venv/
+
 # Env files never belong in the repo. The templates ship `_env.example`,
 # which the scaffolder renames — that one is meant to be committed.
 .env

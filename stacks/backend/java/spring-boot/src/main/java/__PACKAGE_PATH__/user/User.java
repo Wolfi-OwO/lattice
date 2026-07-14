@@ -35,9 +35,28 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    /**
+     * Both timestamps are owned by the lifecycle callbacks, not by the service.
+     * createdAt was already set here; updatedAt joins it rather than being
+     * assigned at each call site, because a caller that forgets is a NOT NULL
+     * violation at flush — and because "every write refreshes updatedAt" is a
+     * property of the entity, not of one service method.
+     */
     @PrePersist
     void onCreate() {
-        createdAt = Instant.now();
+        Instant now = Instant.now();
+        createdAt = now;
+        // Same instant, not a second Instant.now(): a row that has never been
+        // updated must read createdAt == updatedAt, not "a few microseconds off".
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = Instant.now();
     }
 
     public enum Role {

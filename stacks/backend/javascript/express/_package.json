@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "database:seed": "node database/fill-demo-data.js",
     "test": "cross-env NODE_ENV=test mocha --exit 'tests/**/*.test.js'",
     "test:coverage": "c8 --reporter=text --reporter=lcov npm test",
     "lint": "eslint src tests",

@@ -4,7 +4,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
-from app.db.session import Base
+from app.database.session import Base
 
 # Importing the models registers them on Base.metadata, which is what makes
 # `alembic revision --autogenerate` able to see them.

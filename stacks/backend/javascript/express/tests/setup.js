@@ -1,4 +1,4 @@
-import { connectDatabase, disconnectDatabase, db } from '../src/db/index.js';
+import { connectDatabase, disconnectDatabase, database } from '../src/database/index.js';
 
 /**
  * Root hooks — mocha applies these once around the whole run.
@@ -15,9 +15,9 @@ export const mochaHooks = {
   async afterEach() {
     // Drain in pages, so ordering never matters and no test leaks state.
     for (;;) {
-      const { items } = await db.users.list({ page: 1, limit: 100, q: '' });
+      const { items } = await database.users.list({ page: 1, limit: 100, q: '' });
       if (items.length === 0) break;
-      await Promise.all(items.map((user) => db.users.remove(user.id)));
+      await Promise.all(items.map((user) => database.users.remove(user.id)));
     }
   },
 

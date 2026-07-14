@@ -7,7 +7,7 @@
  * has to be running before the app boots.
  *
  * The templates themselves are storage-agnostic — every backend talks to a
- * repository interface (src/db/index.js), never to a driver. Adding a database
+ * repository interface (src/database/index.js), never to a driver. Adding a database
  * here plus one adapter file in the stack is the whole job; no service, route or
  * controller changes.
  */
@@ -16,7 +16,7 @@
  * @typedef {object} Storage
  * @property {string}  label       shown in the picker
  * @property {string}  hint        one-line description
- * @property {string}  adapter     basename of the adapter in src/db/adapters/
+ * @property {string}  adapter     basename of the adapter in src/database/adapters/
  * @property {boolean} needsUrl    has a connection string (vs. a dir, or nothing at all)
  * @property {object}  deps        npm deps merged into package.json
  * @property {boolean} [durable]   survives a process restart
@@ -39,13 +39,13 @@ export const STORAGE = {
     server: true,
     defaultPort: 27017,
     env: (v) => ({
-      DATABASE_URL: `mongodb://127.0.0.1:${v.dbPort}/${v.projectName}`,
-      DATABASE_URL_TEST: `mongodb://127.0.0.1:${v.dbPort}/${v.projectName}-test`,
+      DATABASE_URL: `mongodb://127.0.0.1:${v.databasePort}/${v.projectName}`,
+      DATABASE_URL_TEST: `mongodb://127.0.0.1:${v.databasePort}/${v.projectName}-test`,
     }),
     compose: (v) => ({
       image: 'mongo:7',
-      ports: [`${v.dbPort}:27017`],
-      volumes: [`${v.projectName}-db:/data/db`],
+      ports: [`${v.databasePort}:27017`],
+      volumes: [`${v.projectName}-database:/data/db`],
       healthcheck: {
         test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"],
         interval: '10s',
@@ -53,7 +53,7 @@ export const STORAGE = {
         retries: 5,
       },
     }),
-    composeUrl: (v) => `mongodb://db:27017/${v.projectName}`,
+    composeUrl: (v) => `mongodb://database:27017/${v.projectName}`,
   },
 
   postgres: {
@@ -66,18 +66,18 @@ export const STORAGE = {
     server: true,
     defaultPort: 5432,
     env: (v) => ({
-      DATABASE_URL: `postgres://postgres:postgres@127.0.0.1:${v.dbPort}/${v.projectName}`,
-      DATABASE_URL_TEST: `postgres://postgres:postgres@127.0.0.1:${v.dbPort}/${v.projectName}_test`,
+      DATABASE_URL: `postgres://postgres:postgres@127.0.0.1:${v.databasePort}/${v.projectName}`,
+      DATABASE_URL_TEST: `postgres://postgres:postgres@127.0.0.1:${v.databasePort}/${v.projectName}_test`,
     }),
     compose: (v) => ({
       image: 'postgres:16-alpine',
-      ports: [`${v.dbPort}:5432`],
+      ports: [`${v.databasePort}:5432`],
       environment: {
         POSTGRES_USER: 'postgres',
         POSTGRES_PASSWORD: 'postgres',
         POSTGRES_DB: v.projectName,
       },
-      volumes: [`${v.projectName}-db:/var/lib/postgresql/data`],
+      volumes: [`${v.projectName}-database:/var/lib/postgresql/data`],
       healthcheck: {
         test: ['CMD-SHELL', 'pg_isready -U postgres'],
         interval: '10s',
@@ -85,7 +85,7 @@ export const STORAGE = {
         retries: 5,
       },
     }),
-    composeUrl: (v) => `postgres://postgres:postgres@db:5432/${v.projectName}`,
+    composeUrl: (v) => `postgres://postgres:postgres@database:5432/${v.projectName}`,
   },
 
   mysql: {
@@ -98,17 +98,17 @@ export const STORAGE = {
     server: true,
     defaultPort: 3306,
     env: (v) => ({
-      DATABASE_URL: `mysql://root:root@127.0.0.1:${v.dbPort}/${v.projectName}`,
-      DATABASE_URL_TEST: `mysql://root:root@127.0.0.1:${v.dbPort}/${v.projectName}_test`,
+      DATABASE_URL: `mysql://root:root@127.0.0.1:${v.databasePort}/${v.projectName}`,
+      DATABASE_URL_TEST: `mysql://root:root@127.0.0.1:${v.databasePort}/${v.projectName}_test`,
     }),
     compose: (v) => ({
       image: 'mysql:8',
-      ports: [`${v.dbPort}:3306`],
+      ports: [`${v.databasePort}:3306`],
       environment: {
         MYSQL_ROOT_PASSWORD: 'root',
         MYSQL_DATABASE: v.projectName,
       },
-      volumes: [`${v.projectName}-db:/var/lib/mysql`],
+      volumes: [`${v.projectName}-database:/var/lib/mysql`],
       healthcheck: {
         test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-proot'],
         interval: '10s',
@@ -116,7 +116,7 @@ export const STORAGE = {
         retries: 10,
       },
     }),
-    composeUrl: (v) => `mysql://root:root@db:3306/${v.projectName}`,
+    composeUrl: (v) => `mysql://root:root@database:3306/${v.projectName}`,
   },
 
   // -------------------------------------------------------------- no server

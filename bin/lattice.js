@@ -4,8 +4,8 @@
  *
  *   npm create lattice@latest                    fully interactive
  *   npm create lattice@latest my-api             name given, rest interactive
- *   lattice my-api --stack express --db postgres
- *   lattice shop  --stack express --db file --format ndjson --client react-vite-ts
+ *   lattice my-api --stack express --database postgres
+ *   lattice shop  --stack express --database file --format ndjson --client react-vite-ts
  *   lattice --list
  */
 
@@ -60,7 +60,7 @@ function printList() {
     console.log('');
   }
 
-  console.log(`  ${c.cyan('Databases')} ${c.gray('(--db, for stacks that persist)')}`);
+  console.log(`  ${c.cyan('Databases')} ${c.gray('(--database, for stacks that persist)')}`);
   for (const [id, s] of Object.entries(STORAGE)) {
     console.log(`    ${c.bold(id.padEnd(18))} ${c.gray(s.hint)}`);
   }
@@ -89,13 +89,14 @@ function printHelp() {
 
   ${c.bold('Options')}
     --stack <id>      stack id (see --list)
-    --db <id>         ${Object.keys(STORAGE).join(' | ')}
-    --format <fmt>    json | ndjson | yaml   ${c.gray('(only with --db file)')}
+    --database <id>   ${Object.keys(STORAGE).join(' | ')}
+    --format <fmt>    json | ndjson | yaml   ${c.gray('(only with --database file)')}
     --client <id>     frontend for a fullstack project, placed in client/
     --package <pkg>   Java/Kotlin base package (default at.htlvillach.<name>)
     --port <n>        backend port (default 3000)
     --no-install      skip dependency installation
-    --no-db-start     do not "docker compose up -d db"
+    --no-database-start
+                      do not "docker compose up -d database"
     --force           scaffold into a non-empty directory
     --list            show all stacks and databases
     --version         print the version
@@ -210,13 +211,13 @@ async function resolveTemplate(flags) {
 /** The storage question, asked only for stacks that actually persist anything. */
 async function resolveStorage(template, flags) {
   if (!template.storage) {
-    // Accepting --db here and ignoring it would hand back a project wired to a
-    // different database than the one that was asked for, with nothing said.
+    // Accepting --database here and ignoring it would hand back a project wired
+    // to a different database than the one that was asked for, with nothing said.
     // These stacks have their persistence fixed by the template (FastAPI ships
-    // SQLAlchemy, Spring ships JPA); only the storage-agnostic ones take --db.
-    if (typeof flags.db === 'string') {
+    // SQLAlchemy, Spring ships JPA); only the storage-agnostic ones take one.
+    if (typeof (flags.database ?? flags.db) === 'string') {
       throw new Error(
-        `The ${template.framework} stack does not take a --db — its database is fixed by the template.\n` +
+        `The ${template.framework} stack does not take a --database — its database is fixed by the template.\n` +
           `  Storage is a choice on: ${TEMPLATES.filter((t) => t.storage)
             .map((t) => t.framework)
             .join(', ')}`,
@@ -225,7 +226,8 @@ async function resolveStorage(template, flags) {
     return { storage: null, fileFormat: null };
   }
 
-  let storage = typeof flags.db === 'string' ? flags.db : null;
+  const databaseFlag = flags.database ?? flags.db; // --db is the historical alias
+  let storage = typeof databaseFlag === 'string' ? databaseFlag : null;
   if (storage && !STORAGE[storage]) {
     throw new Error(
       `Unknown database "${storage}". Expected one of: ${Object.keys(STORAGE).join(', ')}`,
@@ -248,7 +250,7 @@ async function resolveStorage(template, flags) {
 
     fileFormat ??= await select('File format:', allowed);
   } else if (typeof flags.format === 'string') {
-    throw new Error(`--format only means something with --db file (you asked for --db ${storage}).`);
+    throw new Error(`--format only means something with --database file (you asked for --database ${storage}).`);
   }
 
   return { storage, fileFormat };
@@ -309,7 +311,7 @@ async function main() {
   // file and .env are written against a port that is actually free.
   const spec = storage ? STORAGE[storage] : null;
   if (spec?.server) {
-    answers.dbPort = await findFreePort(spec.defaultPort);
+    answers.databasePort = await findFreePort(spec.defaultPort);
   }
 
   const vars = buildVars(answers);
@@ -334,7 +336,7 @@ async function main() {
       (storage
         ? `\n  ${c.gray('database')}  ${STORAGE[storage].label}` +
           (fileFormat ? ` (${fileFormat})` : '') +
-          (answers.dbPort ? c.gray(` · host port ${answers.dbPort}`) : '')
+          (answers.databasePort ? c.gray(` · host port ${answers.databasePort}`) : '')
         : ''),
   );
 
@@ -387,15 +389,16 @@ async function main() {
 
   // --------------------------------------------------------------- database
 
-  const wantsDbStart = args.flags['no-db-start'] !== true;
+  const wantsDatabaseStart =
+    args.flags['no-database-start'] !== true && args.flags['no-db-start'] !== true;
 
-  if (spec?.server && wantsDbStart) {
+  if (spec?.server && wantsDatabaseStart) {
     if (!hasDocker()) {
       console.log(
         `${c.yellow('!')} Docker is not running — start ${spec.label} yourself, then ${c.bold('npm run dev')}.`,
       );
     } else {
-      process.stdout.write(`${c.gray('⋯')} Starting ${spec.label} (docker compose up -d db)…\r`);
+      process.stdout.write(`${c.gray('⋯')} Starting ${spec.label} (docker compose up -d database)…\r`);
       const result = startDatabase(target);
 
       if (result.ok) {
@@ -421,7 +424,7 @@ async function main() {
 
   if (spec && !spec.durable) {
     console.log(
-      `\n  ${c.yellow('Note')} ${c.gray(`${spec.label} keeps nothing across restarts — swap the adapter in src/db/ when you need it to.`)}`,
+      `\n  ${c.yellow('Note')} ${c.gray(`${spec.label} keeps nothing across restarts — swap the adapter in src/database/ when you need it to.`)}`,
     );
   }
 

@@ -3,7 +3,7 @@ import { createTerminus, HealthCheckError } from '@godaddy/terminus';
 
 import { createApp } from './app.js';
 import { config } from './config/index.js';
-import { connectDatabase, disconnectDatabase, ping } from './db/index.js';
+import { connectDatabase, disconnectDatabase, ping } from './database/index.js';
 import { logger } from './utils/logger.js';
 
 await connectDatabase();

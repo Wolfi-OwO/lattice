@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
 from app.core.security import decode_access_token
-from app.db.session import get_db
+from app.database.session import get_database
 
-DbSession = Annotated[Session, Depends(get_db)]
+DatabaseSession = Annotated[Session, Depends(get_database)]
 
 
 def current_user(authorization: Annotated[str | None, Header()] = None) -> dict:

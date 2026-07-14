@@ -23,7 +23,7 @@ function scaffold(storage, fileFormat = 'json') {
     port: '3000',
     storage,
     fileFormat,
-    dbPort: STORAGE[storage].defaultPort,
+    databasePort: STORAGE[storage].defaultPort,
   });
 
   copyTemplate(EXPRESS, target, vars);
@@ -37,7 +37,7 @@ function scaffold(storage, fileFormat = 'json') {
 
 test('every storage has an adapter file in the express stack', () => {
   for (const id of STORAGE_ORDER) {
-    const adapter = path.join(EXPRESS, 'src/db/adapters', `${STORAGE[id].adapter}.js`);
+    const adapter = path.join(EXPRESS, 'src/database/adapters', `${STORAGE[id].adapter}.js`);
     assert.ok(fs.existsSync(adapter), `missing adapter for ${id}: ${STORAGE[id].adapter}.js`);
   }
 });
@@ -45,14 +45,14 @@ test('every storage has an adapter file in the express stack', () => {
 test('scaffolding keeps exactly one adapter and drops the rest', () => {
   for (const id of STORAGE_ORDER) {
     const { target } = scaffold(id);
-    const kept = fs.readdirSync(path.join(target, 'src/db/adapters'));
+    const kept = fs.readdirSync(path.join(target, 'src/database/adapters'));
 
     assert.deepEqual(kept, [`${STORAGE[id].adapter}.js`], `${id} should keep only its own adapter`);
     fs.rmSync(target, { recursive: true, force: true });
   }
 });
 
-test('no driver is imported outside src/db/adapters', () => {
+test('no driver is imported outside src/database/adapters', () => {
   // The invariant the whole design rests on: the service layer cannot reach a
   // driver, so swapping the database cannot break it.
   const DRIVERS = /from '(mongoose|pg|mysql2\/promise|better-sqlite3|yaml)'/;
@@ -133,8 +133,8 @@ test('compose publishes the port that .env actually points at', () => {
   for (const id of ['mongodb', 'postgres', 'mysql']) {
     const target = tempDir();
     // Simulate the conventional port being taken: the CLI picks the next one.
-    const dbPort = STORAGE[id].defaultPort + 1;
-    const vars = buildVars({ projectName: 'shop', port: '3000', storage: id, dbPort });
+    const databasePort = STORAGE[id].defaultPort + 1;
+    const vars = buildVars({ projectName: 'shop', port: '3000', storage: id, databasePort });
 
     copyTemplate(EXPRESS, target, vars);
     writeEnv(target, { base: {}, storage: id, vars });
@@ -143,8 +143,8 @@ test('compose publishes the port that .env actually points at', () => {
     const env = fs.readFileSync(path.join(target, '.env'), 'utf8');
     const compose = fs.readFileSync(path.join(target, 'docker-compose.yml'), 'utf8');
 
-    assert.match(env, new RegExp(`DATABASE_URL=.*:${dbPort}/`), `${id} .env should use ${dbPort}`);
-    assert.match(compose, new RegExp(`'${dbPort}:`), `${id} compose should publish ${dbPort}`);
+    assert.match(env, new RegExp(`DATABASE_URL=.*:${databasePort}/`), `${id} .env should use ${databasePort}`);
+    assert.match(compose, new RegExp(`'${databasePort}:`), `${id} compose should publish ${databasePort}`);
 
     fs.rmSync(target, { recursive: true, force: true });
   }
@@ -157,8 +157,8 @@ test('config demands a connection string only when the storage has one', () => {
   const withUrl = fs.readFileSync(path.join(needs.target, 'src/config/index.js'), 'utf8');
   const withoutUrl = fs.readFileSync(path.join(doesNot.target, 'src/config/index.js'), 'utf8');
 
-  assert.match(withUrl, /const DB_NEEDS_URL = true;/);
-  assert.match(withoutUrl, /const DB_NEEDS_URL = false;/);
+  assert.match(withUrl, /const DATABASE_NEEDS_URL = true;/);
+  assert.match(withoutUrl, /const DATABASE_NEEDS_URL = false;/);
 
   fs.rmSync(needs.target, { recursive: true, force: true });
   fs.rmSync(doesNot.target, { recursive: true, force: true });

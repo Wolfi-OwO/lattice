@@ -1,0 +1,38 @@
+[
+  {
+    "email": "ada.lovelace@example.com",
+    "name": "Ada Lovelace",
+    "password": "demo-password-1",
+    "role": "admin"
+  },
+  {
+    "email": "alan.turing@example.com",
+    "name": "Alan Turing",
+    "password": "demo-password-2",
+    "role": "admin"
+  },
+  {
+    "email": "grace.hopper@example.com",
+    "name": "Grace Hopper",
+    "password": "demo-password-3",
+    "role": "user"
+  },
+  {
+    "email": "edsger.dijkstra@example.com",
+    "name": "Edsger Dijkstra",
+    "password": "demo-password-4",
+    "role": "user"
+  },
+  {
+    "email": "barbara.liskov@example.com",
+    "name": "Barbara Liskov",
+    "password": "demo-password-5",
+    "role": "user"
+  },
+  {
+    "email": "ken.thompson@example.com",
+    "name": "Ken Thompson",
+    "password": "demo-password-6",
+    "role": "user"
+  }
+]

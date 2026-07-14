@@ -28,6 +28,7 @@ class UserRead(BaseModel):
     name: str
     role: Role
     created_at: datetime
+    updated_at: datetime
 
 
 class Page[T](BaseModel):

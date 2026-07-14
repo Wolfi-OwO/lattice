@@ -145,7 +145,7 @@ test('--db on a stack whose database is fixed is an error', () => {
   );
 
   assert.notEqual(result.status, 0, 'the flag was silently ignored');
-  assert.match(result.stderr + result.stdout, /does not take a --db/);
+  assert.match(result.stderr + result.stdout, /does not take a --database/);
 });
 
 test('--format outside --db file is an error', () => {
@@ -156,7 +156,7 @@ test('--format outside --db file is an error', () => {
   );
 
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr + result.stdout, /--format only means something with --db file/);
+  assert.match(result.stderr + result.stdout, /--format only means something with --database file/);
 });
 
 // --------------------------------------------------------------------- basics

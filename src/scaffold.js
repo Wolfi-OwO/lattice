@@ -102,7 +102,7 @@ export function buildVars(answers) {
     port = '3000',
     storage = 'memory',
     fileFormat = 'json',
-    dbPort = null,
+    databasePort = null,
   } = answers;
 
   const spec = STORAGE[storage] ?? STORAGE.memory;
@@ -119,10 +119,16 @@ export function buildVars(answers) {
     .map((part) => part[0].toUpperCase() + part.slice(1))
     .join('');
 
+  // my-cool-app -> my_cool_app. Dart, Rust and Python all reject a dash in an
+  // identifier: a Flutter package name, a Cargo crate's lib target and a Python
+  // module are all snake_case or nothing.
+  const snakeName = safeName.replace(/-/g, '_');
+
   return {
     projectName: safeName,
     projectTitle: projectName,
     pascalName,
+    snakeName,
     // Java/Kotlin only
     javaPackage,
     PACKAGE_PATH: javaPackage.replace(/\./g, '/'),
@@ -131,13 +137,13 @@ export function buildVars(answers) {
     clientPort: String(Number(port) + 2000),
     year: String(new Date().getFullYear()),
 
-    // Storage. `dbNeedsUrl` is interpolated into config/index.js as a literal
+    // Storage. `databaseNeedsUrl` is interpolated into config/index.js as a literal
     // `true`/`false`, so the file and memory adapters never demand a DATABASE_URL.
     storage,
-    dbAdapter: spec.adapter,
-    dbLabel: spec.label,
-    dbNeedsUrl: String(Boolean(spec.needsUrl)),
-    dbPort: dbPort ?? spec.defaultPort ?? '',
+    databaseAdapter: spec.adapter,
+    databaseLabel: spec.label,
+    databaseNeedsUrl: String(Boolean(spec.needsUrl)),
+    databasePort: databasePort ?? spec.defaultPort ?? '',
     fileFormat,
   };
 }

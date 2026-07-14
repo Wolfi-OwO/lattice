@@ -5,7 +5,7 @@ from enum import StrEnum
 from sqlalchemy import DateTime, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.session import Base
+from app.database.session import Base
 
 
 class Role(StrEnum):
@@ -24,5 +24,10 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[Role] = mapped_column(String(16), default=Role.USER, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+    # Written by `app/services/user_service.py` on every update — the service is
+    # the one layer that owns writes, so a caller cannot forget to touch this.
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )

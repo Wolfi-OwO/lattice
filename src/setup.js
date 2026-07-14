@@ -53,7 +53,7 @@ export async function findFreePort(preferred, attempts = 64) {
  * to start unless every driver were installed.
  */
 export function pruneAdapters(target, keep) {
-  const dir = path.join(target, 'src', 'db', 'adapters');
+  const dir = path.join(target, 'src', 'database', 'adapters');
   if (!fs.existsSync(dir)) return [];
 
   const removed = [];
@@ -120,11 +120,11 @@ export function writeCompose(target, { storage, vars }) {
   if (!spec?.server) return false;
 
   const service = spec.compose(vars);
-  const volume = `${vars.projectName}-db`;
+  const volume = `${vars.projectName}-database`;
 
   const doc = {
     services: {
-      db: service,
+      database: service,
       api: {
         build: '.',
         ports: [`${vars.port}:${vars.port}`],
@@ -134,7 +134,7 @@ export function writeCompose(target, { storage, vars }) {
           DATABASE_URL: spec.composeUrl(vars),
           JWT_SECRET: '${JWT_SECRET:?set JWT_SECRET in your shell or .env}',
         },
-        depends_on: { db: { condition: 'service_healthy' } },
+        depends_on: { database: { condition: 'service_healthy' } },
       },
     },
     volumes: { [volume]: null },
@@ -241,7 +241,7 @@ export function startDatabase(target, timeoutSeconds = 90) {
   try {
     execFileSync(
       'docker',
-      ['compose', 'up', '-d', '--wait', '--wait-timeout', String(timeoutSeconds), 'db'],
+      ['compose', 'up', '-d', '--wait', '--wait-timeout', String(timeoutSeconds), 'database'],
       {
         cwd: target,
         stdio: ['ignore', 'pipe', 'pipe'],

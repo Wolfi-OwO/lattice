@@ -4,8 +4,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.deps import get_db
-from app.db.session import Base
+from app.api.deps import get_database
+from app.database.session import Base
 from app.main import app
 
 # In-memory SQLite, one shared connection — fast, and no external service.
@@ -24,13 +24,13 @@ def _schema():
 
 @pytest.fixture
 def client():
-    def override_get_db():
-        db = TestSession()
+    def override_get_database():
+        database = TestSession()
         try:
-            yield db
+            yield database
         finally:
-            db.close()
+            database.close()
 
-    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_database] = override_get_database
     yield TestClient(app)
     app.dependency_overrides.clear()

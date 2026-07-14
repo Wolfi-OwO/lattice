@@ -63,7 +63,12 @@ public class UserService {
         if (request.name() != null) user.setName(request.name());
         if (request.role() != null) user.setRole(request.role());
 
-        return mapper.toDto(user); // Managed entity: JPA flushes on commit.
+        // saveAndFlush, not a bare return of the managed entity: @PreUpdate fires
+        // at flush, and a managed entity flushes on commit — which happens after
+        // this method returns. Mapping the entity here would hand the caller the
+        // pre-update updatedAt, i.e. a response that contradicts the row it just
+        // wrote. Flushing now forces the callback before the DTO is built.
+        return mapper.toDto(repository.saveAndFlush(user));
     }
 
     @Transactional

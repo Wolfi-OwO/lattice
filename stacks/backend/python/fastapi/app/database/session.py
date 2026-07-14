@@ -13,10 +13,10 @@ class Base(DeclarativeBase):
     """Declarative base — every model inherits from this."""
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_database() -> Generator[Session, None, None]:
     """FastAPI dependency. The session is closed even if the handler raises."""
-    db = SessionLocal()
+    database = SessionLocal()
     try:
-        yield db
+        yield database
     finally:
-        db.close()
+        database.close()
