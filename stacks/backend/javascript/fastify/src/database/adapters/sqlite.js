@@ -41,13 +41,63 @@ function row(r) {
  * there is nothing to await. The methods stay `async` anyway so that this
  * adapter is drop-in interchangeable with the networked ones.
  */
+/** better-sqlite3 is synchronous, so the wait has to be too. */
+function sleepSync(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+/**
+ * WAL lets readers and a writer work at the same time instead of locking each other
+ * out. Turning it on is one pragma, and it is the one pragma that cannot simply be
+ * called.
+ *
+ * `PRAGMA journal_mode = WAL` needs an exclusive lock on the file, and SQLite does
+ * NOT run the busy handler for it: it returns SQLITE_BUSY at once, no matter what
+ * `busy_timeout` says. So the timeout above — which correctly covers every other
+ * statement — does nothing for this one, and two processes opening a fresh database
+ * at the same instant means the loser throws before it has done anything. That is a
+ * real failure in a scaffolded project (the seed script run beside a live server),
+ * and it is how this suite failed in CI, where node:test opens the database from a
+ * process per test file.
+ *
+ * The saving grace is that `journal_mode` is persisted *in the database file*, not
+ * per connection. It therefore only has to be set once, by whoever gets there first:
+ * read it, and if someone already won, there is nothing to do and no lock to take.
+ * Retry only for the genuinely-contended fresh-file case.
+ */
+function enableWriteAheadLogging(sqlite, attempts = 20) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (sqlite.pragma('journal_mode', { simple: true }) === 'wal') return;
+
+    try {
+      sqlite.pragma('journal_mode = WAL');
+      return;
+    } catch (error) {
+      if (error.code !== 'SQLITE_BUSY') throw error;
+      // Someone else holds the exclusive lock — almost certainly to set WAL, which
+      // means the next read of journal_mode will find it already done.
+      sleepSync(25);
+    }
+  }
+
+  throw new Error('Could not enable WAL on the SQLite database: it stayed locked.');
+}
+
 export async function createAdapter({ url }) {
   // Accepts either `file:./data/app.db` or a bare path.
   const file = url.replace(/^file:/, '');
   fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
 
   const sqlite = new Database(file);
-  sqlite.pragma('journal_mode = WAL');
+
+  // FIRST, before any statement that writes. Without it SQLite does not wait for a
+  // held lock — it fails immediately with SQLITE_BUSY — and one other process
+  // touching the same file is enough. It covers the schema creation below, and
+  // every write the app makes afterwards.
+  sqlite.pragma('busy_timeout = 5000');
+
+  enableWriteAheadLogging(sqlite);
+
   sqlite.pragma('foreign_keys = ON');
   sqlite.exec(SCHEMA);
 
