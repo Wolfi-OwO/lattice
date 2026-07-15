@@ -78,9 +78,16 @@ jobs:
           java-version: "17"
           cache: maven
 
-      # No --no-database-start: the CLI brings PostgreSQL up itself, which is also
-      # the path a user takes in their first five minutes.
-      - run: node bin/lattice.js demo --stack spring-boot --package at.htlvillach.demo
+      - run: node bin/lattice.js demo --stack spring-boot --package at.htlvillach.demo --no-database-start
+
+      # The CLI ships a compose file for Spring but does not start it — unlike the
+      # storage-picker stacks, this one has no live storage spec for the CLI to act
+      # on, so bringing PostgreSQL up is a documented step the README prints. This
+      # runs that step. `--wait` blocks until the healthcheck passes, so the app is
+      # not raced against a database that is still initialising.
+      - name: Start the database the template ships
+        working-directory: demo
+        run: docker compose up -d --wait database
 
       - name: Boot it, and probe what a load balancer would probe
         working-directory: demo
