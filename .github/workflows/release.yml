@@ -206,3 +206,57 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release edit "${{ steps.v.outputs.tag }}" --notes-file "$RUNNER_TEMP/release-notes.md"
+
+  # A second, deliberately cosmetic publish, so the repository shows a Packages
+  # entry. It is NOT how anyone installs the tool: GitHub Packages only accepts
+  # scoped, lowercase names and makes callers authenticate even for public packages,
+  # so `npm create lattice@latest` keeps coming from npmjs.org (the publish job
+  # above). This copy is @wolfi-owo/create-lattice, published purely for the badge.
+  #
+  # It hangs off `verify`, not `publish`, on purpose: the two registries are
+  # independent, so the badge appears even if the npm publish is held up (e.g. a
+  # token being rotated). Auth is the built-in GITHUB_TOKEN — no secret to manage.
+  github-packages:
+    name: Publish @wolfi-owo/create-lattice to GitHub Packages
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # push the package to the repository's GitHub Packages
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com
+
+      - name: Derive the version from the tag
+        id: v
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          version="${tag#v}"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$'; then
+            echo "::error::Tag '$tag' is not a semver version (expected vX.Y.Z)."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # GitHub Packages rejects both the unscoped name and npmjs.org provenance, so
+      # the package is re-badged here: scoped to the owner and lowercased, provenance
+      # dropped, registry pointed at GitHub. None of this is committed — it exists
+      # only in this runner, for this one publish. The real create-lattice on npm is
+      # never modified.
+      - name: Re-badge for GitHub Packages
+        run: |
+          npm version "${{ steps.v.outputs.version }}" --no-git-tag-version --allow-same-version
+          npm pkg set name='@wolfi-owo/create-lattice'
+          npm pkg delete publishConfig.provenance
+          npm pkg set publishConfig.registry='https://npm.pkg.github.com'
+
+      - name: Publish to GitHub Packages
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
