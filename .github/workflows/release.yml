@@ -50,7 +50,10 @@ name: Release
 # the contributor list. The email below must be one verified on your GitHub
 # account, or the commit will show as an unattributed author instead of you.
 #
-# Required once: NPM_TOKEN (an npm automation token) in the repository secrets.
+# No npm secret required: publishing is OpenID Connect (trusted publishing), so
+# npm trusts this workflow directly — nothing to store, leak, or rotate. The trust
+# is configured once on npmjs.org: create-lattice -> Settings -> Trusted Publisher
+# -> this repository, workflow release.yml.
 # If main is protected against direct pushes, allow this workflow to bypass it,
 # or the version commit cannot land.
 
@@ -85,8 +88,14 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          # Trusted publishing needs Node >= 22.14.0 and npm >= 11.5.1 for the OIDC
+          # exchange. node 24 clears the Node floor; the upgrade below clears the npm
+          # one regardless of what npm this runner image happens to ship with.
+          node-version: 24
           registry-url: https://registry.npmjs.org
+
+      - name: Ensure an OIDC-capable npm
+        run: npm install --global npm@latest
 
       - name: Derive the version from the tag
         id: v
@@ -165,14 +174,19 @@ jobs:
           echo "--- notes ---"
           cat "$RUNNER_TEMP/release-notes.md"
 
-      # --provenance publishes a signed, verifiable link back to this exact
-      # workflow run and commit, so anyone installing create-lattice can confirm
-      # the tarball was built from this repository and not from someone's laptop.
-      # The tarball therefore ships the finished CHANGELOG.md, version already cut.
-      - name: Publish to npm
+      # No token: authentication is OpenID Connect. The id-token: write permission
+      # above lets this job mint a short-lived OIDC token; npm exchanges it for a
+      # one-time publish credential, and the trusted publisher configured on
+      # npmjs.org (create-lattice -> this repo -> release.yml) is what makes npm
+      # trust it. Nothing is stored — there is no NPM_TOKEN to leak or rotate.
+      #
+      # Provenance is automatic under trusted publishing; the flag is redundant but
+      # harmless and keeps the intent explicit — a signed, verifiable link back to
+      # this exact run and commit, so anyone installing create-lattice can confirm
+      # the tarball was built here and not on someone's laptop. The tarball ships the
+      # finished CHANGELOG.md, version already cut.
+      - name: Publish to npm (trusted publishing — no token)
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # Only now — the registry has the tarball, so main can safely say so.
       - name: Record the version and the changelog on main, as me
