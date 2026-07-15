@@ -76,14 +76,14 @@ jobs:
       contents: write # push the version commit and move the tag
       id-token: write # mints the OIDC token that signs the npm provenance
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The version commit has to land on main, so check out the branch
           # rather than the detached tag.
           ref: main
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
