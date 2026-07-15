@@ -13,6 +13,8 @@ whose `[Unreleased]` section is empty is refused before it can reach npm.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-15
+
 ### Added
 
 - **Fastify backend template.** The same six storage adapters and the same
@@ -98,4 +100,5 @@ whose `[Unreleased]` section is empty is refused before it can reach npm.
   both shipped green, because the test guarding the spelling only looked at the
   templates and never at the scaffolder itself. It looks at both now.
 
-[Unreleased]: https://github.com/Wolfi-OwO/lattice/commits/main
+[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Wolfi-OwO/lattice/releases/tag/v1.0.0
