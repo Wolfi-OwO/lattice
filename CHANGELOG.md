@@ -40,9 +40,25 @@ whose `[Unreleased]` section is empty is refused before it can reach npm.
   `process.once('SIGTERM')` handler that flipped a flag a route read. Readiness
   now lives on the http.Server *underneath* Fastify, which is the only place it
   can answer 503 from the instant a signal lands while the app above goes on
-  serving the requests already in flight. Verified against a real booted server:
-  readiness flips to 503 under SIGTERM while liveness stays 200, then the process
-  exits cleanly.
+  serving the requests already in flight.
+- **Every backend now drains the same way, in every language.** Terminus was only
+  ever the JavaScript spelling of it; the behaviour is the contract:
+
+  | | Mechanism |
+  | --- | --- |
+  | Express, Fastify | `@godaddy/terminus` — readiness on the http.Server, below the framework |
+  | Spring Boot | `ReadinessDrainLifecycle`, a `SmartLifecycle` that stops before the web server does |
+  | FastAPI | `app/core/lifecycle.py`, which intercepts uvicorn's signal handler |
+
+  `server.shutdown: graceful` alone was *not* enough for Spring, which is worth
+  writing down because the name suggests it is: it stops accepting new connections
+  immediately, so readiness does not go to 503 — it becomes unreachable, and a load
+  balancer that is still routing to this instance gets connections refused rather
+  than drained. The new lifecycle bean buys the window back.
+
+  All three were drained under a real SIGTERM against a real booted server, not
+  asserted: readiness flips to 503 while liveness stays 200, in-flight requests
+  finish, then the process exits.
 - **CI scaffolds real projects and runs *their* suites**, across six storages and
   two backends. A scaffolder cannot be tested by testing the scaffolder.
 
@@ -59,6 +75,19 @@ whose `[Unreleased]` section is empty is refused before it can reach npm.
   it now survives a fresh database six times out of six. Fixed in Express as well
   as Fastify: Mocha's sequential files hid it there, but the adapter is what has to
   be right, not the runner that happens to hide it.
+- **The Spring Boot template could not start.** Flyway 10 (which Spring Boot 3.3
+  manages) moved per-database support out of `flyway-core` into separate modules, so
+  with only `flyway-core` on the classpath it connects, throws `Unsupported Database:
+  PostgreSQL`, and dies during context initialisation. `mvn spring-boot:run` — the
+  command the CLI prints as your next step — crashed, while `mvn test` passed,
+  because the test profile runs H2 with `flyway.enabled=false` and never executes a
+  migration at all. A green suite on top of an application that does not boot is the
+  exact failure this project exists to prevent, so CI now boots the template against
+  a real PostgreSQL and probes it, rather than trusting the tests.
+- **SQLite could not be opened by two processes at once.** `busy_timeout` was missing,
+  and adding it was necessary but not sufficient: `PRAGMA journal_mode = WAL` needs an
+  exclusive lock and SQLite does not run the busy handler for it, so it fails
+  instantly regardless. It is set once now, by whoever gets there first.
 - A failed `before` hook in the Fastify template reported `Cannot read properties
   of undefined (reading 'close')` from its teardown, burying the error that
   actually caused it.

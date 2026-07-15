@@ -50,6 +50,27 @@
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-core</artifactId>
     </dependency>
+
+    <!--
+      Not optional, and not obvious. Flyway 10 (which Spring Boot 3.3 manages) split
+      per-database support out of flyway-core into modules. With only flyway-core on
+      the classpath, Flyway does not fail at build time or complain at startup — it
+      gets as far as connecting, then throws:
+
+          FlywayException: Unsupported Database: PostgreSQL 16.14
+
+      and the application dies during context initialisation. So the app does not
+      boot at all, which is a strange thing for a missing *dialect* to cause.
+
+      It is invisible to `mvn test`, because the test profile runs H2 with
+      flyway.enabled=false — the suite is green while `mvn spring-boot:run` is
+      broken. That is why CI now boots this template against a real PostgreSQL
+      rather than trusting the tests.
+    -->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>

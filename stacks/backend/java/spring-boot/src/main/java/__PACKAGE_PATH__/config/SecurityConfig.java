@@ -27,7 +27,12 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health/**").permitAll()
+                        // The probes are moved off /actuator to /api/health in
+                        // application.yml, to match the contract every backend keeps.
+                        // A probe behind authentication is not a probe: the kubelet
+                        // sends no bearer token, reads the 401 as "not alive", and
+                        // restarts a process that was perfectly healthy.
+                        .requestMatchers("/api/health/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/**").permitAll()
                         .anyRequest().authenticated())

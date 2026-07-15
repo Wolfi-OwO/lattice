@@ -197,6 +197,13 @@ test('the storage layer is spelled "database" everywhere — never "db"', () => 
 
       const text = fs.readFileSync(file, 'utf8');
       text.split('\n').forEach((line, index) => {
+        // Spring registers its DataSource health contributor under the fixed id
+        // `db`, and the Actuator readiness group has to name it to include it. That
+        // is framework vocabulary, exactly like `req`/`res` in an Express signature
+        // — the same exemption rule 1 already carves out. Scoped to the health-group
+        // `include:` line so it cannot cover a stray `db` anywhere else.
+        if (/^\s*include:\s*readinessState,\s*db\s*$/.test(line)) return;
+
         // A URL like mongodb://… and an env var like DATABASE_URL are fine.
         const stripped = line.replace(/\w+:\/\/\S+/g, '').replace(/[A-Z][A-Z0-9_]+/g, '');
         if (OFFENDER.test(stripped)) {

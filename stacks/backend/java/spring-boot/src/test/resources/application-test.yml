@@ -13,3 +13,6 @@ app:
   jwt:
     secret: test-secret-that-is-at-least-32-bytes-long
     expiry: 1h
+  shutdown:
+    # The suite should not pay for the drain window. Production keeps the default.
+    grace: 0s

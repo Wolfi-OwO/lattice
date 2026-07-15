@@ -80,4 +80,7 @@ Everything is overridable by environment variable: `DATABASE_URL`, `DATABASE_USE
 local dev only — `JWT_SECRET` **must** be set to a real 32-byte secret in
 production.
 
-Health probes: `GET /actuator/health/liveness`, `/actuator/health/readiness`.
+Health probes: `GET /api/health/liveness`, `GET /api/health/readiness` — the same paths
+every other backend serves. Actuator is moved off `/actuator` in `application.yml` to
+keep that contract. Graceful shutdown is on: SIGTERM flips readiness to 503 while
+liveness stays 200, in-flight requests finish, then the process exits.

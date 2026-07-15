@@ -225,7 +225,38 @@ instead of quietly altering a production table.
 
 ---
 
-## 9. Every template ships
+## 9. Draining is a behaviour, not a library
+
+Every backend that serves HTTP shuts down the same way. The mechanism differs per
+language; the behaviour is the contract, and it is the behaviour that is the rule.
+
+On SIGTERM, in this order:
+
+1. **readiness answers 503 — while the server is still accepting and serving.**
+   This is the whole point. A load balancer's endpoint list is eventually
+   consistent, so for a beat after the process decides to die it is still being
+   sent new requests. They must arrive at a server that is still listening.
+2. **liveness keeps answering 200.** A failing liveness probe makes the kubelet
+   SIGKILL the pod — mid-drain, killing the very drain this exists to perform.
+   Liveness must never consult the database, for the same reason.
+3. Only then does the server stop accepting, finish what is in flight, and exit.
+
+| | How |
+| --- | --- |
+| Express, Fastify | `@godaddy/terminus` — readiness is registered on the http.Server, *below* the framework, which is the only place it can answer 503 after the framework has been told to stop |
+| Spring Boot | `ReadinessDrainLifecycle` — a `SmartLifecycle` at `DEFAULT_PHASE`, so it stops before the web server does |
+| FastAPI | `app/core/lifecycle.py` — uvicorn's signal handler is intercepted, and handed back after the grace period |
+
+**`server.shutdown: graceful` is not sufficient on its own**, and the name is why
+this rule is written down. It stops accepting new connections *immediately*, so
+readiness does not turn 503 — it becomes unreachable, and the connections still
+being routed to this instance are refused rather than drained. Step 1 is the part
+that has to be added, in every language.
+
+A template that claims to drain has been drained: send it a real SIGTERM, and watch
+readiness go 503 while liveness stays 200.
+
+## 10. Every template ships
 
 - `README.md` — what it is, how to run it, the layout, and **why** it is shaped
   that way. Written for someone who has never seen the project.
@@ -235,7 +266,7 @@ instead of quietly altering a production table.
 - Health probes, if it is a server.
 - No abbreviations. See rule 1.
 
-## 10. Comments earn their place
+## 11. Comments earn their place
 
 A comment says **why**, never what. It states a constraint the code cannot: a
 trap in a library, an ordering that is load-bearing, a decision that looks wrong

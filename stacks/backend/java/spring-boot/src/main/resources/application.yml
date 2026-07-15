@@ -2,6 +2,12 @@ spring:
   application:
     name: {{projectName}}
 
+  lifecycle:
+    # How long the in-flight requests get to finish once shutdown starts, before
+    # they are cut off anyway. Without graceful shutdown (see server.shutdown) this
+    # setting does nothing at all.
+    timeout-per-shutdown-phase: 20s
+
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/{{projectName}}}
     username: ${DATABASE_USER:postgres}
@@ -23,21 +29,66 @@ spring:
 server:
   port: ${PORT:{{port}}}
 
+  # Graceful shutdown, which is off by default and is the whole reason the probes
+  # below mean anything. On SIGTERM Tomcat stops accepting new connections and lets
+  # the requests already in flight finish, instead of cutting them off mid-response.
+  #
+  # Spring then flips the readiness probe to OUT_OF_SERVICE *as it starts* — before
+  # the socket closes — and leaves liveness UP. That is the same asymmetry the
+  # JavaScript backends get from terminus, and here it is built in: a load balancer
+  # is told to stop routing before there is anything to stop routing to, while the
+  # kubelet is never told the process is dead and so never SIGKILLs it mid-drain.
+  shutdown: graceful
+
 management:
   endpoints:
     web:
+      # The health contract in CONVENTIONS.md is /api/health/liveness and
+      # /api/health/readiness, in every language. Actuator would serve them under
+      # /actuator by default, so it is moved rather than the contract being bent:
+      # base-path /api plus the health endpoint mapped to `health` puts the probes
+      # exactly where the other three backends put theirs.
+      base-path: /api
+      path-mapping:
+        health: health
       exposure:
         include: health,info,metrics
   endpoint:
     health:
+      # Serves /api/health/liveness and /api/health/readiness.
       probes:
         enabled: true
+      show-details: always
+      group:
+        # Liveness answers from the application's own state and nothing else — no
+        # database. See the comment on server.shutdown above.
+        liveness:
+          include: livenessState
+        # Readiness does check the database, because "should traffic be sent here"
+        # is exactly the question a broken database answers no to. The indicator
+        # below is Spring's own — it registers the DataSource health contributor
+        # under that fixed id, and it is not in the default readiness group, so a
+        # scaffolded app would otherwise report ready while unable to serve a single
+        # request. The id is framework vocabulary (CONVENTIONS.md rule 1), not ours
+        # to spell out.
+        readiness:
+          include: readinessState, db
 
 app:
   jwt:
     # Override in every real environment. HS256 needs >= 32 bytes.
     secret: ${JWT_SECRET:change-me-to-a-long-random-string-at-least-32-bytes}
     expiry: ${JWT_EXPIRY:1h}
+
+  shutdown:
+    # How long readiness answers 503 *while the server is still accepting*, before
+    # the connector is paused — the window a load balancer needs to take this
+    # instance out of rotation. See config/ReadinessDrainLifecycle.java, which is
+    # what makes `server.shutdown: graceful` above mean what it appears to mean.
+    #
+    # Set to 0s if a local Ctrl-C waiting five seconds annoys you more than a
+    # dropped request in production would.
+    grace: ${SHUTDOWN_GRACE:5s}
 
 logging:
   level:

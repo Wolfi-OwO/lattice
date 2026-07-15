@@ -50,3 +50,56 @@ jobs:
       - run: node bin/lattice.js demo --stack ${{ matrix.stack }} --package at.htlvillach.demo --no-database-start
       - working-directory: demo
         run: ${{ matrix.check }}
+
+  # `mvn test` is not evidence that the application runs.
+  #
+  # The Spring test profile uses H2 with flyway.enabled=false, so the suite never
+  # loads a PostgreSQL driver and never executes a migration. That is a reasonable
+  # thing for a unit suite to do, and it meant a green build sat on top of an
+  # application that could not start: Flyway 10 moved per-database support out of
+  # flyway-core, and without flyway-database-postgresql it connects, fails with
+  # "Unsupported Database: PostgreSQL", and dies during context initialisation.
+  #
+  # Every test passed. `mvn spring-boot:run` — the command the CLI prints as the
+  # next step — crashed. So this job runs that command instead of trusting the
+  # tests, against the real PostgreSQL the CLI starts itself, and asks the only
+  # question that matters: does the thing boot, and do its probes answer?
+  boots:
+    name: spring-boot boots against a real PostgreSQL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      # No --no-database-start: the CLI brings PostgreSQL up itself, which is also
+      # the path a user takes in their first five minutes.
+      - run: node bin/lattice.js demo --stack spring-boot --package at.htlvillach.demo
+
+      - name: Boot it, and probe what a load balancer would probe
+        working-directory: demo
+        run: |
+          mvn -B spring-boot:run > boot.log 2>&1 &
+
+          for _ in $(seq 1 90); do
+            curl -fsS http://localhost:3000/api/health/liveness >/dev/null 2>&1 && break
+            sleep 2
+          done
+
+          if ! curl -fsS http://localhost:3000/api/health/liveness >/dev/null 2>&1; then
+            echo "::error::The scaffolded Spring Boot application never came up."
+            cat boot.log
+            exit 1
+          fi
+
+          # Flyway really ran, the entity really validated, the database is really
+          # reachable — readiness is the one probe that can only answer 200 if all
+          # three are true.
+          echo "liveness:  $(curl -fsS http://localhost:3000/api/health/liveness)"
+          echo "readiness: $(curl -fsS http://localhost:3000/api/health/readiness)"
