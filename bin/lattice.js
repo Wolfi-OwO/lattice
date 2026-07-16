@@ -16,6 +16,8 @@ import { fileURLToPath } from 'node:url';
 
 import { parseArgs } from '../src/args.js';
 import { c, select, text, PromptCancelled } from '../src/prompts.js';
+import { logger } from '../src/logger.js';
+import { inspect, renderReport } from '../src/doctor.js';
 import { buildVars, copyTemplate, isEmptyDir } from '../src/scaffold.js';
 import { STORAGE, storageChoices, depsFor } from '../src/storage.js';
 import {
@@ -261,9 +263,28 @@ async function resolveStorage(template, flags) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
+  // --verbose turns on the debug logs (src/logger.js reads this). Set before any
+  // other work so the machinery of this run is actually captured.
+  if (args.flags.verbose) process.env.LATTICE_LOG_LEVEL = 'debug';
+
   if (args.flags.help) return printHelp();
   if (args.flags.version) return printVersion();
   if (args.flags.list) return printList();
+
+  // `lattice doctor [path]` — score a project instead of scaffolding one. A
+  // subcommand rather than a flag because it is a different verb with a different
+  // output, and treating "doctor" as a project name would scaffold a folder called
+  // doctor, which nobody wants.
+  if (args._[0] === 'doctor') {
+    const target = args._[1] ?? '.';
+    logger.debug(`doctor: inspecting ${path.resolve(target)}`);
+    const report = inspect(target);
+    console.log(renderReport(report));
+    // Non-zero on a failing grade only under --strict, so it can gate CI without
+    // breaking the common "just show me" run.
+    if (args.flags.strict && report.overall < 60) process.exitCode = 1;
+    return;
+  }
 
   console.log(`\n${c.bold(c.cyan('◆ lattice'))} ${c.gray('· project scaffolder')}\n`);
 

@@ -21,7 +21,8 @@
   "scripts": {
     "start": "node bin/lattice.js",
     "list": "node bin/lattice.js --list",
-    "test": "node --test tests/cli.test.js tests/scaffold.test.js tests/storage.test.js tests/registry.test.js tests/changelog.test.js"
+    "test": "node --test tests/cli.test.js tests/scaffold.test.js tests/storage.test.js tests/registry.test.js tests/changelog.test.js tests/doctor.test.js",
+    "doctor": "node bin/lattice.js doctor"
   },
   "keywords": [
     "scaffold",

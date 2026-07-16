@@ -1,0 +1,22 @@
+# The one place indentation and line endings are decided, so no editor has to guess
+# and no diff carries whitespace noise. Every other repository here ships one of
+# these; lattice was the exception, which `lattice doctor` correctly complained about.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.md]
+# Markdown uses trailing spaces for hard breaks — do not strip them here.
+trim_trailing_whitespace = false
+
+[*.{py,java}]
+indent_size = 4
+
+[Makefile]
+indent_style = tab

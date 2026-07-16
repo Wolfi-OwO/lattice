@@ -13,6 +13,25 @@ whose `[Unreleased]` section is empty is refused before it can reach npm.
 
 ## [Unreleased]
 
+### Added
+
+- **`lattice doctor [path]`** — score a project's structure and hygiene, offline.
+  It grades a tree 0–100 across structure, hygiene, testing, CI/CD, containerization,
+  observability and security, and lists what to fix most-load-bearing-first with the
+  *why* and the *fix*. Deterministic and local by design — no network, no model — so
+  it stays a scaffolder, not a service. The checks encode the bar these repositories
+  already hold themselves to. `--strict` exits non-zero below 60 so it can gate CI.
+- **A leveled logger** (`src/logger.js`) modeled on the Winston format used across
+  the author's services: level from `LATTICE_LOG_LEVEL` / `LOG_LEVEL`, colourized
+  `timestamp level: message`, stacks on errors. Diagnostics go to **stderr** (so
+  `--verbose` never contaminates stdout); the user-facing progress stays as it was.
+- **`--verbose`** turns on debug diagnostics for a run.
+- **Project hygiene to match the rest of the author's repositories** — `ARCHITECTURE.md`,
+  `CONTRIBUTING.md`, `SECURITY.md`, `.editorconfig`, `.github/CODEOWNERS`, and
+  `docs/adr/` with the first two decision records (zero-dependency core; why lattice
+  is a library, not an enterprise-layered app). `lattice doctor` scores itself 100
+  now — it did not before, and it said so.
+
 ## [1.0.0] - 2026-07-15
 
 ### Added

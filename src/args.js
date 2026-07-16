@@ -19,6 +19,8 @@ export const BOOLEAN_FLAGS = new Set([
   'list',
   'version',
   'force',
+  'verbose', // turn on debug-level diagnostics (src/logger.js)
+  'strict', // `doctor --strict` exits non-zero on a failing grade, to gate CI
   'no-install',
   'no-database-start',
   'no-db-start', // alias for --no-database-start

@@ -1,0 +1,12 @@
+# Every change requests a review from the maintainer by default.
+# https://docs.github.com/articles/about-code-owners
+* @Wolfi-OwO
+
+# The two files that turn conventions into build failures — extra care here, because
+# weakening them quietly weakens every template at once.
+/CONVENTIONS.md @Wolfi-OwO
+/tests/registry.test.js @Wolfi-OwO
+
+# The release pipeline: a mistake here reaches npm, which cannot be undone.
+/.github/workflows/release.yml @Wolfi-OwO
+/scripts/ @Wolfi-OwO
