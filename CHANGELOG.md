@@ -13,8 +13,6 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
 
-## [1.1.0] - 2026-07-18
-
 ### Added
 
 - **`--generator <id>`** — scaffold with a framework's own official tool instead of
