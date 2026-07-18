@@ -21,6 +21,7 @@ export const BOOLEAN_FLAGS = new Set([
   'force',
   'verbose', // turn on debug-level diagnostics (src/logger.js)
   'strict', // `doctor --strict` exits non-zero on a failing grade, to gate CI
+  'enterprise', // overlay the enterprise skeleton (docs/adr, todo, CI, community health)
   'no-install',
   'no-database-start',
   'no-db-start', // alias for --no-database-start
@@ -36,6 +37,8 @@ export const VALUE_FLAGS = new Set([
   'client',
   'package',
   'port',
+  'owner', // GitHub owner/org for the enterprise overlay's badges and links
+  'generator', // delegate the base scaffold to an external tool (create-vite, ng, …)
 ]);
 
 /**

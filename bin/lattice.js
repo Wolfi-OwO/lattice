@@ -26,7 +26,9 @@ import {
   hasDocker,
   install,
   mergeDeps,
+  overlayEnterprise,
   pruneAdapters,
+  runGenerator,
   startDatabase,
   writeCompose,
   writeEnv,
@@ -40,6 +42,7 @@ import {
   frameworksFor,
   languagesFor,
 } from '../src/registry.js';
+import { findGenerator, generatorChoices } from '../src/generators.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STACK_ROOT = path.join(ROOT, 'stacks');
@@ -71,6 +74,12 @@ function printList() {
       `    ${c.gray(`backends:  ${FULLSTACK_BACKENDS.join(', ')}`)}\n` +
       `    ${c.gray(`frontends: ${FULLSTACK_FRONTENDS.join(', ')}`)}\n`,
   );
+
+  console.log(`  ${c.cyan('External generators')} ${c.gray('(--generator, delegates to the real tool)')}`);
+  for (const g of generatorChoices()) {
+    console.log(`    ${c.bold(g.id.padEnd(18))} ${c.gray(g.label)}`);
+  }
+  console.log('');
 }
 
 function version() {
@@ -96,6 +105,9 @@ function printHelp() {
     --client <id>     frontend for a fullstack project, placed in client/
     --package <pkg>   Java/Kotlin base package (default at.htlvillach.<name>)
     --port <n>        backend port (default 3000)
+    --generator <id>  delegate the base scaffold to a real tool (create-vite, ng, cargo…; see --list)
+    --enterprise      overlay docs/adr, todo, .github CI, and community-health files
+    --owner <name>    GitHub owner/org for the enterprise overlay's badges (default your-org)
     --no-install      skip dependency installation
     --no-database-start
                       do not "docker compose up -d database"
@@ -260,6 +272,49 @@ async function resolveStorage(template, flags) {
 
 // --------------------------------------------------------------------- main
 
+/**
+ * The `--generator` path: run an external tool, then overlay. Kept separate from the
+ * template flow because it shares almost nothing with it — no stack, no database.
+ */
+async function runExternalGenerator(projectName, args) {
+  const generator = findGenerator(args.flags.generator);
+  if (!generator) {
+    throw new Error(
+      `Unknown generator "${args.flags.generator}". Run --list to see them.`,
+    );
+  }
+
+  const target = path.resolve(process.cwd(), projectName);
+  if (!isEmptyDir(target) && !args.flags.force) {
+    throw new Error(
+      `Directory "${projectName}" already exists and is not empty. Pass --force to scaffold into it anyway.`,
+    );
+  }
+
+  process.stdout.write(`${c.gray('⋯')} Running ${c.bold(generator.label)} (${generator.bin})…\r`);
+  runGenerator(generator, projectName, process.cwd());
+  console.log(`${c.green('✔')} Scaffolded ${c.bold(projectName)} ${c.gray(`via ${generator.label}`)}          `);
+
+  const vars = buildVars({ projectName, owner: args.flags.owner });
+
+  if (args.flags.enterprise) {
+    const { files, toolchain } = overlayEnterprise(
+      path.join(ROOT, 'overlays', 'enterprise'),
+      target,
+      vars,
+    );
+    console.log(
+      `${c.green('✔')} Enterprise overlay ${c.gray(`(${files.length} files: docs/adr, todo, .github, community health)`)}` +
+        (toolchain
+          ? `\n  ${c.gray('ci      ')}  ${toolchain}`
+          : `\n  ${c.yellow('!')} ${c.gray('no CI: could not tell which build tool this project uses')}`),
+    );
+  }
+
+  const steps = [`cd ${projectName}`, ...(generator.next ?? [])];
+  console.log(`\n${c.bold('Next steps')}\n\n${steps.map((s) => `  ${s}`).join('\n')}\n`);
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
@@ -292,12 +347,20 @@ async function main() {
   const nameError = validateName(projectName);
   if (nameError) throw new Error(nameError);
 
+  // `--generator <id>` delegates the base scaffold to a framework's real tool
+  // (create-vite, ng, cargo, …), then layers lattice's overlay on top. A different
+  // path entirely from the built-in templates: no storage, no stack picker.
+  if (typeof args.flags.generator === 'string') {
+    return runExternalGenerator(projectName, args);
+  }
+
   const { template, client } = await resolveTemplate(args.flags);
   const { storage, fileFormat } = await resolveStorage(template, args.flags);
 
   // Extra vars — only ask for what this stack actually declares.
   const needs = new Set([...(template.vars ?? []), ...(client?.vars ?? [])]);
   const answers = { projectName, storage: storage ?? 'memory', fileFormat: fileFormat ?? 'json' };
+  if (typeof args.flags.owner === 'string') answers.owner = args.flags.owner;
 
   if (needs.has('javaPackage')) {
     answers.javaPackage =
@@ -349,6 +412,16 @@ async function main() {
     });
   }
 
+  let enterpriseFiles = [];
+  let enterpriseToolchain = null;
+  if (args.flags.enterprise) {
+    ({ files: enterpriseFiles, toolchain: enterpriseToolchain } = overlayEnterprise(
+      path.join(ROOT, 'overlays', 'enterprise'),
+      target,
+      vars,
+    ));
+  }
+
   console.log(
     `\n${c.green('✔')} Scaffolded ${c.bold(projectName)} ` +
       `${c.gray(`(${files.length + clientFiles.length} files)`)}\n` +
@@ -358,6 +431,10 @@ async function main() {
         ? `\n  ${c.gray('database')}  ${STORAGE[storage].label}` +
           (fileFormat ? ` (${fileFormat})` : '') +
           (answers.databasePort ? c.gray(` · host port ${answers.databasePort}`) : '')
+        : '') +
+      (enterpriseFiles.length
+        ? `\n  ${c.gray('overlay ')}  enterprise (${enterpriseFiles.length} files: docs/adr, todo, .github, community health)` +
+          (enterpriseToolchain ? `\n  ${c.gray('ci      ')}  ${enterpriseToolchain}` : '')
         : ''),
   );
 

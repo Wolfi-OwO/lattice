@@ -1,0 +1,36 @@
+name: Release
+
+# Cut a release by pushing a tag: git tag v1.2.3 && git push origin v1.2.3.
+# The release runs only after CI is green on that exact commit.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The tag is the single source of truth for the version. If version.txt has
+      # drifted from the tag, fail rather than ship a mislabelled release.
+      - name: Verify version.txt matches the tag
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          file="$(cat version.txt)"
+          if [ "$tag" != "$file" ]; then
+            echo "::error::tag $tag does not match version.txt ($file)"
+            exit 1
+          fi
+
+      - name: Create the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

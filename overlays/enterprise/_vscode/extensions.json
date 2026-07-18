@@ -1,0 +1,9 @@
+{
+  "//": "Extensions a new contributor is prompted to install on opening the repo. Keep this to what the project actually relies on, not a personal preference list.",
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "editorconfig.editorconfig",
+    "davidanson.vscode-markdownlint"
+  ]
+}

@@ -10,6 +10,7 @@ Format: [Michael Nygard's](https://cognitect.com/blog/2011/11/15/documenting-arc
 | --- | --- | --- |
 | [0001](0001-zero-dependency-core.md) | The scaffolder core ships zero runtime dependencies | Accepted |
 | [0002](0002-not-an-enterprise-layered-app.md) | lattice is a library, not an enterprise-layered application | Accepted |
+| [0003](0003-external-generators-are-opt-in.md) | External generators are opt-in, and the overlay is layered by toolchain | Accepted |
 
 ## Writing a new one
 

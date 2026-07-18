@@ -83,12 +83,45 @@ lattice [name] [options]
   --format <fmt>        json | ndjson | yaml    (only with --database file)
   --client <id>         frontend for a fullstack project, placed in client/
   --port <n>            backend port (default 3000)
+  --generator <id>      scaffold with a framework's own tool instead of a stack
+  --enterprise          add docs/adr, todo, CI, and community-health files
+  --owner <name>        GitHub owner/org for the enterprise badges (default your-org)
   --no-install          skip dependency installation
   --no-database-start   do not "docker compose up -d database"
   --force               scaffold into a non-empty directory
-  --list                show all stacks and databases
+  --list                show all stacks, databases and generators
   --version             print the version
 ```
+
+### `--generator` — delegate to the real tool
+
+The built-in stacks are the ones lattice promises will boot. For everything else,
+`--generator` runs the framework's own official tool and then layers lattice's
+overlay on top:
+
+```bash
+lattice web-app --generator vite-react --enterprise
+lattice api     --generator dotnet-webapi --enterprise
+lattice svc     --generator go --enterprise
+```
+
+This is opt-in on purpose, because it gives up three things the built-in stacks
+guarantee: it needs the network, it needs that toolchain installed, and its output
+is whatever the upstream tool ships today rather than something lattice verified.
+`--list` shows every generator.
+
+### `--enterprise` — the overlay
+
+Adds the scaffolding a repository needs to be worked on by more than one person:
+`docs/adr/`, `todo/`, `organizational/`, community-health files, a Trivy security
+scan, a release workflow, and a CI workflow.
+
+The CI is **chosen from the project's build tool**, not from a template — lattice
+looks for `package.json`, `go.mod`, `pom.xml`, `Cargo.toml`, `build.gradle`,
+`pyproject.toml` or a `.csproj` and lays down the matching `ci.yml` and
+`dependabot.yml`. A Go module gets `go test`; a Maven project gets `mvn -B verify`.
+A project whose build tool is unrecognised gets everything except the CI, which is
+better than a workflow that cannot pass.
 
 Fullstack composes a backend at the root with a frontend in `client/`, and
 installs both:

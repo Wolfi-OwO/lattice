@@ -15,6 +15,7 @@ import { randomBytes } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 
 import { STORAGE } from './storage.js';
+import { render } from './scaffold.js';
 
 // ------------------------------------------------------------------- ports
 
@@ -255,4 +256,200 @@ export function startDatabase(target, timeoutSeconds = 90) {
     const detail = [error.stdout, error.stderr].filter(Boolean).join('\n').trim();
     return { ok: false, error: detail.split('\n').slice(-3).join('\n') || error.message };
   }
+}
+
+// ------------------------------------------------------------ enterprise overlay
+
+/**
+ * Path segments renamed on the way out of the overlay. `_github` etc. are stored
+ * dot-less so npm cannot mangle them in the published tarball (it rewrites a packed
+ * `.gitignore` to `.npmignore`), then restored here.
+ */
+const OVERLAY_RENAME = new Map([
+  ['_github', '.github'],
+  ['_gitattributes', '.gitattributes'],
+  ['_editorconfig', '.editorconfig'],
+  ['_gitignore', '.gitignore'],
+  ['_vscode', '.vscode'],
+]);
+
+const OVERLAY_BINARY = new Set(['.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.woff2']);
+
+/**
+ * Which build tool owns this project, decided by what is actually on disk.
+ *
+ * Detected rather than declared, because by the time the overlay runs the project
+ * exists — and the file that is there is the truth, whether it was written by a
+ * lattice template or by `cargo new`. It also means a new language needs no entry
+ * in any registry: ship its marker and its CI, and both paths pick it up.
+ *
+ * First match wins, so the order is most-specific first. A lattice fullstack project
+ * has a pom.xml at the root and a package.json under client/ — only the root is
+ * examined, so it is correctly a Maven project whose CI builds the whole thing.
+ */
+const TOOLCHAIN_MARKERS = [
+  ['dotnet', (names) => names.some((n) => /\.(csproj|fsproj|sln)$/.test(n))],
+  ['maven', (names) => names.includes('pom.xml')],
+  ['gradle', (names) => names.some((n) => /^(build|settings)\.gradle(\.kts)?$/.test(n))],
+  ['rust', (names) => names.includes('Cargo.toml')],
+  ['go', (names) => names.includes('go.mod')],
+  ['python', (names) => ['pyproject.toml', 'requirements.txt', 'setup.py'].some((n) => names.includes(n))],
+  ['node', (names) => names.includes('package.json')],
+];
+
+export function detectToolchain(target) {
+  if (!fs.existsSync(target)) return null;
+  const names = fs.readdirSync(target);
+  return TOOLCHAIN_MARKERS.find(([, matches]) => matches(names))?.[0] ?? null;
+}
+
+/**
+ * Overlay the enterprise skeleton onto a scaffolded project: community-health files,
+ * CI, docs/adr, todo, organizational, badge-wall README.
+ *
+ * Applied in two layers. `overlays/enterprise/` is everything that is true of any
+ * project in any language — LICENSE, SECURITY.md, the ADR directory, the Trivy scan.
+ * `overlays/toolchain/<id>/` carries the two files that are emphatically *not*
+ * language-neutral: ci.yml and dependabot.yml. Shipping one npm-flavoured pair to
+ * every project is not a cosmetic wart — `npm ci` fails outright in a Go module, and
+ * a `package-ecosystem: npm` entry makes Dependabot error on the repository, so
+ * `--enterprise` was handing non-Node projects a red pipeline on their first push.
+ *
+ * A project whose toolchain is unrecognised still gets the universal layer; it just
+ * gets no CI, which is the honest outcome — better than a workflow that cannot pass.
+ *
+ * README.md is overwritten on purpose — the badge-wall version replaces the plain
+ * template one. Every other file is written only if absent, so the overlay never
+ * clobbers something the template already shipped (its .gitignore, its package.json).
+ */
+export function overlayEnterprise(sourceDir, target, vars) {
+  const OVERWRITE = new Set(['README.md']);
+  const written = [];
+
+  // The toolchain is read before anything is written, so the marker it keys off is
+  // the project's own (package.json, go.mod, pom.xml…) and never a file the overlay
+  // has just added.
+  const toolchain = detectToolchain(target);
+
+  const walk = (dir, relParts) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const from = path.join(dir, entry.name);
+      const renamed = OVERLAY_RENAME.get(entry.name) ?? entry.name;
+      const nextRel = [...relParts, renamed];
+
+      if (entry.isDirectory()) {
+        walk(from, nextRel);
+        continue;
+      }
+
+      const rel = nextRel.join('/');
+      const dest = path.join(target, ...nextRel);
+      if (fs.existsSync(dest) && !OVERWRITE.has(rel)) continue;
+
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      if (OVERLAY_BINARY.has(path.extname(from).toLowerCase())) {
+        fs.copyFileSync(from, dest);
+      } else {
+        fs.writeFileSync(dest, render(fs.readFileSync(from, 'utf8'), vars));
+      }
+      written.push(rel);
+    }
+  };
+
+  walk(sourceDir, []);
+
+  // Layer two. `sourceDir` is overlays/enterprise, so its sibling holds the
+  // toolchain layers; deriving the path keeps the caller passing one directory.
+  if (toolchain) {
+    const toolchainDir = path.join(path.dirname(sourceDir), 'toolchain', toolchain);
+    if (fs.existsSync(toolchainDir)) walk(toolchainDir, []);
+  }
+
+  return { files: written, toolchain };
+}
+
+// ------------------------------------------------------------ external generators
+
+/**
+ * Is a binary on PATH?
+ *
+ * Scanning PATH by hand rather than shelling out to `which`, for two reasons: there
+ * is no `which` on Windows (it is `where`), and the CLI is tested on Windows — so the
+ * spawn version reported *every* generator as missing there. Reading the directories
+ * also avoids spawning a process per lookup on the cold path.
+ *
+ * On Windows a bare `ng` is resolved through PATHEXT to `ng.cmd`/`ng.exe`; POSIX has
+ * no such notion, so the extension list is just the empty string there. X_OK is
+ * ignored by Windows (it degrades to "does this exist"), which is the check we want
+ * on that platform anyway.
+ */
+function hasBinary(bin) {
+  const extensions =
+    process.platform === 'win32'
+      ? ['', ...(process.env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)]
+      : [''];
+
+  const executable = (candidate) => {
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      return fs.statSync(candidate).isFile();
+    } catch {
+      return false;
+    }
+  };
+
+  if (bin.includes('/') || bin.includes('\\')) {
+    return extensions.some((ext) => executable(path.resolve(bin + ext)));
+  }
+
+  return (process.env.PATH ?? '')
+    .split(path.delimiter)
+    .filter(Boolean)
+    .some((dir) => extensions.some((ext) => executable(path.join(dir, bin + ext))));
+}
+
+/**
+ * Run an external generator (create-vite, ng, cargo, …) to produce the base project.
+ *
+ * Fails loudly and early if the required tool is not installed — the whole reason
+ * these are gated is that lattice cannot promise `dotnet` or `cargo` exists, and a
+ * clear "install X" beats a cryptic spawn error. Most generators create `name/`
+ * inside cwd; a few (go mod init) run *inside* an already-made project dir, flagged
+ * with `inProjectDir`.
+ */
+export function runGenerator(generator, name, cwd) {
+  if (!hasBinary(generator.requires)) {
+    throw new Error(
+      `The "${generator.id}" generator needs \`${generator.requires}\`, which is not installed.\n` +
+        `  Install it and try again, or use a built-in stack (see --list).`,
+    );
+  }
+
+  let runCwd = cwd;
+  if (generator.inProjectDir) {
+    runCwd = path.join(cwd, name);
+    fs.mkdirSync(runCwd, { recursive: true });
+  }
+
+  const result = spawnSync(generator.bin, generator.argv(name), {
+    cwd: runCwd,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+    timeout: 5 * 60 * 1000,
+    maxBuffer: NO_OUTPUT_CAP,
+  });
+
+  if (result.status !== 0) {
+    const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim();
+    throw new Error(
+      `${generator.bin} exited with ${result.status ?? 'a signal'}.\n` +
+        (detail ? `  ${detail.split('\n').slice(-4).join('\n  ')}` : ''),
+    );
+  }
+
+  const projectDir = path.join(cwd, name);
+  if (!fs.existsSync(projectDir)) {
+    throw new Error(`${generator.bin} ran but produced no "${name}" directory.`);
+  }
+  return projectDir;
 }
