@@ -203,12 +203,25 @@ jobs:
   # so `npm create lattice@latest` keeps coming from npmjs.org (the publish job
   # above). This copy is @wolfi-owo/create-lattice, published purely for the badge.
   #
-  # It hangs off `verify`, not `publish`, on purpose: the two registries are
-  # independent, so the badge appears even if the npm publish is held up (e.g. a
-  # token being rotated). Auth is the built-in GITHUB_TOKEN — no secret to manage.
+  # It hangs off `publish`, not `verify`. It used to be the other way round, on the
+  # reasoning that the two registries are independent so the badge should appear
+  # even if the npm publish is held up. That reasoning was wrong, and v2.0.0 is how
+  # it showed: the Release was cut before the version bump had merged, `publish`
+  # correctly refused it — "package.json says 1.1.0 but the tag says 2.0.0" — and
+  # this job published anyway, because it inherits none of those checks. Three
+  # attempted releases each republished here while npm was correctly refusing all
+  # three, so GitHub Packages ended up serving 1.1.0's code labelled 2.0.0. The
+  # fourth attempt, the correct one, then failed with 409: the version was taken.
+  #
+  # Depending on `publish` is what makes that impossible. Everything guarding the
+  # npm publish — the tag is main's HEAD, package.json agrees with the tag, the
+  # changelog has a section, and a human approved the production environment — now
+  # guards this too, by construction rather than by restating them here.
+  #
+  # Auth is the built-in GITHUB_TOKEN — no secret to manage.
   github-packages:
     name: Publish @wolfi-owo/create-lattice to GitHub Packages
-    needs: verify
+    needs: publish
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -247,7 +260,17 @@ jobs:
           npm pkg delete publishConfig.provenance
           npm pkg set publishConfig.registry='https://npm.pkg.github.com'
 
+      # Skipped rather than failed when the version is already there. This job is
+      # the cosmetic half of a release, and re-running a workflow whose npm publish
+      # succeeded should not go red over a package that is already correct — a 409
+      # here means "already done", not "broken".
       - name: Publish to GitHub Packages
-        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if npm view "@wolfi-owo/create-lattice@${{ steps.v.outputs.version }}" version \
+               --registry https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "::notice::@wolfi-owo/create-lattice@${{ steps.v.outputs.version }} is already on GitHub Packages — nothing to do."
+            exit 0
+          fi
+          npm publish
