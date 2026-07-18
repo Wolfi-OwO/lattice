@@ -16,6 +16,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 
 import { STORAGE } from './storage.js';
 import { render } from './scaffold.js';
+import { buildDirectoryTable, composeReadme, quickStartFor } from './readme.js';
 
 // ------------------------------------------------------------------- ports
 
@@ -323,8 +324,12 @@ export function detectToolchain(target) {
  * clobbers something the template already shipped (its .gitignore, its package.json).
  */
 export function overlayEnterprise(sourceDir, target, vars) {
-  const OVERWRITE = new Set(['README.md']);
   const written = [];
+
+  // README.md is composed, not copied, so it is held back from the walk entirely and
+  // written at the end — the directory table it contains has to describe the tree
+  // *after* the overlay has added docs/, todo/ and organizational/, not before.
+  const HELD_BACK = new Set(['README.md']);
 
   // The toolchain is read before anything is written, so the marker it keys off is
   // the project's own (package.json, go.mod, pom.xml…) and never a file the overlay
@@ -343,8 +348,10 @@ export function overlayEnterprise(sourceDir, target, vars) {
       }
 
       const rel = nextRel.join('/');
+      if (HELD_BACK.has(rel)) continue;
+
       const dest = path.join(target, ...nextRel);
-      if (fs.existsSync(dest) && !OVERWRITE.has(rel)) continue;
+      if (fs.existsSync(dest)) continue;
 
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       if (OVERLAY_BINARY.has(path.extname(from).toLowerCase())) {
@@ -364,6 +371,19 @@ export function overlayEnterprise(sourceDir, target, vars) {
     const toolchainDir = path.join(path.dirname(sourceDir), 'toolchain', toolchain);
     if (fs.existsSync(toolchainDir)) walk(toolchainDir, []);
   }
+
+  // The README, last, with the tree it describes now complete. The template's own
+  // README is kept below the header rather than overwritten — it is the only place
+  // that documents this project's actual layout and the rules that hold it together.
+  const readmePath = path.join(target, 'README.md');
+  const existing = fs.existsSync(readmePath) ? fs.readFileSync(readmePath, 'utf8') : '';
+  const header = render(fs.readFileSync(path.join(sourceDir, 'README.md'), 'utf8'), {
+    ...vars,
+    quickStart: quickStartFor(toolchain).join('\n'),
+    directoryTable: buildDirectoryTable(target, fs, path),
+  });
+  fs.writeFileSync(readmePath, composeReadme(header, existing));
+  written.push('README.md');
 
   return { files: written, toolchain };
 }

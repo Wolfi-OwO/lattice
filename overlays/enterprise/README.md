@@ -24,19 +24,15 @@ it does better than the obvious alternative.
 ## Quick start
 
 ```bash
-npm install
-npm run dev
+{{quickStart}}
 ```
 
 ## How it is organized
 
-| Path | What lives there |
-| --- | --- |
-| `src/` | Application source |
-| [`docs/`](docs/) | Architecture, and the decisions behind it ([`docs/adr/`](docs/adr/)) |
-| [`todo/`](todo/) | The backlog: roadmap, accepted tech debt, what is deliberately not being done |
-| [`organizational/`](organizational/) | Roles, access, and how the project is administered |
-| [`.github/`](.github/) | CI, issue and PR templates, dependency updates |
+Generated from the project as it actually stands. The third column is the load-bearing
+one: a layout survives on what people are told *not* to put somewhere.
+
+{{directoryTable}}
 
 ## Contributing
 

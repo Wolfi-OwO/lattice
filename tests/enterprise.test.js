@@ -4,7 +4,8 @@
  *
  * The end-to-end proof that a scaffolded project still builds with the overlay is
  * done by hand (npm install + vite build); these assert the copier's behaviour —
- * substitution, dotfile renaming, and that it never clobbers a template's own files.
+ * substitution, dotfile renaming, README composition, per-toolchain CI selection,
+ * and that it never clobbers a template's own files.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -103,12 +104,15 @@ test('placeholders are substituted, and GitHub Actions expressions are left alon
   assert.equal(fs.readFileSync(path.join(target, 'version.txt'), 'utf8').trim(), '0.1.0');
 });
 
-test('the overlay overwrites README but never clobbers a template file', () => {
+test('the overlay composes the README and never clobbers a template file', () => {
   const target = emptyProject();
   // A template got here first: its own package.json and .gitignore, and a plain README.
   fs.writeFileSync(path.join(target, 'package.json'), '{"name":"mine"}\n');
   fs.writeFileSync(path.join(target, '.gitignore'), 'node_modules\n');
-  fs.writeFileSync(path.join(target, 'README.md'), '# the template readme\n');
+  fs.writeFileSync(
+    path.join(target, 'README.md'),
+    '# the template readme\n\nHow this project is laid out, and why.\n',
+  );
 
   overlayEnterprise(OVERLAY, target, VARS);
 
@@ -122,11 +126,56 @@ test('the overlay overwrites README but never clobbers a template file', () => {
     'node_modules\n',
     'the template .gitignore is untouched',
   );
+  const readme = fs.readFileSync(path.join(target, 'README.md'), 'utf8');
+  assert.match(readme, /align="center"/, 'the badge header is prepended');
   assert.match(
-    fs.readFileSync(path.join(target, 'README.md'), 'utf8'),
-    /align="center"/,
-    'README IS replaced with the badge-wall version',
+    readme,
+    /How this project is laid out, and why\./,
+    'the template README is KEPT, not overwritten — it is the only place this ' +
+      'project’s actual layout and dependency rules are written down',
   );
+});
+
+test('the directory table describes the tree, including what must not go where', () => {
+  const target = projectWith('package.json');
+  fs.mkdirSync(path.join(target, 'src', 'services'), { recursive: true });
+  fs.mkdirSync(path.join(target, 'src', 'pages'), { recursive: true });
+  fs.mkdirSync(path.join(target, 'src', 'layouts'), { recursive: true });
+  fs.mkdirSync(path.join(target, 'node_modules', 'left-pad'), { recursive: true });
+
+  overlayEnterprise(OVERLAY, target, VARS);
+  const readme = fs.readFileSync(path.join(target, 'README.md'), 'utf8');
+
+  assert.match(readme, /\| `src\/` \|/, 'src/ is described');
+  assert.match(readme, /\| `src\/services\/` \|/, 'depth 2 is described');
+  assert.match(readme, /No HTTP types|no request, no response/i, 'services says what may NOT enter it');
+  assert.match(readme, /Layouts never depend on pages/i, 'the layout dependency rule is stated');
+  assert.match(readme, /A page does not choose its frame/i, 'the page dependency rule is stated');
+
+  // Directories the overlay itself added must appear — the table is generated after
+  // the overlay, not before, precisely so this is true.
+  assert.match(readme, /\| `todo\/` \|/);
+  assert.match(readme, /\| `docs\/` \|/);
+
+  // Noise that would make nobody read the table.
+  assert.ok(!/node_modules/.test(readme), 'node_modules is never listed');
+  assert.ok(!/`\.github\/workflows\/`/.test(readme), '.github is one row, not descended into');
+});
+
+test('the quick start is the project’s own build tool, not always npm', () => {
+  for (const [marker, expected, wrong] of [
+    ['package.json', /npm install/, null],
+    ['go.mod', /go run \./, /npm install/],
+    ['Cargo.toml', /cargo run/, /npm install/],
+    ['pom.xml', /mvn/, /npm install/],
+  ]) {
+    const target = projectWith(marker);
+    overlayEnterprise(OVERLAY, target, VARS);
+    const readme = fs.readFileSync(path.join(target, 'README.md'), 'utf8');
+
+    assert.match(readme, expected, `${marker}: quick start uses its own tool`);
+    if (wrong) assert.ok(!wrong.test(readme), `${marker}: must not tell the user to run npm`);
+  }
 });
 
 test('every project gets the CI of its own build tool', () => {
