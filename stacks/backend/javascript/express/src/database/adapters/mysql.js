@@ -71,10 +71,7 @@ export async function createAdapter({ url, autoCreate = false }) {
       const where = q ? 'WHERE name LIKE ? OR email LIKE ?' : '';
       const params = q ? [`%${q}%`, `%${q}%`] : [];
 
-      const [countRows] = await pool.query(
-        `SELECT COUNT(*) AS total FROM users ${where}`,
-        params,
-      );
+      const [countRows] = await pool.query(`SELECT COUNT(*) AS total FROM users ${where}`, params);
       const [rows] = await pool.query(
         `SELECT * FROM users ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, (page - 1) * limit],
@@ -112,10 +109,10 @@ export async function createAdapter({ url, autoCreate = false }) {
       if (entries.length === 0) return users.findById(id);
 
       const sets = entries.map(([key]) => `${COLUMNS[key]} = ?`);
-      const [result] = await pool.query(
-        `UPDATE users SET ${sets.join(', ')} WHERE id = ?`,
-        [...entries.map(([, value]) => value), id],
-      );
+      const [result] = await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, [
+        ...entries.map(([, value]) => value),
+        id,
+      ]);
       if (result.affectedRows === 0) return null;
       return users.findById(id);
     },

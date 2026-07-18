@@ -11,11 +11,6 @@ userRoutes.get('/', validate(listUsersSchema, 'query'), asyncHandler(controller.
 userRoutes.get('/:id', asyncHandler(controller.get));
 userRoutes.post('/', validate(createUserSchema), asyncHandler(controller.create));
 
-userRoutes.patch(
-  '/:id',
-  requireAuth,
-  validate(updateUserSchema),
-  asyncHandler(controller.update),
-);
+userRoutes.patch('/:id', requireAuth, validate(updateUserSchema), asyncHandler(controller.update));
 
 userRoutes.delete('/:id', requireAuth, requireRole('admin'), asyncHandler(controller.remove));

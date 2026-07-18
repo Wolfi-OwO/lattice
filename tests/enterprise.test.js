@@ -162,6 +162,31 @@ test('the directory table describes the tree, including what must not go where',
   assert.ok(!/`\.github\/workflows\/`/.test(readme), '.github is one row, not descended into');
 });
 
+test('database/ and src/database/ are described as the different things they are', () => {
+  // They share a word because CONVENTIONS.md rule 1 says storage is spelled
+  // "database" everywhere. They are not the same directory: one is the adapter
+  // code the app imports, the other is seed data it never imports. A table that
+  // described both identically is what makes someone merge them into one — which
+  // then ships demo JSON inside the built image.
+  const target = projectWith('package.json');
+  fs.mkdirSync(path.join(target, 'src', 'database'), { recursive: true });
+  fs.mkdirSync(path.join(target, 'database', 'data'), { recursive: true });
+
+  overlayEnterprise(OVERLAY, target, VARS);
+  const readme = fs.readFileSync(path.join(target, 'README.md'), 'utf8');
+
+  const rowFor = (dir) =>
+    readme.split('\n').find((line) => line.startsWith(`| \`${dir}/\` |`));
+
+  const root = rowFor('database');
+  const code = rowFor('src/database');
+  assert.ok(root && code, 'both directories are in the table');
+  assert.notEqual(root.slice(root.indexOf('|', 1)), code.slice(code.indexOf('|', 1)),
+    'they must not carry the same description');
+  assert.match(root, /seed|demo data/i, 'database/ is named as data');
+  assert.match(code, /adapter/i, 'src/database/ is named as the storage seam');
+});
+
 test('the quick start is the project’s own build tool, not always npm', () => {
   for (const [marker, expected, wrong] of [
     ['package.json', /npm install/, null],

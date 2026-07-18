@@ -23,7 +23,7 @@ Adding one is two steps:
 ```js
 const DOMAINS = {
   users: seedUsers,
-  products: seedProducts,   // <- yours
+  products: seedProducts, // <- yours
 };
 ```
 

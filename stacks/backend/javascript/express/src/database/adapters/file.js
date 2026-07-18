@@ -34,7 +34,8 @@ const CODECS = {
         .split('\n')
         .filter((line) => line.trim())
         .map((line) => JSON.parse(line)),
-    stringify: (rows) => rows.map((row) => JSON.stringify(row)).join('\n') + (rows.length ? '\n' : ''),
+    stringify: (rows) =>
+      rows.map((row) => JSON.stringify(row)).join('\n') + (rows.length ? '\n' : ''),
   },
 
   yaml: {

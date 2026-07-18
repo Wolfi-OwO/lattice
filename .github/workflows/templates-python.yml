@@ -1,9 +1,20 @@
 name: Templates · Python
 
-# The CLI only auto-installs for npm stacks; for Python it prints the steps and
-# stops. This job therefore runs those steps *verbatim* — so if it ever drifts
-# from what the CLI tells the user to type, that drift is itself the bug, and it
-# fails here rather than in someone's terminal.
+# The CLI does not auto-install for Python — it prints the steps and stops, on
+# purpose, rather than guessing at someone's toolchain. Those printed steps are
+# therefore the entire installation experience, and they are what this job runs.
+#
+# Verbatim, and read from the registry rather than retyped here. The previous
+# version of this file claimed to do that in its header and did not: it hardcoded
+# its own working sequence, creating the virtualenv that the CLI never told anyone
+# to create. So this job passed for months while
+#
+#   lattice demo --stack ml-project
+#
+# printed "source .venv/bin/activate" into a directory with no .venv, and the user
+# got "source: no such file or directory". A test that writes its own instructions
+# cannot find out that the shipped ones are wrong. This one has no instructions of
+# its own to fall back on — if the registry's steps are broken, this fails.
 
 on:
   push:
@@ -32,17 +43,61 @@ jobs:
           node-version: 20
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       # --no-database-start because these suites do not touch a server-backed
       # database; the real Docker path is already covered by the Storages job.
       - run: node bin/lattice.js demo --stack ${{ matrix.stack }} --no-database-start
 
-      - name: Install and test
+      - name: Run the steps the CLI actually printed
         working-directory: demo
         run: |
-          python -m venv .venv
+          set -euo pipefail
+          node ../scripts/print-next-steps.js --stack ${{ matrix.stack }} > ../steps.txt
+          echo "The CLI tells the user to run:"
+          sed 's/^/    /' ../steps.txt
+
+          # The last step starts a long-running server (jupyter lab, uvicorn) and
+          # never returns. It is still worth running: "does the command exist and
+          # survive startup" is exactly what a user finds out first, and a missing
+          # dependency or bad module path fails there and nowhere earlier. So it is
+          # run under a timeout, and still being alive when the timeout fires is the
+          # pass — the setup steps before it are ordinary and must simply succeed.
+          total=$(wc -l < ../steps.txt)
+          n=0
+          while IFS= read -r step; do
+            n=$((n + 1))
+            [ -z "$step" ] && continue
+            echo "::group::step $n/$total — $step"
+
+            if [ "$n" -lt "$total" ]; then
+              # `source` only affects the shell that runs it, so every step runs in
+              # one persistent shell rather than a fresh one per line.
+              eval "$step"
+            else
+              set +e
+              timeout --preserve-status 45s bash -c "$step" > ../last-step.log 2>&1
+              code=$?
+              set -e
+
+              # 124/143: killed by the timeout, i.e. it was still running. That is
+              # the success case for a server.
+              if [ "$code" -ne 124 ] && [ "$code" -ne 143 ] && [ "$code" -ne 0 ]; then
+                echo "::error::\"$step\" — the last step the CLI prints — exited $code"
+                sed 's/^/    /' ../last-step.log
+                exit 1
+              fi
+              echo "started and stayed up (exit $code)"
+            fi
+            echo "::endgroup::"
+          done < ../steps.txt
+
+      # The steps above are what the user is told to run; the suite is what tells us
+      # the project is sound. Both matter, and only the first one was ever wrong.
+      - name: Run the generated project's own tests
+        working-directory: demo
+        run: |
+          set -euo pipefail
           . .venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
+          pip install -r requirements-dev.txt
           pytest -q

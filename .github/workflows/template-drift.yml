@@ -1,0 +1,115 @@
+name: Template drift
+
+# What the official generators ship, against what lattice's built-in templates
+# ship — and the gap between them, reported rather than merged.
+#
+# WHY THIS IS A REPORT AND NOT A REGENERATION
+# It is tempting to have lattice run `npm create vite` at scaffold time and layer
+# its own structure on top. ADR-0003 is why it does not: a built-in stack is the
+# tier that works offline, starts instantly, needs no toolchain installed, and is
+# verified in CI. Delegating to a network tool gives all four of those away, and
+# that tier already exists behind `--generator`.
+#
+# But the built-in templates then have one real failure mode, and it is silent:
+# they fall behind. create-vite moved to a tsconfig.app.json / tsconfig.node.json
+# project-references split and lattice's template kept a single flat config with a
+# `baseUrl` that TypeScript 6 deprecates and 7 removes. create-vite ships public/;
+# lattice's shipped no favicon at all. Both were found by a person scaffolding a
+# project and reading the errors, which is the worst way to find them.
+#
+# So the official generators run here, weekly, and the difference is printed. A
+# human decides what to adopt — some drift is deliberate (lattice ships a router,
+# an API client and a layout convention that create-vite has no opinion about),
+# and a job that merged upstream's output would delete exactly that.
+
+on:
+  schedule:
+    # Weekly, early Monday — the same slot as the generators check.
+    - cron: '41 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vite:
+    name: ${{ matrix.template }} vs create-vite
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - stack: react-vite
+            template: react
+          - stack: react-vite-ts
+            template: react-ts
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Scaffold both
+        run: |
+          node bin/lattice.js ours --stack ${{ matrix.stack }} --no-database-start
+          npx -y create-vite@latest theirs --template ${{ matrix.template }}
+
+      # Files only. Comparing contents would be noise — lattice's App is a router
+      # and a users page, theirs is a counter, and neither is wrong. What matters
+      # is a file upstream considers part of a working project that we do not ship.
+      - name: Files create-vite ships that we do not
+        run: |
+          cd theirs && find . -type f -not -path './node_modules/*' | sed 's|^\./||' | sort > ../theirs.txt && cd ..
+          cd ours   && find . -type f -not -path './node_modules/*' | sed 's|^\./||' | sort > ../ours.txt  && cd ..
+
+          # Normalise the names lattice stages differently: npm rewrites a packed
+          # .gitignore, so templates carry _gitignore and it lands correctly.
+          sed -i 's|^_gitignore$|.gitignore|; s|^_env\.example$|.env.example|' ours.txt
+
+          missing=$(comm -23 theirs.txt ours.txt || true)
+          if [ -n "$missing" ]; then
+            echo "::warning::${{ matrix.stack }} does not ship files that create-vite does"
+            echo "$missing" | sed 's/^/    /'
+          else
+            echo "Nothing upstream ships that this template does not."
+          fi
+
+          {
+            echo "### ${{ matrix.stack }} vs create-vite --template ${{ matrix.template }}"
+            echo
+            if [ -n "$missing" ]; then
+              echo "Upstream ships these; we do not:"
+              echo '```'
+              echo "$missing"
+              echo '```'
+            else
+              echo "No missing files."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # A template pinned a major behind upstream is the drift that actually bites:
+      # it is where deprecations like `baseUrl` accumulate silently.
+      - name: Dependency majors behind upstream
+        run: |
+          node - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require('node:fs');
+          const major = (r) => Number(String(r).replace(/^[^0-9]*/, '').split('.')[0]);
+          const ours = JSON.parse(fs.readFileSync('ours/package.json', 'utf8'));
+          const theirs = JSON.parse(fs.readFileSync('theirs/package.json', 'utf8'));
+          const all = (p) => ({ ...p.dependencies, ...p.devDependencies });
+          const [a, b] = [all(ours), all(theirs)];
+
+          const behind = Object.keys(b)
+            .filter((name) => a[name] && major(a[name]) < major(b[name]))
+            .map((name) => `| \`${name}\` | ${a[name]} | ${b[name]} |`);
+
+          console.log('\n#### Dependencies behind upstream\n');
+          if (behind.length) {
+            console.log('| package | ours | create-vite |');
+            console.log('| --- | --- | --- |');
+            console.log(behind.join('\n'));
+            console.log(`\n::warning::${behind.length} dependencies are a major version behind create-vite`);
+          } else {
+            console.log('None.');
+          }
+          NODE

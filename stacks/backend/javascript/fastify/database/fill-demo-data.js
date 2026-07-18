@@ -86,7 +86,10 @@ async function main() {
   if (reset) logger.warn('--reset: existing rows will be deleted');
 
   const files = fs.existsSync(DATA_DIR)
-    ? fs.readdirSync(DATA_DIR).filter((f) => f.endsWith('.json')).sort()
+    ? fs
+        .readdirSync(DATA_DIR)
+        .filter((f) => f.endsWith('.json'))
+        .sort()
     : [];
 
   for (const file of files) {

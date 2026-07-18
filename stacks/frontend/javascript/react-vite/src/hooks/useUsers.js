@@ -6,10 +6,7 @@ import { api } from '../lib/api.js';
  * stay declarative. `mutate` re-fetches after a write.
  */
 export function useUsers({ page = 1, limit = 20 } = {}) {
-  const { data, error, isLoading, mutate } = useSWR(
-    `/users?page=${page}&limit=${limit}`,
-    api.get,
-  );
+  const { data, error, isLoading, mutate } = useSWR(`/users?page=${page}&limit=${limit}`, api.get);
 
   return {
     users: data?.items ?? [],

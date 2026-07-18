@@ -24,9 +24,7 @@ export async function createAdapter() {
     },
 
     async findByEmail(email, { withPasswordHash = false } = {}) {
-      const found = [...rows.values()].find(
-        (row) => row.email === String(email).toLowerCase(),
-      );
+      const found = [...rows.values()].find((row) => row.email === String(email).toLowerCase());
       if (!found) return null;
       return withPasswordHash ? { ...found } : toPublicUser(found);
     },

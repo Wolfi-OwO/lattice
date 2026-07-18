@@ -120,7 +120,15 @@ export const TEMPLATES = [
     hint: 'Async REST API, Pydantic settings, pytest',
     vars: ['port'],
     installer: 'python',
-    post: ['source .venv/bin/activate', 'uvicorn app.main:app --reload'],
+    // The venv is created here, not assumed. lattice does not auto-install for
+    // Python — it deliberately refuses to guess at someone's toolchain — so a step
+    // that activates a .venv nobody made sends the user straight into
+    // "no such file or directory". These match the template's README line for line.
+    post: [
+      'python -m venv .venv && source .venv/bin/activate',
+      'pip install -r requirements-dev.txt',
+      'uvicorn app.main:app --reload',
+    ],
   },
 
   // --------------------------------------------------------------- frontend
@@ -197,7 +205,11 @@ export const TEMPLATES = [
     dir: 'datascience/python/ml-project',
     hint: 'data/ src/ notebooks/ models/, reproducible env',
     installer: 'python',
-    post: ['source .venv/bin/activate', 'jupyter lab'],
+    post: [
+      'python -m venv .venv && source .venv/bin/activate',
+      'pip install -r requirements-dev.txt',
+      'jupyter lab',
+    ],
   },
 ];
 

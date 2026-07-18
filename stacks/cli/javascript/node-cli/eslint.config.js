@@ -4,7 +4,7 @@ export default [
   js.configs.recommended,
   {
     languageOptions: {
-      ecmaVersion: 2023,
+      ecmaVersion: 'latest', // import attributes (`with { type: 'json' }`) are ES2025
       sourceType: 'module',
       globals: { process: 'readonly', console: 'readonly' },
     },
