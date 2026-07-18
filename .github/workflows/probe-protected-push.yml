@@ -1,0 +1,42 @@
+name: Probe · can CI write to protected main
+
+# TEMPORARY. Delete once it has answered its question.
+#
+# release.yml lands the version commit with `git push origin main`. main is now
+# governed by the `main-protection` ruleset, whose pull_request rule blocks direct
+# pushes — and GitHub refuses to let the Actions app bypass a ruleset on a
+# user-owned repository ("must be part of the ruleset source or owner
+# organization"). So it is genuinely unknown whether GITHUB_TOKEN gets through.
+#
+# The only honest way to find out is to perform the identical operation. Doing it
+# here rather than discovering it during a release matters: in release.yml this
+# push happens AFTER `npm publish`, which is irreversible. A failure there leaves a
+# version on the registry that main has no record of. A failure here costs nothing.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Attempt the same push release.yml performs
+        run: |
+          git config user.name  "Wolfi-OwO"
+          git config user.email "koflerphillip@outlook.com"
+          git commit --allow-empty -m "ci: probe whether CI can write to protected main"
+
+          if git push origin main; then
+            echo "::notice::PUSH SUCCEEDED — GITHUB_TOKEN can write to protected main. release.yml is safe."
+          else
+            echo "::error::PUSH REJECTED — release.yml would fail after npm publish. The version commit cannot land."
+            exit 1
+          fi
