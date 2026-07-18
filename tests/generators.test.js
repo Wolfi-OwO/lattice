@@ -24,7 +24,14 @@ test('every generator is fully specified and non-interactive', () => {
 
     const argv = g.argv('sample');
     assert.ok(Array.isArray(argv) && argv.length > 0, `${g.id}: argv builds a non-empty array`);
-    assert.ok(argv.includes('sample'), `${g.id}: the project name reaches the argv`);
+
+    // The name has to reach the tool somehow. Most take it as an argument; a few
+    // (`swift package init`, `go mod init` in its directory) are run *inside* a
+    // directory runGenerator has already created, and take the name from there.
+    // Those are exactly the ones flagged inProjectDir, so the two must agree.
+    if (!g.inProjectDir) {
+      assert.ok(argv.includes('sample'), `${g.id}: the project name must reach the argv`);
+    }
     // No generator may drop into an interactive prompt in a scaffolder.
     const joined = argv.join(' ');
     assert.ok(

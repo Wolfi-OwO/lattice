@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # A Flutter project is a Dart project with a flutter: section in its
+      # pubspec, so one workflow serves both — the steps below pick the right
+      # command instead of the repository needing two near-identical files.
+      - name: Detect Flutter
+        id: kind
+        run: |
+          if grep -q '^  flutter:' pubspec.yaml 2>/dev/null || grep -q 'sdk: flutter' pubspec.yaml 2>/dev/null; then
+            echo "flutter=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "flutter=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: subosito/flutter-action@v2
+        if: steps.kind.outputs.flutter == 'true'
+        with:
+          channel: stable
+      - uses: dart-lang/setup-dart@v1
+        if: steps.kind.outputs.flutter == 'false'
+
+      - name: Install dependencies
+        run: ${{ steps.kind.outputs.flutter == 'true' && 'flutter pub get' || 'dart pub get' }}
+
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: ${{ steps.kind.outputs.flutter == 'true' && 'flutter analyze' || 'dart analyze' }}
+
+      - name: Test
+        run: ${{ steps.kind.outputs.flutter == 'true' && 'flutter test' || 'dart test' }}

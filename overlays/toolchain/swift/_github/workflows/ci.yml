@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Swift on Linux covers the package itself. A project with Apple-platform
+    # targets needs macos-latest instead — change it here rather than adding a
+    # matrix that spends twice the minutes to prove the same thing.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+
+      - run: swift build --build-tests
+      - run: swift test

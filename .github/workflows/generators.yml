@@ -184,6 +184,108 @@ jobs:
       - working-directory: demo
         run: dotnet build
 
+  # ------------------------------------------------------------------ dart
+  dart:
+    name: ${{ matrix.generator }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - generator: dart
+            setup: dart
+          - generator: flutter
+            setup: flutter
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - uses: dart-lang/setup-dart@v1
+        if: matrix.setup == 'dart'
+      - uses: subosito/flutter-action@v2
+        if: matrix.setup == 'flutter'
+        with:
+          channel: stable
+
+      - run: node bin/lattice.js demo --generator ${{ matrix.generator }} --enterprise
+
+      - name: The overlay chose the dart toolchain, not node
+        run: |
+          grep -q 'package-ecosystem: pub' demo/.github/dependabot.yml
+          ! grep -q 'npm ci' demo/.github/workflows/ci.yml
+
+      - working-directory: demo
+        run: ${{ matrix.setup == 'flutter' && 'flutter analyze' || 'dart analyze' }}
+
+  # ------------------------------------------------------------------ php
+  laravel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - run: node bin/lattice.js demo --generator laravel --enterprise
+
+      # Laravel ships a package.json for Vite. Detecting it as a Node project and
+      # handing it an `npm ci` pipeline is the precedence bug this asserts against.
+      - name: The overlay chose php despite the package.json
+        run: |
+          grep -q 'package-ecosystem: composer' demo/.github/dependabot.yml
+          ! grep -q 'npm ci' demo/.github/workflows/ci.yml
+
+      - working-directory: demo
+        run: php artisan --version
+
+  # ------------------------------------------------------------------ ruby
+  rails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - run: gem install rails
+      - run: node bin/lattice.js demo --generator rails --enterprise
+
+      - name: The overlay chose ruby, not node
+        run: |
+          grep -q 'package-ecosystem: bundler' demo/.github/dependabot.yml
+          ! grep -q 'npm ci' demo/.github/workflows/ci.yml
+
+      - working-directory: demo
+        run: bundle install
+
+  # ------------------------------------------------------------------ swift
+  swift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - uses: swift-actions/setup-swift@v2
+
+      - run: node bin/lattice.js demo --generator swift --enterprise
+
+      - name: The overlay chose swift, not node
+        run: |
+          grep -q 'package-ecosystem: swift' demo/.github/dependabot.yml
+          ! grep -q 'npm ci' demo/.github/workflows/ci.yml
+
+      - working-directory: demo
+        run: swift build
+
   # ------------------------------------------------------------------ expo
   # Split out because create-expo-app pulls a large dependency tree and is the
   # slowest of the npm generators by a wide margin.

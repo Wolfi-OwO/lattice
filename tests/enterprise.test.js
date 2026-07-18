@@ -190,6 +190,10 @@ test('every project gets the CI of its own build tool', () => {
     ['build.gradle.kts', 'gradle', /gradlew build/],
     ['pyproject.toml', 'python', /pytest/],
     ['App.csproj', 'dotnet', /dotnet test/],
+    ['Package.swift', 'swift', /swift test/],
+    ['pubspec.yaml', 'dart', /dart analyze|flutter analyze/],
+    ['composer.json', 'php', /phpunit|artisan test/],
+    ['Gemfile', 'ruby', /rails test|rake test/],
   ];
 
   for (const [marker, expected, ciPattern] of cases) {
@@ -209,6 +213,27 @@ test('every project gets the CI of its own build tool', () => {
         `${expected}: a npm dependabot entry makes GitHub error on the repository`,
       );
     }
+  }
+});
+
+test('a project that also ships a package.json is not mistaken for a Node project', () => {
+  // Laravel ships a package.json for Vite; Rails ships one for jsbundling. Detecting
+  // either as Node hands it an `npm ci` pipeline — the original bug, wearing a
+  // different hat. The composer.json / Gemfile names the real owner, so those
+  // markers sit above node in the table and this is what says so out loud.
+  for (const [marker, expected] of [
+    ['composer.json', 'php'],
+    ['Gemfile', 'ruby'],
+    ['pubspec.yaml', 'dart'],
+  ]) {
+    const target = projectWith('package.json');
+    fs.writeFileSync(path.join(target, marker), '');
+
+    const { toolchain } = overlayEnterprise(OVERLAY, target, VARS);
+    assert.equal(toolchain, expected, `${marker} + package.json must be ${expected}, not node`);
+
+    const ci = fs.readFileSync(path.join(target, '.github/workflows/ci.yml'), 'utf8');
+    assert.ok(!/npm ci/.test(ci), `${expected}: must not get the Node pipeline`);
   }
 });
 
@@ -235,7 +260,7 @@ test('every toolchain layer on disk is a complete, well-formed pair', () => {
   // silently shipping a project with dependabot config and no CI.
   const toolchainRoot = path.join(ROOT, 'overlays', 'toolchain');
   const toolchains = fs.readdirSync(toolchainRoot);
-  assert.ok(toolchains.length >= 7, 'the toolchain layers are present');
+  assert.ok(toolchains.length >= 11, 'the toolchain layers are present');
 
   for (const id of toolchains) {
     for (const rel of ['_github/workflows/ci.yml', '_github/dependabot.yml']) {

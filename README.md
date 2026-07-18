@@ -110,6 +110,37 @@ guarantee: it needs the network, it needs that toolchain installed, and its outp
 is whatever the upstream tool ships today rather than something lattice verified.
 `--list` shows every generator.
 
+### Language coverage, and the two tiers
+
+The tiers are not equal, and the difference is the point. A **built-in stack** is
+held to [CONVENTIONS.md](CONVENTIONS.md) — the same `users` resource, the same error
+envelope, drain behaviour verified with a real SIGTERM — and CI builds and tests it
+on every push. That is expensive per language, which is why the list is short and
+stays short. A **generator** delegates to the framework's own tool: broad, current,
+and not verified by lattice.
+
+| Language | Built-in stack | Generator |
+| --- | --- | --- |
+| JavaScript / TypeScript | `express`, `fastify`, `node-cli`, `react-vite`, `react-vite-ts` | Vite ×9, Next, Nuxt, SvelteKit, Astro, Remix, Vue, Expo |
+| Java | `spring-boot`, `javafx` | — |
+| Kotlin / Android | `android-compose` | — |
+| Python | `fastapi`, `ml-project` | — |
+| C# / .NET | — | `dotnet-webapi`, `dotnet-mvc`, `dotnet-blazor` |
+| Go | — | `go` |
+| Rust | — | `cargo`, `cargo-lib` |
+| PHP | — | `laravel` |
+| Ruby | — | `rails` |
+| Dart / Flutter | — | `dart`, `flutter` |
+| Swift | — | `swift` |
+| C / C++ | — | — |
+
+C and C++ have no official scaffolding tool to delegate to — there is no
+`cargo new` for CMake — so lattice claims neither tier rather than inventing a
+layout and calling it standard. That is a gap, stated as one.
+
+Everything in either column gets `--enterprise`, and gets the CI of its own build
+tool: eleven toolchains, from `npm ci` to `swift test` to `bundle install`.
+
 ### `--enterprise` — the overlay
 
 Adds the scaffolding a repository needs to be worked on by more than one person:

@@ -294,6 +294,14 @@ const TOOLCHAIN_MARKERS = [
   ['gradle', (names) => names.some((n) => /^(build|settings)\.gradle(\.kts)?$/.test(n))],
   ['rust', (names) => names.includes('Cargo.toml')],
   ['go', (names) => names.includes('go.mod')],
+  ['swift', (names) => names.includes('Package.swift')],
+  ['dart', (names) => names.includes('pubspec.yaml')],
+  // These two sit above node deliberately. A Laravel app ships a package.json for
+  // Vite, and a Rails app ships one for jsbundling — both would be detected as Node
+  // projects and handed an `npm ci` pipeline, which is the original bug wearing a
+  // different hat. The composer.json / Gemfile is the one that names the real owner.
+  ['php', (names) => names.includes('composer.json')],
+  ['ruby', (names) => names.includes('Gemfile')],
   ['python', (names) => ['pyproject.toml', 'requirements.txt', 'setup.py'].some((n) => names.includes(n))],
   ['node', (names) => names.includes('package.json')],
 ];

@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # bundler-cache handles both `bundle install` and caching the result, and
+      # reads the version from .ruby-version so CI runs what the project declares.
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Test
+        run: |
+          if [ -f bin/rails ]; then
+            bin/rails test
+          else
+            bundle exec rake test
+          fi

@@ -121,6 +121,10 @@ const QUICK_START = {
   python: ['pip install -e ".[dev]"', 'pytest'],
   maven: ['mvn spring-boot:run'],
   gradle: ['./gradlew bootRun'],
+  swift: ['swift run'],
+  dart: ['dart pub get', 'dart run'],
+  php: ['composer install', 'php artisan serve'],
+  ruby: ['bundle install', 'bin/rails server'],
 };
 
 export function quickStartFor(toolchain) {
