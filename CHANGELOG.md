@@ -13,6 +13,65 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Python templates told you to activate a virtualenv they never created.**
+  `lattice my-app --stack ml-project` printed `source .venv/bin/activate` into a
+  directory with no `.venv`, because lattice deliberately does not auto-install for
+  Python. Both Python templates now print the two lines that actually create it —
+  the same ones their READMEs always had.
+- **`better-sqlite3` could not install on current Node.** The pinned `^11` ships no
+  prebuilt binary for Node 24's ABI, so `--database sqlite` fell back to a node-gyp
+  source build and failed on any machine without a C++ toolchain. Now `^12`, which
+  supports through Node 26.
+- **`node-cli` never linted.** Its ESLint config declared `ecmaVersion: 2023`, which
+  cannot parse the import attributes its own entrypoint uses; every run was a parse
+  error rather than a lint result.
+- **`setTimeout` was undefined to ESLint** in the Express and Fastify templates, so
+  the graceful-shutdown path — the code that matters most at deploy time — was a
+  `no-undef` error nobody saw.
+- **The one line that keeps password hashes out of responses was itself a lint
+  error.** `const { passwordHash, ...safe } = user` is CONVENTIONS.md rule 3; the
+  omitted key is unused on purpose, which is what `ignoreRestSiblings` is for.
+- **`baseUrl` in the TypeScript template**, deprecated in TypeScript 6 and removed
+  in 7, and unnecessary since TypeScript 5. The template now uses create-vite's
+  current shape — a solution `tsconfig.json` referencing `tsconfig.app.json` and
+  `tsconfig.node.json` — which also typechecks `vite.config.ts` for the first time.
+- **Neither React template shipped `public/`**, and `index.html` linked no icon, so
+  every scaffolded app 404'd on its favicon.
+- **23 files across five templates** were unformatted by their own Prettier config.
+- **GitHub Packages published releases that npm had refused.** The job depended on
+  `verify` rather than `publish`, so it inherited none of the checks guarding the
+  npm publish — not the tag/`package.json` agreement, not the human approval. It
+  now depends on `publish`, and skips rather than fails when a version is already
+  present.
+
+### Changed
+
+- **CI runs every check a template declares, not one chosen for it.** Every
+  JavaScript template declared a `lint` script and none had ever been linted;
+  `typecheck` and `prettier --check` had never run at all. Checks are now derived
+  from each template's own `package.json`, and a script that cannot be a pass/fail
+  check must be listed as exempt with a reason — a test fails on one that is
+  neither. Fifteen checks now run where five did.
+- **The Python workflow runs the steps the CLI actually prints**, read from the
+  registry rather than retyped. It claimed to do this before and did not, which is
+  why it passed while the printed steps were broken.
+- **A `native` job covers Node 22 and 24.** `better-sqlite3` is the only dependency
+  with a compiled binary, and the storage matrix pins Node 20, so its ABI was only
+  ever exercised against one runtime.
+- `mongoose` to `^9`, verified against a real MongoDB container.
+
+### Added
+
+- **`.github/workflows/template-drift.yml`** — runs the official generators weekly
+  and reports what the built-in templates are missing or behind on. Both frontend
+  bugs above were exactly this drift, found by a person scaffolding a project
+  rather than by CI. It reports rather than merges: some of the difference is
+  deliberate, and a job that adopted upstream's output wholesale would delete the
+  router, API client and layout conventions that make these templates worth having.
+
+
 ## [2.0.0] - 2026-07-18
 
 ### Added
