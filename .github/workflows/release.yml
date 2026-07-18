@@ -21,9 +21,10 @@ name: Release
 #   publish       npm publish --provenance  ->  create-lattice@X.Y.Z
 #        |
 #        v
-#   record        the Release body is set to the notes already in the changelog
+#   record        a separate job sets the Release body to the notes already in
+#                 the changelog — see the comment on that job for why it is separate
 #
-# WHY NOTHING IS WRITTEN TO THE REPOSITORY HERE
+# WHY THE PUBLISH JOB WRITES NOTHING
 # This workflow used to stamp the version, publish, and then push the version
 # commit to main. Two things were wrong with that. main is now governed by the
 # `main-protection` ruleset and CI cannot push through it — GitHub will not let the
@@ -146,14 +147,11 @@ jobs:
             exit 1
           fi
 
-      # Read, not written: the release pull request already cut this section, and it
-      # was reviewed. The Release page and the changelog therefore say the same thing
-      # because they are the same text. Failing here means the preparation was skipped.
-      - name: Read the notes for this version
-        run: |
-          node scripts/release-changelog.js --notes "${{ steps.v.outputs.version }}" \
-            > "$RUNNER_TEMP/release-notes.md"
-          cat "$RUNNER_TEMP/release-notes.md"
+      # Not the notes themselves — just proof they exist, before anything is
+      # published. The notes are written to the Release page by the `notes` job
+      # below, which needs a permission this job deliberately does not have.
+      - name: Refuse a version the changelog has no section for
+        run: node scripts/release-changelog.js --notes "${{ steps.v.outputs.version }}" > /dev/null
 
       # No token: authentication is OpenID Connect. The id-token: write permission
       # above lets this job mint a short-lived OIDC token; npm exchanges it for a
@@ -163,10 +161,41 @@ jobs:
       - name: Publish to npm (trusted publishing — no token)
         run: npm publish --provenance --access public
 
-      - name: Put the notes on the Release page
+  # Writing the Release body needs `contents: write`, which the publish job above
+  # deliberately does not have — so it is a separate job.
+  #
+  # Splitting it is not only about least privilege. It is the one step that runs
+  # *after* the irreversible publish, and when it failed on the v1.1.0 release the
+  # whole workflow could not simply be re-run: the second attempt would have been
+  # refused by "this version is already on npm", correctly. As its own job it can be
+  # re-run on its own from the failed run, which is what you actually want at that
+  # point. Nothing here touches npm, so re-running it is free.
+  notes:
+    name: Put the notes on the Release page
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # gh release edit — the Release body, nothing else
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Put the changelog's notes on the Release page
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ steps.v.outputs.tag }}" --notes-file "$RUNNER_TEMP/release-notes.md"
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+
+          # Read, not written: the release pull request already cut this section and
+          # it was reviewed. The Release page and the changelog therefore say the
+          # same thing because they are the same text, rather than because someone
+          # pasted carefully. GitHub's auto-generated notes — a list of pull request
+          # titles, internal ones included — are what this replaces.
+          node scripts/release-changelog.js --notes "${tag#v}" > "$RUNNER_TEMP/release-notes.md"
+          gh release edit "$tag" --notes-file "$RUNNER_TEMP/release-notes.md"
 
   # A second, deliberately cosmetic publish, so the repository shows a Packages
   # entry. It is NOT how anyone installs the tool: GitHub Packages only accepts
