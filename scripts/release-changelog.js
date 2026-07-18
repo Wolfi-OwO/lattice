@@ -11,6 +11,7 @@
  *
  *   --check                      is there anything to release? (exit 1 if not)
  *   --version X.Y.Z --date D     do the cut; print the notes to stdout
+ *   --notes X.Y.Z                print the notes of an already-cut section
  *
  * The notes go to stdout so the workflow can pipe them straight into the GitHub
  * Release body — the release page and the changelog then say the same thing by
@@ -94,6 +95,41 @@ export function hasEntries(notes) {
   return notes.some((line) => ENTRY.test(line));
 }
 
+/**
+ * Read the notes for an already-released version back out of the changelog.
+ *
+ * The counterpart to `cut`. Under the prepare-then-release flow the changelog is
+ * cut in a reviewed pull request, so by the time the release publishes the notes
+ * are already sitting in the file — they need reading, not writing. The release
+ * page is then filled from the same text that was reviewed, which is the property
+ * `cut` used to provide by doing both in one step.
+ */
+export function notesFor(text, version) {
+  const { body } = splitTrailingLinks(text.split('\n'));
+
+  const headings = [];
+  body.forEach((line, index) => {
+    const match = line.match(HEADING);
+    if (match) headings.push({ index, name: match[1] });
+  });
+
+  const at = headings.findIndex((h) => h.name === version);
+  if (at === -1) {
+    throw new Error(
+      `CHANGELOG.md has no "## [${version}]" section.\n` +
+        'The release PR that cuts it has to be merged before the Release is published.',
+    );
+  }
+
+  const next = headings[at + 1];
+  const notes = trimBlankEdges(body.slice(headings[at].index + 1, next ? next.index : body.length));
+
+  if (!hasEntries(notes)) {
+    throw new Error(`CHANGELOG.md's [${version}] section has no entries.`);
+  }
+  return notes.join('\n');
+}
+
 export function cut(text, { version, date, repository }) {
   const { preamble, notes, previousVersion, rest, links } = parseChangelog(text);
 
@@ -165,11 +201,29 @@ function main(argv) {
     return at === -1 ? null : argv[at + 1];
   };
 
+  // Read the notes for a version already cut into the file. stdout is the notes and
+  // only the notes, so the release workflow can pipe it into the Release body.
+  //
+  // The failure is caught and printed rather than thrown: this runs unattended in
+  // release.yml, where a stack trace in the log buries the one line that says what
+  // to do about it. Every other path in this script exits the same way.
+  if (argv.includes('--notes')) {
+    try {
+      console.log(notesFor(text, valueOf('--notes')));
+    } catch (error) {
+      console.error(error.message);
+      process.exit(1);
+    }
+    return;
+  }
+
   const version = valueOf('--version');
   const date = valueOf('--date');
 
   if (!version || !date) {
-    console.error('usage: release-changelog.js --version X.Y.Z --date YYYY-MM-DD  |  --check');
+    console.error(
+      'usage: release-changelog.js --version X.Y.Z --date YYYY-MM-DD  |  --check  |  --notes X.Y.Z',
+    );
     process.exit(2);
   }
 

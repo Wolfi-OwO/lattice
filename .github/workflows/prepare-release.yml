@@ -1,0 +1,132 @@
+name: Prepare release
+
+# Step one of two. You run this, review what it wrote, and merge it. Then you cut
+# a GitHub Release from main's HEAD, and release.yml publishes it.
+#
+#   you run this with a version      X.Y.Z
+#        |
+#        v
+#   refuse     ...if X.Y.Z is already on npm, or CHANGELOG.md has nothing under
+#              [Unreleased]. Both before anything is written, as before.
+#        |
+#        v
+#   stamp      package.json becomes X.Y.Z, and [Unreleased] becomes
+#              "## [X.Y.Z] - <today>" with a fresh empty [Unreleased] above it
+#        |
+#        v
+#   propose    a release/vX.Y.Z branch and a pull request — which you review
+#        |
+#        v
+#   you merge it, then publish a Release tagged vX.Y.Z from main's HEAD
+#
+# WHY THE VERSION BUMP MOVED IN FRONT OF THE PUBLISH
+# It used to happen after `npm publish`, inside release.yml, and land on main with
+# a direct push. main is now governed by the `main-protection` ruleset, and CI
+# cannot push through it — GitHub refuses to let the Actions app bypass a ruleset
+# on a user-owned repository, and no repository-role bypass exempts
+# github-actions[bot] either. Both were tested; both are rejected with GH013.
+#
+# That was not merely an obstacle to route around. The old order had a genuine
+# failure mode: the version commit landed *after* the irreversible publish, so any
+# failure in that final step left a version on a registry that never forgets and
+# no record of it on main. Moving the bump in front removes that window entirely —
+# by the time anything is published, the version and its notes are already on main,
+# reviewed and merged. Nothing is written to the repository during a release.
+#
+# The cost is honest: releasing is now two steps instead of one, and the second is
+# manual. That is the price of main being genuinely protected.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The version to release, without a leading v (e.g. 1.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write # push the release branch
+  pull-requests: write # open the pull request
+
+jobs:
+  prepare:
+    name: Prepare ${{ inputs.version }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Validate the version
+        id: v
+        run: |
+          version="${{ inputs.version }}"
+          # A leading v here would produce vv1.2.3 as the tag later on.
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$'; then
+            echo "::error::'$version' is not a semver version. Pass 1.2.3, not v1.2.3."
+            exit 1
+          fi
+          echo "version=$version"  >> "$GITHUB_OUTPUT"
+          echo "branch=release/v$version" >> "$GITHUB_OUTPUT"
+
+      # npm would reject the duplicate at publish time, but that is two manual steps
+      # and a merged pull request later. Refusing here costs nothing.
+      - name: Refuse a version that is already on npm
+        run: |
+          if npm view "create-lattice@${{ steps.v.outputs.version }}" version >/dev/null 2>&1; then
+            echo "::error::create-lattice@${{ steps.v.outputs.version }} is already published. A version on npm can never be replaced — pick the next one."
+            exit 1
+          fi
+
+      - name: Refuse a release with no notes
+        run: node scripts/release-changelog.js --check
+
+      - name: Stamp the version and cut the changelog
+        run: |
+          npm version "${{ steps.v.outputs.version }}" --no-git-tag-version --allow-same-version
+          node scripts/release-changelog.js \
+            --version "${{ steps.v.outputs.version }}" \
+            --date "$(date -u +%Y-%m-%d)" \
+            > "$RUNNER_TEMP/release-notes.md"
+          echo "--- notes that will appear on the Release page ---"
+          cat "$RUNNER_TEMP/release-notes.md"
+
+      - name: Open the release pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Authorship is these two lines, not the token — the same reason
+          # release.yml sets them: github-actions[bot] stays out of the history.
+          git config user.name  "Wolfi-OwO"
+          git config user.email "koflerphillip@outlook.com"
+
+          git checkout -b "${{ steps.v.outputs.branch }}"
+          git commit -am "chore(release): v${{ steps.v.outputs.version }}"
+          git push --force origin "${{ steps.v.outputs.branch }}"
+
+          # --fill would use the commit message; the body is written out instead so
+          # the reviewer sees the notes they are approving without opening a file.
+          gh pr create \
+            --base main \
+            --head "${{ steps.v.outputs.branch }}" \
+            --title "chore(release): v${{ steps.v.outputs.version }}" \
+            --body "$(cat <<BODY
+          Prepares **v${{ steps.v.outputs.version }}**. Nothing is published by merging this.
+
+          - \`package.json\` set to ${{ steps.v.outputs.version }}
+          - \`CHANGELOG.md\`: \`[Unreleased]\` cut into \`[${{ steps.v.outputs.version }}]\`, a fresh empty \`[Unreleased]\` left above it
+
+          ## After merging
+
+          Publish a GitHub Release tagged \`v${{ steps.v.outputs.version }}\` **from main's HEAD**. \`release.yml\` will verify, wait for your approval on the \`production\` environment, and publish to npm.
+
+          ## The notes this will put on the Release page
+
+          $(cat "$RUNNER_TEMP/release-notes.md")
+          BODY
+          )"

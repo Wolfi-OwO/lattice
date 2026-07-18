@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { cut, parseChangelog, hasEntries, repositoryUrl } from '../scripts/release-changelog.js';
+import { cut, notesFor, parseChangelog, hasEntries, repositoryUrl } from '../scripts/release-changelog.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPOSITORY = 'https://github.com/Wolfi-OwO/lattice';
@@ -104,4 +104,24 @@ test('the real CHANGELOG.md parses and has an [Unreleased] heading to write into
   // invariant that always holds is that the heading is there for the next change.
   const text = fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8');
   assert.doesNotThrow(() => parseChangelog(text));
+});
+
+test('notesFor reads back a section that has already been cut', () => {
+  // The prepare-then-release split means the notes are written in a reviewed pull
+  // request and read at publish time, rather than both happening in one unattended
+  // step. This is the read half, and it is what fills the Release page.
+  const cutResult = cut(CHANGELOG, { version: '2.1.0', date: '2026-07-18', repository: REPOSITORY });
+
+  assert.equal(notesFor(cutResult.text, '2.1.0'), cutResult.notes);
+});
+
+test('notesFor refuses a version the changelog has no section for', () => {
+  // This is the signal that the release pull request was never merged — the exact
+  // mistake the two-step flow makes possible, so it must fail loudly rather than
+  // publish with an empty Release body.
+  assert.throws(
+    () => notesFor(CHANGELOG, '9.9.9'),
+    /has no "## \[9\.9\.9\]" section/,
+    'a missing section names the merge that did not happen',
+  );
 });
