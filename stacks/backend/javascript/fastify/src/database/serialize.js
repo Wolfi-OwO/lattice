@@ -28,8 +28,12 @@ export function matchesQuery(row, q) {
   if (!q) return true;
   const needle = String(q).toLowerCase();
   return (
-    String(row.name ?? '').toLowerCase().includes(needle) ||
-    String(row.email ?? '').toLowerCase().includes(needle)
+    String(row.name ?? '')
+      .toLowerCase()
+      .includes(needle) ||
+    String(row.email ?? '')
+      .toLowerCase()
+      .includes(needle)
   );
 }
 

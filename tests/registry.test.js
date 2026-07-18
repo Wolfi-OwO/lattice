@@ -14,6 +14,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { CATEGORIES, TEMPLATES, FULLSTACK_BACKENDS, FULLSTACK_FRONTENDS, findTemplate } from '../src/registry.js';
+import { checksFor, checkableTemplates, NOT_CHECKED } from '../scripts/template-checks.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STACKS = path.join(ROOT, 'stacks');
@@ -362,4 +363,46 @@ test('every frontend obeys the four dependency rules', () => {
   }
 
   assert.deepEqual(violations, [], `dependency rules broken:\n  ${violations.join('\n  ')}`);
+});
+
+test('every script a template declares is either checked in CI or says why not', () => {
+  // The gap this closes: every JavaScript template declared a `lint` script and
+  // none of them had ever been linted in CI, because the workflow ran one
+  // hardcoded command per template. A script nobody runs is a script that breaks
+  // quietly. Adding one to a template now either gets checked or fails here.
+  for (const template of checkableTemplates()) {
+    const file = path.join(STACKS, template.dir, '_package.json');
+    const scripts = Object.keys(JSON.parse(fs.readFileSync(file, 'utf8')).scripts ?? {});
+    const checks = checksFor(template).join('\n');
+
+    for (const name of scripts) {
+      if (name in NOT_CHECKED) {
+        assert.ok(
+          NOT_CHECKED[name].length > 10,
+          `${template.framework}: "${name}" is exempt but the reason is not a reason`,
+        );
+        continue;
+      }
+      assert.match(
+        checks,
+        new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`),
+        `${template.framework}: the "${name}" script is never run in CI, and is not listed as exempt`,
+      );
+    }
+  }
+});
+
+test('the template workflow runs the derived checks, not its own hardcoded ones', () => {
+  // templates-javascript.yml used to carry a `check:` per template. That is the
+  // shape that let `lint` go unrun for every template at once: the workflow chose
+  // one command and nothing compared it against what the template declared.
+  const workflow = fs.readFileSync(
+    path.join(STACKS, '..', '.github', 'workflows', 'templates-javascript.yml'),
+    'utf8',
+  );
+  assert.match(workflow, /template-checks\.js/, 'the workflow must derive its checks');
+  assert.ok(
+    !/^\s+check:/m.test(workflow),
+    'no hardcoded per-template `check:` — that is what this replaced',
+  );
 });

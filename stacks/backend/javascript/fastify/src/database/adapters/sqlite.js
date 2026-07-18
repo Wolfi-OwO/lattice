@@ -106,9 +106,7 @@ export async function createAdapter({ url }) {
       const where = q ? 'WHERE name LIKE @q OR email LIKE @q' : '';
       const params = q ? { q: `%${q}%` } : {};
 
-      const { total } = sqlite
-        .prepare(`SELECT COUNT(*) AS total FROM users ${where}`)
-        .get(params);
+      const { total } = sqlite.prepare(`SELECT COUNT(*) AS total FROM users ${where}`).get(params);
 
       const rows = sqlite
         .prepare(

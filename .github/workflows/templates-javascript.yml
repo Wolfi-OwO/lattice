@@ -1,12 +1,24 @@
 name: Templates · JavaScript
 
-# The JavaScript and TypeScript templates that do not choose a storage. The two
-# that do — express and fastify — are covered by the Storages job instead, which
-# runs each of them against all six adapters; scaffolding them here without a
-# --database would just make the CLI (correctly) refuse to guess.
+# Every JavaScript and TypeScript template, scaffolded and then put through every
+# check it declares — not one command chosen here.
 #
-# The claim here is narrower and still worth proving: the template builds, and
-# its own suite passes, from nothing but a scaffold.
+# The previous version carried a `check:` per template: react-vite ran
+# `npm run build`, node-cli ran `npm test`, and that was all. Every one of these
+# templates also declares a `lint` script, and not one of them had ever been
+# linted in CI. The TypeScript template's `typecheck` had never run either, and
+# the first `prettier --check` against a scaffolded project found 23 unformatted
+# files across five templates. None of it was broken. None of it was verified.
+#
+# So the checks are derived from what the template declares
+# (scripts/template-checks.js) rather than restated here. A script added to a
+# template is picked up automatically; a script that genuinely cannot be a
+# pass/fail check — a dev server that never exits — has to be listed as exempt
+# with a reason, and tests/registry.test.js fails on one that is neither.
+#
+# express and fastify appear here for their lint, format and unit checks. Their
+# six storage adapters are the Storages workflow's job, which scaffolds each of
+# them against a real database.
 
 on:
   push:
@@ -28,17 +40,40 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - stack: express
+            extra: --database memory
+          - stack: fastify
+            extra: --database memory
           - stack: react-vite
-            check: npm run build
+            extra: ''
           - stack: react-vite-ts
-            check: npm run build # tsc -b under strict, then vite build
+            extra: ''
           - stack: node-cli
-            check: npm test
+            extra: ''
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 20
-      - run: node bin/lattice.js demo --stack ${{ matrix.stack }}
-      - working-directory: demo
-        run: ${{ matrix.check }}
+
+      - run: node bin/lattice.js demo --stack ${{ matrix.stack }} ${{ matrix.extra }} --no-database-start
+
+      - name: Run every check this template declares
+        working-directory: demo
+        run: |
+          set -euo pipefail
+          node ../scripts/template-checks.js --stack ${{ matrix.stack }} > ../checks.txt
+          echo "Derived from the template's own package.json:"
+          sed 's/^/    /' ../checks.txt
+
+          while IFS= read -r check; do
+            [ -z "$check" ] && continue
+            echo "::group::$check"
+            # Each check names itself on failure, so a red run says which of lint,
+            # typecheck, build, test or formatting broke without opening the log.
+            if ! eval "$check"; then
+              echo "::error::${{ matrix.stack }}: \"$check\" failed"
+              exit 1
+            fi
+            echo "::endgroup::"
+          done < ../checks.txt

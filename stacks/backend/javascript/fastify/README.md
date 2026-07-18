@@ -73,7 +73,7 @@ dead process, every replica would fail liveness at once, and the orchestrator
 would restart the whole fleet — turning a database blip into an outage of your
 own making. Dependency health is a **readiness** question.
 
-On SIGTERM the server flips readiness to 503 *first* and keeps serving, then
+On SIGTERM the server flips readiness to 503 _first_ and keeps serving, then
 stops accepting. That ordering is what lets a load balancer take the instance out
 of rotation before the socket closes.
 

@@ -36,13 +36,7 @@ describe('POST /api/users', () => {
 describe('GET /api/users', () => {
   it('paginates', async () => {
     const res = await request(app).get('/api/users?page=1&limit=5').expect(200);
-    assert.deepEqual(Object.keys(res.body).sort(), [
-      'items',
-      'limit',
-      'page',
-      'pages',
-      'total',
-    ]);
+    assert.deepEqual(Object.keys(res.body).sort(), ['items', 'limit', 'page', 'pages', 'total']);
   });
 });
 
