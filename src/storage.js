@@ -34,7 +34,11 @@ export const STORAGE = {
     hint: 'Document store · mongoose — what most of your projects already use',
     adapter: 'mongo',
     needsUrl: true,
-    deps: { mongoose: '^8.5.1' },
+    // v9 requires Node >= 20.19, which every supported runtime here satisfies. The
+    // adapter uses only Schema/connect/model/isValidObjectId, stable across the 8->9
+    // boundary — and the mongodb job scaffolds and tests against a real container,
+    // so this is verified rather than assumed.
+    deps: { mongoose: '^9.7.4' },
     durable: true,
     server: true,
     defaultPort: 27017,
@@ -125,7 +129,11 @@ export const STORAGE = {
     hint: 'Relational, zero-config · a single file on disk, no server',
     adapter: 'sqlite',
     needsUrl: true,
-    deps: { 'better-sqlite3': '^11.1.2' },
+    // v12, not v11: v11 ships no prebuilt binary for Node 24's ABI, so `npm install`
+    // falls back to a node-gyp source build and fails on any machine without a C++
+    // toolchain. CI runs Node 20 and never saw it; anyone on current Node hit it
+    // immediately. v12 declares support through Node 26.
+    deps: { 'better-sqlite3': '^12.11.1' },
     durable: true,
     server: false,
     env: (v) => ({ DATABASE_URL: `file:./data/${v.projectName}.db` }),

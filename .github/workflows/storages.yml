@@ -60,3 +60,33 @@ jobs:
       - name: Run the generated project's own tests
         working-directory: demo
         run: npm test
+
+  # better-sqlite3 is the only dependency in any template with a compiled binary,
+  # so it is the only one whose ABI can disagree with the Node running it. The rest
+  # of this workflow pins Node 20 and therefore could not see that: `^11` shipped no
+  # prebuild for Node 24, so `npm install --database sqlite` fell back to a node-gyp
+  # source build and failed outright on any current-Node machine without a C++
+  # toolchain. It was reported from a laptop, not by CI.
+  #
+  # A separate job rather than another matrix axis: doubling twelve jobs that each
+  # start a real database container to cover one native module would be a lot of
+  # minutes for a risk that lives in exactly one package.
+  native:
+    name: sqlite · node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+
+      - run: node bin/lattice.js demo --stack express --database sqlite --no-database-start
+
+      # Loading the binding is the check. Installing proves a binary arrived;
+      # only running it proves the binary matches this Node's ABI.
+      - working-directory: demo
+        run: npm test
