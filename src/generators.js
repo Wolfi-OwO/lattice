@@ -50,7 +50,11 @@ export const GENERATORS = [
     ['vite-preact', 'Vite · Preact', 'preact', 'preact'],
     ['vite-lit', 'Vite · Lit', 'lit', 'lit'],
     ['vite-solid', 'Vite · Solid', 'solid', 'solid'],
-    ['vite-qwik', 'Vite · Qwik', 'qwik', 'qwik'],
+    // Qwik is deliberately absent: @builder.io/qwik pins `vite >=5 <8` while
+    // create-vite now scaffolds vite 8, so the project it generates cannot npm
+    // install without --legacy-peer-deps. Shipping a generator whose output does
+    // not install would be worse than not offering it. Restore it when upstream
+    // widens the peer range.
   ].map(([id, label, template, ecosystem]) => ({
     id,
     label,
@@ -112,9 +116,13 @@ export const GENERATORS = [
   },
   {
     id: 'remix',
-    label: 'React Router (Remix)',
+    label: 'React Router',
     ecosystem: 'react',
-    ...npx((name) => ['create-remix@latest', name, '--no-install', '--no-git-init', '--yes']),
+    // Was create-remix. Remix v2 was upstreamed into React Router, and
+    // create-remix@latest is now only a notice telling you to use this — it exits
+    // without creating a directory, which is precisely the silent-stale-argv case
+    // generators.yml exists to catch, and did.
+    ...npx((name) => ['create-react-router@latest', name, '--no-install', '--no-git-init', '--yes']),
   },
   {
     id: 'expo',

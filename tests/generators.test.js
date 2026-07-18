@@ -90,11 +90,18 @@ test('generator ids are unique', () => {
   }
 });
 
-test('the full create-vite template matrix is present', () => {
-  // The user asked specifically for "npm create vite, all the languages it offers".
-  for (const t of ['vanilla', 'react', 'vue', 'svelte', 'preact', 'lit', 'solid', 'qwik']) {
+test('the create-vite template matrix is present, minus the one that cannot install', () => {
+  for (const t of ['vanilla', 'react', 'vue', 'svelte', 'preact', 'lit', 'solid']) {
     assert.ok(findGenerator(`vite-${t}`), `create-vite template "${t}" should be a generator`);
   }
+
+  // Qwik is offered by create-vite but is deliberately not offered here:
+  // @builder.io/qwik pins `vite >=5 <8` while create-vite scaffolds vite 8, so the
+  // generated project fails `npm install` on a peer conflict. CI caught it. A
+  // generator whose output does not install is worse than one that is absent, so
+  // this asserts the absence is a decision rather than an oversight — delete this
+  // when upstream widens the peer range and the generator comes back.
+  assert.equal(findGenerator('vite-qwik'), null, 'vite-qwik stays out until upstream unpins vite');
 });
 
 test('findGenerator returns null for an unknown id', () => {
