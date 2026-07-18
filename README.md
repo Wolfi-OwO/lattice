@@ -241,43 +241,69 @@ about tools lattice does not control, and inspection cannot verify them.
 
 ## Releasing
 
-You write down what changed, and you publish a Release. Everything else — the
-version number, the changelog, npm — happens on its own.
+Two steps, both of which you drive. You write down what changed; the version bump
+is prepared for your review, and only then does anything reach npm.
 
 1. As you work, add entries under `## [Unreleased]` in
-   [CHANGELOG.md](./CHANGELOG.md). This is the only manual step, and it is
+   [CHANGELOG.md](./CHANGELOG.md). This is the only writing you do, and it is
    deliberate: notes written at release time are notes nobody can write, because
    by then nobody remembers.
-2. Draft a Release on GitHub with the tag `vX.Y.Z` and publish it.
+2. Run the **Prepare release** workflow with the version (`1.2.0`, no leading `v`).
+   It refuses early if that version is already on npm or if `[Unreleased]` is
+   empty, then stamps `package.json`, cuts `[Unreleased]` into
+   `## [1.2.0] - <today>`, and opens a pull request for you to review.
+3. Merge it.
+4. Publish a GitHub Release tagged `v1.2.0` **from `main`'s HEAD**.
 
 Publishing the Release triggers `.github/workflows/release.yml`, which:
 
-- **refuses early** if `vX.Y.Z` is already on npm, if `[Unreleased]` is empty, or if
-  the Release was cut from anything other than `main`'s HEAD — all *before* anything
-  is written, because `npm publish` cannot be undone. (That last one matters: the
-  job publishes `main`, so a tag pointing at an older commit would ship code nobody
-  tagged, under a version number that can never be reused.)
 - re-runs the full unit matrix on the code being shipped;
-- **sets the version** from the tag, so the tag is the single source of truth and
-  `package.json` cannot drift from it;
-- **cuts the changelog**: `[Unreleased]` becomes `## [X.Y.Z] - <today>`, and a
-  fresh empty `[Unreleased]` is left above it for the next change;
+- **refuses** if the tag is not `main`'s HEAD, if `package.json` disagrees with the
+  tag, if the changelog has no section for that version, or if the version is
+  already on npm — all *before* anything is published, because `npm publish` cannot
+  be undone;
+- **waits for a human** to approve the `production` environment. This is the last
+  point at which a release can be stopped;
 - publishes to npm with
   [provenance](https://docs.npmjs.com/generating-provenance-statements), so anyone
   can verify the tarball was built from this repo;
-- commits the version and the changelog to `main` **as you**, moves the tag onto
-  that commit, and sets the Release body to the notes it just wrote.
+- sets the Release body to the notes already in the changelog — the same text you
+  reviewed, so the two agree by construction rather than by careful pasting.
 
-The version bump and the release notes land in one commit on purpose: a version
-that shipped and the notes saying what was in it are the same fact.
+### Why the version bump comes first
 
-No bot writes to this repository. The commit is authored by you — the token only
-authorises the push — so `github-actions[bot]` never lands in the contributor
-list. That is also why there is no `release-please` or `semantic-release` here:
-both work by having a bot open and merge a release PR, which is the one thing this
-setup is built to avoid.
+It used to happen inside the release, *after* `npm publish`, and land on `main`
+with a direct push. Both halves of that were wrong.
 
-Requires one secret: `NPM_TOKEN`, an npm automation token.
+`main` is governed by the `main-protection` ruleset, and CI cannot push through it:
+GitHub does not allow the Actions app to bypass a ruleset on a user-owned
+repository, and no repository-role bypass exempts `github-actions[bot]` either.
+Both were tested; both fail with `GH013`.
+
+The deeper problem was the ordering. A version commit landing after an
+irreversible publish means any failure in that last step leaves a version on a
+registry that never forgets, and no record of it on `main`. Preparing the bump in
+a reviewed pull request removes that window rather than working around it: by the
+time anything is published, the version and its notes are already on `main`.
+Nothing is written to the repository during a release.
+
+What was a mutation became an assertion. Rather than setting `package.json` from
+the tag, the release now refuses to publish if the two disagree — which catches a
+Release cut from the wrong commit, the case the old stamping quietly hid.
+
+The cost is honest: releasing is two steps instead of one. That is the price of
+`main` being genuinely protected.
+
+No bot writes to this repository. The release pull request is authored by you —
+the token only authorises the push — so `github-actions[bot]` never lands in the
+contributor list. That is also why there is no `release-please` or
+`semantic-release` here: both work by having a bot open *and merge* a release PR,
+and the merge is the part this setup deliberately keeps human.
+
+No secret required. Publishing uses
+[trusted publishing](https://docs.npmjs.com/trusted-publishers) over OpenID
+Connect, so npm trusts this workflow directly — there is no `NPM_TOKEN` to store,
+leak, or rotate.
 
 See [STRUCTURE.md](./STRUCTURE.md) for why the templates are shaped the way they
 are — it is grounded in an audit of every project in `htl-villach`.

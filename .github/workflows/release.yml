@@ -1,10 +1,7 @@
 name: Release
 
-# Day to day you just commit and merge PRs to main. Nothing here fires, and
-# nothing writes to the repository.
-#
-# Creating a *tag* on its own also does nothing — deliberately. The trigger is
-# publishing a **Release**:
+# Step two of two. `prepare-release.yml` has already bumped the version and cut the
+# changelog through a reviewed pull request; this publishes what is on main.
 #
 #   you publish a GitHub Release with the tag vX.Y.Z
 #        |
@@ -12,50 +9,41 @@ name: Release
 #   verify        the full unit matrix runs again, on the code being shipped
 #        |
 #        v
-#   refuse        ...if the version is already on npm, or if CHANGELOG.md has
-#                 nothing under [Unreleased]. Both checks run BEFORE anything is
-#                 written anywhere.
+#   refuse        ...if the tag is not main's HEAD, if package.json disagrees with
+#                 the tag, if CHANGELOG.md has no section for it, or if the version
+#                 is already on npm. All BEFORE anything is published.
 #        |
 #        v
-#   stamp         package.json is set to X.Y.Z, and CHANGELOG.md's [Unreleased]
-#                 section becomes "## [X.Y.Z] - <today>" with a fresh empty
-#                 [Unreleased] left above it for the next change
+#   approve       a human approves the `production` environment. This is the last
+#                 point at which the release can still be stopped.
 #        |
 #        v
 #   publish       npm publish --provenance  ->  create-lattice@X.Y.Z
 #        |
 #        v
-#   record        the version + changelog commit lands on main AS YOU, the tag is
-#                 moved onto it, and the Release body is set to the notes that
-#                 just went into the changelog
+#   record        the Release body is set to the notes already in the changelog
 #
-# WHY THE ORDER IS TEST -> REFUSE -> STAMP -> PUBLISH -> COMMIT
-# npm is the irreversible step: a published version can never be republished. So
-# nothing is written anywhere until the suite is green, and main is only written
-# *after* npm has accepted the tarball. main therefore records versions that
-# genuinely shipped, and a failed release leaves the branch untouched rather than
-# carrying a version that does not exist on the registry.
+# WHY NOTHING IS WRITTEN TO THE REPOSITORY HERE
+# This workflow used to stamp the version, publish, and then push the version
+# commit to main. Two things were wrong with that. main is now governed by the
+# `main-protection` ruleset and CI cannot push through it — GitHub will not let the
+# Actions app bypass a ruleset on a user-owned repository, and no repository-role
+# bypass exempts github-actions[bot]; both were tested and both fail with GH013.
 #
-# The changelog is *checked* before the publish and *cut* before the publish, but
-# only *committed* after it. Checking early is the whole point: if "you forgot to
-# write the release notes" were discovered after `npm publish`, the tarball would
-# already be on a registry that never forgets, and the file that records what is
-# in it would be the thing that failed. So it fails while failing is still free.
+# More importantly, that push happened *after* `npm publish`. A failure in it left
+# a version on a registry that never forgets and no record of it on main. Moving
+# the bump into a reviewed pull request beforehand removes the window rather than
+# working around it: by the time this workflow runs, main already carries the
+# version and its notes, so there is nothing left to write back.
 #
-# WHY NO BOT APPEARS IN THE HISTORY
-# The commit's author is whatever `git config user.name/user.email` says — the
-# token only authorises the *push*. Setting them to you means the version commit
-# is authored by you and shows your profile, using the built-in GITHUB_TOKEN.
-# No PAT to create, no secret to rotate, and github-actions[bot] never lands in
-# the contributor list. The email below must be one verified on your GitHub
-# account, or the commit will show as an unattributed author instead of you.
+# What was a mutation is now an assertion. Instead of setting package.json from the
+# tag, this refuses to publish if the two disagree — which catches a Release cut
+# from the wrong commit, the case the old stamping quietly papered over.
 #
 # No npm secret required: publishing is OpenID Connect (trusted publishing), so
 # npm trusts this workflow directly — nothing to store, leak, or rotate. The trust
 # is configured once on npmjs.org: create-lattice -> Settings -> Trusted Publisher
 # -> this repository, workflow release.yml.
-# If main is protected against direct pushes, allow this workflow to bypass it,
-# or the version commit cannot land.
 
 on:
   release:
@@ -85,14 +73,15 @@ jobs:
     # described below, and gating it would mean approving the same release twice.
     environment: production
     permissions:
-      contents: write # push the version commit and move the tag
+      # read, not write: this workflow no longer commits anything. The version and
+      # the changelog reached main through the reviewed release pull request.
+      contents: read
       id-token: write # mints the OIDC token that signs the npm provenance
     steps:
       - uses: actions/checkout@v7
         with:
-          # The version commit has to land on main, so check out the branch
-          # rather than the detached tag.
-          ref: main
+          # The tag, not main: what gets published must be exactly what was
+          # tagged. The step below then refuses if that is not also main's HEAD.
           fetch-depth: 0
 
       - uses: actions/setup-node@v7
@@ -120,67 +109,50 @@ jobs:
           echo "tag=$tag"         >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      # The checkout above is `main`, but the Release was cut from a *tag*. If
-      # those two are not the same commit, everything downstream is quietly wrong:
-      # the tests would run against main, the tarball would be built from main, and
-      # npm would receive main's code under the tag's version number — a published
-      # vX.Y.Z whose contents were never the thing anyone tagged. And npm does not
-      # take it back.
-      #
-      # Rather than guess which of the two is meant, refuse. Cutting a Release from
-      # main's HEAD is the only workflow this repository has, so a mismatch is not
-      # an exotic configuration — it is main having moved on while the Release was
-      # being drafted, which is exactly the case that must not publish.
+      # The Release must be cut from main's HEAD. If it is not, everything
+      # downstream is quietly wrong: the tests would run against one tree and npm
+      # would receive another under this version number. And npm does not take it
+      # back. Rather than guess which is meant, refuse.
       - name: Refuse a Release cut from anything but main's HEAD
         run: |
-          tagged="${{ github.sha }}"
-          head="$(git rev-parse HEAD)"
+          git fetch --quiet origin main
+          tagged="$(git rev-parse HEAD)"
+          head="$(git rev-parse origin/main)"
 
           if [ "$tagged" != "$head" ]; then
             echo "::error::${{ steps.v.outputs.tag }} points at $tagged, but main is at $head."
-            echo "::error::Publishing would ship main's code as ${{ steps.v.outputs.tag }}. Delete the Release and the tag, then cut it again from main's HEAD."
+            echo "::error::Publishing would ship the wrong tree as ${{ steps.v.outputs.tag }}. Delete the Release and the tag, then cut it again from main's HEAD."
             exit 1
           fi
-          echo "main and ${{ steps.v.outputs.tag }} are the same commit ($head)."
 
-      # npm would reject the duplicate anyway, but it would do so *after* the
-      # release had already been cut and half this job had run. Failing here says
-      # plainly what went wrong: that version is already gone, pick the next one.
+      # This is the assertion that replaced the old stamping step. package.json is
+      # set by the release pull request, so if it disagrees with the tag then the
+      # Release was cut from the wrong commit, or the preparation was never merged.
+      # Stamping it here would have hidden exactly that.
+      - name: Refuse a tag that disagrees with package.json
+        run: |
+          declared="$(node -p "require('./package.json').version")"
+          if [ "$declared" != "${{ steps.v.outputs.version }}" ]; then
+            echo "::error::package.json says $declared but the tag says ${{ steps.v.outputs.version }}."
+            echo "::error::Run the Prepare release workflow for ${{ steps.v.outputs.version }} and merge its pull request before cutting the Release."
+            exit 1
+          fi
+
+      # npm would reject the duplicate anyway, but only after this job had run.
       - name: Refuse a version that is already on npm
         run: |
-          version="${{ steps.v.outputs.version }}"
-          if npm view "create-lattice@$version" version >/dev/null 2>&1; then
-            echo "::error::create-lattice@$version is already published. A version on npm can never be replaced — cut the next one."
+          if npm view "create-lattice@${{ steps.v.outputs.version }}" version >/dev/null 2>&1; then
+            echo "::error::create-lattice@${{ steps.v.outputs.version }} is already published. A version on npm can never be replaced — cut the next one."
             exit 1
           fi
 
-      # Fails while failing is still free — see the header. After `npm publish`
-      # this same discovery would be unfixable.
-      - name: Refuse a release with no notes
-        run: node scripts/release-changelog.js --check
-
-      # Every file that records the version is rewritten from the tag, so the tag
-      # is the single source of truth and they cannot drift apart. package.json is
-      # the only file that carries the number today — the CLI's `--version` reads it
-      # from there rather than keeping a second copy, which is why there is no third
-      # place to update. Add further files here if that ever changes; they stay in
-      # the one commit below.
-      - name: Set the version everywhere
-        run: npm version "${{ steps.v.outputs.version }}" --no-git-tag-version --allow-same-version
-
-      # [Unreleased] becomes "## [X.Y.Z] - <today>", and a fresh empty [Unreleased]
-      # is left above it. The notes are written to a file rather than a step output
-      # because they are multi-line prose — a heredoc delimiter is one stray line in
-      # someone's changelog away from mangling the workflow. It lands in RUNNER_TEMP,
-      # outside the checkout, so it cannot be swept into the commit below.
-      - name: Write the changelog
-        id: changelog
+      # Read, not written: the release pull request already cut this section, and it
+      # was reviewed. The Release page and the changelog therefore say the same thing
+      # because they are the same text. Failing here means the preparation was skipped.
+      - name: Read the notes for this version
         run: |
-          node scripts/release-changelog.js \
-            --version "${{ steps.v.outputs.version }}" \
-            --date "$(date -u +%Y-%m-%d)" \
+          node scripts/release-changelog.js --notes "${{ steps.v.outputs.version }}" \
             > "$RUNNER_TEMP/release-notes.md"
-          echo "--- notes ---"
           cat "$RUNNER_TEMP/release-notes.md"
 
       # No token: authentication is OpenID Connect. The id-token: write permission
@@ -188,43 +160,9 @@ jobs:
       # one-time publish credential, and the trusted publisher configured on
       # npmjs.org (create-lattice -> this repo -> release.yml) is what makes npm
       # trust it. Nothing is stored — there is no NPM_TOKEN to leak or rotate.
-      #
-      # Provenance is automatic under trusted publishing; the flag is redundant but
-      # harmless and keeps the intent explicit — a signed, verifiable link back to
-      # this exact run and commit, so anyone installing create-lattice can confirm
-      # the tarball was built here and not on someone's laptop. The tarball ships the
-      # finished CHANGELOG.md, version already cut.
       - name: Publish to npm (trusted publishing — no token)
         run: npm publish --provenance --access public
 
-      # Only now — the registry has the tarball, so main can safely say so.
-      - name: Record the version and the changelog on main, as me
-        run: |
-          # Authorship comes from these two lines, not from the token. This is
-          # what keeps github-actions[bot] out of the contributor list.
-          git config user.name  "Wolfi-OwO"
-          git config user.email "koflerphillip@outlook.com"
-
-          # package.json (the number) and CHANGELOG.md (what changed) are one
-          # commit on purpose: a version that shipped and the notes saying what
-          # was in it are the same fact, and splitting them lets one land without
-          # the other.
-          if git diff --quiet; then
-            echo "Already at ${{ steps.v.outputs.version }} — nothing to commit."
-          else
-            git commit -am "chore(release): ${{ steps.v.outputs.tag }}"
-            git push origin main
-          fi
-
-          # The Release was cut from the commit *before* the version bump, so its
-          # tag still points there. Move the tag onto the commit that actually
-          # carries the version that was published — otherwise `git checkout vX.Y.Z`
-          # hands you a tree whose package.json disagrees with the release.
-          git tag -f "${{ steps.v.outputs.tag }}"
-          git push --force origin "refs/tags/${{ steps.v.outputs.tag }}"
-
-      # The Release page and the changelog now say the same thing because they are
-      # the same text, not because someone pasted it into both.
       - name: Put the notes on the Release page
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -248,8 +186,9 @@ jobs:
       packages: write # push the package to the repository's GitHub Packages
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: main
+        # The tag, like the publish job. This job hangs off `verify` rather than
+        # `publish`, so it must not quietly ship main's HEAD under the tag's number
+        # if the two ever differ.
 
       - uses: actions/setup-node@v7
         with:
