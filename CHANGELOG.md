@@ -13,6 +13,8 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-07-18
+
 ### Added
 
 - **`--generator <id>`** — scaffold with a framework's own official tool instead of
@@ -159,6 +161,7 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
   both shipped green, because the test guarding the spelling only looked at the
   templates and never at the scaffolder itself. It looks at both now.
 
-[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.0.0...v2.0.0
 [1.1.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Wolfi-OwO/lattice/releases/tag/v1.0.0
