@@ -129,6 +129,11 @@ export function buildVars(answers) {
     projectTitle: projectName,
     pascalName,
     snakeName,
+    // Enterprise overlay. `owner` fills the badge/URL slots in the community-health
+    // files; it defaults to a placeholder the user replaces rather than to any real
+    // account, because lattice ships to everyone. `version` seeds version.txt.
+    owner: answers.owner ?? 'your-org',
+    version: answers.version ?? '0.1.0',
     // Java/Kotlin only
     javaPackage,
     PACKAGE_PATH: javaPackage.replace(/\./g, '/'),

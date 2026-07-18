@@ -83,12 +83,76 @@ lattice [name] [options]
   --format <fmt>        json | ndjson | yaml    (only with --database file)
   --client <id>         frontend for a fullstack project, placed in client/
   --port <n>            backend port (default 3000)
+  --generator <id>      scaffold with a framework's own tool instead of a stack
+  --enterprise          add docs/adr, todo, CI, and community-health files
+  --owner <name>        GitHub owner/org for the enterprise badges (default your-org)
   --no-install          skip dependency installation
   --no-database-start   do not "docker compose up -d database"
   --force               scaffold into a non-empty directory
-  --list                show all stacks and databases
+  --list                show all stacks, databases and generators
   --version             print the version
 ```
+
+### `--generator` — delegate to the real tool
+
+The built-in stacks are the ones lattice promises will boot. For everything else,
+`--generator` runs the framework's own official tool and then layers lattice's
+overlay on top:
+
+```bash
+lattice web-app --generator vite-react --enterprise
+lattice api     --generator dotnet-webapi --enterprise
+lattice svc     --generator go --enterprise
+```
+
+This is opt-in on purpose, because it gives up three things the built-in stacks
+guarantee: it needs the network, it needs that toolchain installed, and its output
+is whatever the upstream tool ships today rather than something lattice verified.
+`--list` shows every generator.
+
+### Language coverage, and the two tiers
+
+The tiers are not equal, and the difference is the point. A **built-in stack** is
+held to [CONVENTIONS.md](CONVENTIONS.md) — the same `users` resource, the same error
+envelope, drain behaviour verified with a real SIGTERM — and CI builds and tests it
+on every push. That is expensive per language, which is why the list is short and
+stays short. A **generator** delegates to the framework's own tool: broad, current,
+and not verified by lattice.
+
+| Language | Built-in stack | Generator |
+| --- | --- | --- |
+| JavaScript / TypeScript | `express`, `fastify`, `node-cli`, `react-vite`, `react-vite-ts` | Vite ×9, Next, Nuxt, SvelteKit, Astro, Remix, Vue, Expo |
+| Java | `spring-boot`, `javafx` | — |
+| Kotlin / Android | `android-compose` | — |
+| Python | `fastapi`, `ml-project` | — |
+| C# / .NET | — | `dotnet-webapi`, `dotnet-mvc`, `dotnet-blazor` |
+| Go | — | `go` |
+| Rust | — | `cargo`, `cargo-lib` |
+| PHP | — | `laravel` |
+| Ruby | — | `rails` |
+| Dart / Flutter | — | `dart`, `flutter` |
+| Swift | — | `swift` |
+| C / C++ | — | — |
+
+C and C++ have no official scaffolding tool to delegate to — there is no
+`cargo new` for CMake — so lattice claims neither tier rather than inventing a
+layout and calling it standard. That is a gap, stated as one.
+
+Everything in either column gets `--enterprise`, and gets the CI of its own build
+tool: eleven toolchains, from `npm ci` to `swift test` to `bundle install`.
+
+### `--enterprise` — the overlay
+
+Adds the scaffolding a repository needs to be worked on by more than one person:
+`docs/adr/`, `todo/`, `organizational/`, community-health files, a Trivy security
+scan, a release workflow, and a CI workflow.
+
+The CI is **chosen from the project's build tool**, not from a template — lattice
+looks for `package.json`, `go.mod`, `pom.xml`, `Cargo.toml`, `build.gradle`,
+`pyproject.toml` or a `.csproj` and lays down the matching `ci.yml` and
+`dependabot.yml`. A Go module gets `go test`; a Maven project gets `mvn -B verify`.
+A project whose build tool is unrecognised gets everything except the CI, which is
+better than a workflow that cannot pass.
 
 Fullstack composes a backend at the root with a frontend in `client/`, and
 installs both:
@@ -162,10 +226,18 @@ scaffolder — a scaffolder cannot be tested by testing the scaffolder — they
 | `templates-javascript.yml`| `react-vite`, `react-vite-ts` build; `node-cli` tests pass.      |
 | `templates-python.yml`    | `fastapi` and `ml-project` install and pass pytest.              |
 | `templates-java.yml`      | `spring-boot` runs `mvn test`; `javafx` packages.                |
+| `generators.yml`          | All **24** `--generator` delegations, scaffolded with `--enterprise`, installed and built — and each asserted to have received the CI of its own build tool. |
 
 `release.yml` reuses `unit.yml` rather than restating the matrix, so the suite
 that guards a publish is the same suite that guards a pull request — by
 construction, not by discipline.
+
+`generators.yml` is the one exception to "every push and pull request". It calls
+other people's CLIs over the network, so an upstream outage would turn the repo red
+for reasons no change here caused. It runs weekly, on demand, and on pushes to
+`main` that touch the generator machinery. That is also the only thing that can
+catch `create-next-app` renaming a flag — the argv in `src/generators.js` are claims
+about tools lattice does not control, and inspection cannot verify them.
 
 ## Releasing
 

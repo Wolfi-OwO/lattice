@@ -1,0 +1,11 @@
+{
+  "//": "Workspace settings that keep every editor producing the same diffs. Personal preferences do not belong here — only what the repo's tooling requires.",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true
+}

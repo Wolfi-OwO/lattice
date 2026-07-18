@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      # --prefer-dist and the cache keep this from rebuilding the world on every
+      # push; --no-interaction because a prompt in CI is a hang.
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Test
+        run: |
+          if [ -f artisan ]; then
+            # A fresh Laravel app has no .env, and artisan refuses to run without
+            # an APP_KEY. Both are cheap to provide and neither belongs in git.
+            cp -n .env.example .env || true
+            php artisan key:generate
+            php artisan test
+          else
+            vendor/bin/phpunit
+          fi

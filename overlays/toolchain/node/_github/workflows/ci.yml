@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  # Lets a release pipeline reuse this exact suite as its test stage, so a release
+  # ships only what already passed lint/build/test on the tagged commit.
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # --if-present so the pipeline is correct whether or not a template defines
+      # each script — a missing `test` is not a failed build.
+      - run: npm run lint --if-present
+      - run: npm run build --if-present
+      - run: npm test --if-present
