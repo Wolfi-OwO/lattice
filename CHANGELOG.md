@@ -13,6 +13,8 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-18
+
 ### Fixed
 
 - **The Python templates told you to activate a virtualenv they never created.**
@@ -70,7 +72,6 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
   rather than by CI. It reports rather than merges: some of the difference is
   deliberate, and a job that adopted upstream's output wholesale would delete the
   router, API client and layout conventions that make these templates worth having.
-
 
 ## [2.0.0] - 2026-07-18
 
@@ -220,7 +221,8 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
   both shipped green, because the test guarding the spelling only looked at the
   templates and never at the scaffolder itself. It looks at both now.
 
-[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/Wolfi-OwO/lattice/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.0.0...v2.0.0
 [1.1.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Wolfi-OwO/lattice/releases/tag/v1.0.0
