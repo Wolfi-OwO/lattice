@@ -1,0 +1,200 @@
+name: Generators
+
+# The `--generator` path, which delegates the base scaffold to a framework's own
+# tool. This is the only suite in the repository that depends on the network and on
+# third-party services staying up, so it does NOT gate pull requests — a create-vite
+# outage must not turn the repo red. It runs on a schedule and on demand instead.
+#
+# What it is actually protecting: the argv in src/generators.js is a set of claims
+# about other people's CLIs. `create-next-app` renaming a flag, `sv create` changing
+# its subcommand, `nuxi init` dropping an option — each silently turns a lattice
+# generator into a scaffold that fails in front of a user. Upstream changes these
+# without warning us, so the only way to know is to run them.
+#
+# Each job also proves the enterprise overlay landed the CI of the right build tool,
+# because a Go module that gets an `npm ci` workflow is the regression this whole
+# two-layer split exists to prevent.
+
+on:
+  schedule:
+    # Weekly, early Monday — before the week's work, after the weekend's releases.
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    # On main, only when the generator machinery itself changes.
+    paths:
+      - 'src/generators.js'
+      - 'src/setup.js'
+      - 'overlays/**'
+      - '.github/workflows/generators.yml'
+
+concurrency:
+  group: generators-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ------------------------------------------------------------------ npm tools
+  npm:
+    name: ${{ matrix.generator }}
+    runs-on: ubuntu-latest
+    strategy:
+      # Every generator reports independently: one upstream breakage should name
+      # itself, not mask the other sixteen.
+      fail-fast: false
+      matrix:
+        generator:
+          - vite-vanilla
+          - vite-react
+          - vite-react-ts
+          - vite-vue
+          - vite-svelte
+          - vite-preact
+          - vite-lit
+          - vite-solid
+          - vite-qwik
+          - next
+          - next-ts-src
+          - vue
+          - nuxt
+          - sveltekit
+          - astro
+          - remix
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - run: node bin/lattice.js demo --generator ${{ matrix.generator }} --enterprise
+
+      - name: The overlay chose the node toolchain
+        run: |
+          grep -q 'npm ci' demo/.github/workflows/ci.yml
+          grep -q 'package-ecosystem: npm' demo/.github/dependabot.yml
+
+      - working-directory: demo
+        run: npm install
+
+      # --if-present: not every upstream starter defines a build script (a Remix or
+      # Expo template may not). A missing script is not a failed generator.
+      - working-directory: demo
+        run: npm run build --if-present
+
+  # ------------------------------------------------------------------ angular
+  angular:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      # The generator requires `ng` on PATH rather than going through npx, so CI
+      # has to install it the way a user would.
+      - run: npm install --global @angular/cli
+
+      - run: node bin/lattice.js demo --generator angular --enterprise
+      - run: grep -q 'npm ci' demo/.github/workflows/ci.yml
+
+      - working-directory: demo
+        run: npm install
+      - working-directory: demo
+        run: npm run build
+
+  # ------------------------------------------------------------------ go
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - run: node bin/lattice.js demo --generator go --enterprise
+
+      - name: The overlay chose the go toolchain, not node
+        run: |
+          grep -q 'go test' demo/.github/workflows/ci.yml
+          grep -q 'package-ecosystem: gomod' demo/.github/dependabot.yml
+          ! grep -q 'npm ci' demo/.github/workflows/ci.yml
+
+      # `go mod init` writes go.mod and nothing else, so there is no package to
+      # build yet. Proving the module is well-formed is the honest check here.
+      - working-directory: demo
+        run: go mod verify
+
+  # ------------------------------------------------------------------ rust
+  rust:
+    name: ${{ matrix.generator }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        generator: [cargo, cargo-lib]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - uses: dtolnay/rust-toolchain@stable
+
+      - run: node bin/lattice.js demo --generator ${{ matrix.generator }} --enterprise
+
+      - name: The overlay chose the rust toolchain, not node
+        run: |
+          grep -q 'cargo test' demo/.github/workflows/ci.yml
+          grep -q 'package-ecosystem: cargo' demo/.github/dependabot.yml
+          ! grep -q 'npm ci' demo/.github/workflows/ci.yml
+
+      - working-directory: demo
+        run: cargo test
+
+  # ------------------------------------------------------------------ dotnet
+  dotnet:
+    name: ${{ matrix.generator }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        generator: [dotnet-webapi, dotnet-mvc, dotnet-blazor]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - run: node bin/lattice.js demo --generator ${{ matrix.generator }} --enterprise
+
+      - name: The overlay chose the dotnet toolchain, not node
+        run: |
+          grep -q 'dotnet test' demo/.github/workflows/ci.yml
+          grep -q 'package-ecosystem: nuget' demo/.github/dependabot.yml
+          ! grep -q 'npm ci' demo/.github/workflows/ci.yml
+
+      - working-directory: demo
+        run: dotnet build
+
+  # ------------------------------------------------------------------ expo
+  # Split out because create-expo-app pulls a large dependency tree and is the
+  # slowest of the npm generators by a wide margin.
+  expo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - run: node bin/lattice.js demo --generator expo --enterprise
+      - working-directory: demo
+        run: npm install

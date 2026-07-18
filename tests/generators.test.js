@@ -54,6 +54,27 @@ test('every generator says how to actually run what it produced', () => {
   }
 });
 
+test('every generator is exercised by the Generators workflow', () => {
+  // The workflow lists ids by hand — it has to, because each toolchain needs its own
+  // setup action. That list is exactly the kind that silently falls behind the
+  // registry, and a generator nothing ever runs is a generator nobody knows is
+  // broken until a user hits it. So the drift is a test failure instead.
+  const workflow = fs.readFileSync(
+    path.join(import.meta.dirname, '..', '.github', 'workflows', 'generators.yml'),
+    'utf8',
+  );
+
+  const missing = GENERATORS.map((g) => g.id).filter(
+    (id) => !new RegExp(`(^|[\\s\\[,])${id}([\\s\\],]|$)`, 'm').test(workflow),
+  );
+
+  assert.deepEqual(
+    missing,
+    [],
+    `these generators are in the registry but never run in CI: ${missing.join(', ')}`,
+  );
+});
+
 test('generator ids are unique', () => {
   const seen = new Set();
   for (const g of GENERATORS) {

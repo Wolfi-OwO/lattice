@@ -195,10 +195,18 @@ scaffolder — a scaffolder cannot be tested by testing the scaffolder — they
 | `templates-javascript.yml`| `react-vite`, `react-vite-ts` build; `node-cli` tests pass.      |
 | `templates-python.yml`    | `fastapi` and `ml-project` install and pass pytest.              |
 | `templates-java.yml`      | `spring-boot` runs `mvn test`; `javafx` packages.                |
+| `generators.yml`          | All **24** `--generator` delegations, scaffolded with `--enterprise`, installed and built — and each asserted to have received the CI of its own build tool. |
 
 `release.yml` reuses `unit.yml` rather than restating the matrix, so the suite
 that guards a publish is the same suite that guards a pull request — by
 construction, not by discipline.
+
+`generators.yml` is the one exception to "every push and pull request". It calls
+other people's CLIs over the network, so an upstream outage would turn the repo red
+for reasons no change here caused. It runs weekly, on demand, and on pushes to
+`main` that touch the generator machinery. That is also the only thing that can
+catch `create-next-app` renaming a flag — the argv in `src/generators.js` are claims
+about tools lattice does not control, and inspection cannot verify them.
 
 ## Releasing
 

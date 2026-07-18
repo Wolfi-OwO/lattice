@@ -9,9 +9,11 @@
  * lattice verified. So it is strictly opt-in via `--generator <id>`; the built-in
  * templates remain the default and the thing that is promised to boot.
  *
- * Each generator is the same shape captured in scripts/capture-ecosystem-truth.js —
- * these are the real invocations, kept in one registry so `--generator` and the
- * truth-capture cannot drift apart.
+ * These are the real invocations, in one registry, because they are claims about
+ * *other people's* CLIs: a renamed flag upstream turns a generator into a scaffold
+ * that fails in front of a user, and nothing here can detect that by inspection.
+ * .github/workflows/generators.yml runs every one of them on a schedule for exactly
+ * that reason, and a test asserts the workflow covers the whole registry.
  *
  *   requires  the binary that must be on PATH, or the run fails with a clear message
  *   argv      argv for that binary, given the project name, in a NON-INTERACTIVE form
