@@ -6,14 +6,54 @@ Every notable change to lattice, newest first. The format is
 
 **Write your changes under `## [Unreleased]` as you make them**, not at release
 time — by then nobody remembers what changed, and a release with no notes is a
-release nobody can review. Publishing a GitHub Release moves that section under
-the new version number and stamps it with the date; the `[Unreleased]` heading is
-put back empty for the next change. Nothing about that is manual, and a release
-whose `[Unreleased]` section is empty is refused before it can reach npm.
+release nobody can review. The **Prepare release** workflow moves that section
+under the new version number and stamps it with the date, leaving `[Unreleased]`
+empty for the next change, and opens a pull request for you to review. A release
+whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
 
 ### Added
+
+- **`--generator <id>`** — scaffold with a framework's own official tool instead of
+  a built-in stack. 28 of them: every `create-vite` template, Next, Nuxt, SvelteKit,
+  Astro, React Router, Vue, Expo, Angular, three .NET project types, Cargo, Go,
+  Laravel, Rails, Dart, Flutter and Swift. Opt-in on purpose — it needs the network,
+  it needs that toolchain installed, and its output is whatever upstream ships today
+  rather than something lattice verified. The built-in stacks remain the default and
+  the thing that is promised to boot. `--list` shows them; ADR-0003 explains the
+  tiers.
+- **`--enterprise`** — overlay the scaffolding a repository needs once more than one
+  person works on it: `docs/adr/`, `todo/`, `organizational/`, community-health
+  files, a Trivy security scan, a release workflow, and CI. The project's own README
+  is kept and composed under a badge header rather than replaced, and a directory
+  table is generated from the tree — including a column for what must *never* go in
+  each directory, which is the half that stops a layout from rotting.
+- **CI matched to the project's build tool.** `--enterprise` detects what a project
+  is built with — `package.json`, `go.mod`, `pom.xml`, `Cargo.toml`, `build.gradle`,
+  `pyproject.toml`, `composer.json`, `Gemfile`, `Package.swift`, `pubspec.yaml` or a
+  `.csproj` — and writes the matching `ci.yml` and `dependabot.yml`. Eleven
+  toolchains. A Go module gets `go test`, a Maven project `mvn -B verify`, a Rails
+  app `bin/rails test`. A project whose build tool is unrecognised gets everything
+  except the CI, which is better than a workflow that cannot pass.
+- **`--owner <name>`** — the GitHub owner or organisation that fills the badge and
+  link slots in the enterprise overlay.
+- **`.github/workflows/generators.yml`** — scaffolds all 28 delegations, installs
+  and builds each, and asserts every one received the CI of its own build tool. The
+  argv for these are claims about *other people's* CLIs, and nothing but running
+  them can tell you when one goes stale. It earned this on its first run: Remix v2
+  had been upstreamed into React Router and `create-remix` no longer created
+  anything.
+
+### Changed
+
+- **Releasing is now two steps, and nothing writes to `main` during one.** The
+  version bump and changelog cut happen in a reviewed pull request opened by the new
+  **Prepare release** workflow; publishing then only verifies and publishes, with
+  `contents: read`. Previously the version commit landed *after* `npm publish`, so a
+  failure in that final step would leave a version on a registry that never forgets
+  and no record of it here. `npm publish` also now waits for a human approval on the
+  `production` environment. See *Releasing* in the README.
 
 - **`lattice doctor [path]`** — score a project's structure and hygiene, offline.
   It grades a tree 0–100 across structure, hygiene, testing, CI/CD, containerization,
