@@ -14,7 +14,7 @@ name: Prepare release
 #              "## [X.Y.Z] - <today>" with a fresh empty [Unreleased] above it
 #        |
 #        v
-#   propose    a release/vX.Y.Z branch and a pull request — which you review
+#   propose    a release/vX.Y.Z branch, and a link to open the pull request
 #        |
 #        v
 #   you merge it, then publish a Release tagged vX.Y.Z from main's HEAD
@@ -45,8 +45,10 @@ on:
         type: string
 
 permissions:
-  contents: write # push the release branch
-  pull-requests: write # open the pull request
+  # Only the branch push. Opening the pull request would require "Allow GitHub
+  # Actions to create and approve pull requests", a single toggle that also grants
+  # approval — see the last step for why that is not worth the click it saves.
+  contents: write
 
 jobs:
   prepare:
@@ -96,9 +98,7 @@ jobs:
           echo "--- notes that will appear on the Release page ---"
           cat "$RUNNER_TEMP/release-notes.md"
 
-      - name: Open the release pull request
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push the release branch
         run: |
           # Authorship is these two lines, not the token — the same reason
           # release.yml sets them: github-actions[bot] stays out of the history.
@@ -109,24 +109,37 @@ jobs:
           git commit -am "chore(release): v${{ steps.v.outputs.version }}"
           git push --force origin "${{ steps.v.outputs.branch }}"
 
-          # --fill would use the commit message; the body is written out instead so
-          # the reviewer sees the notes they are approving without opening a file.
-          gh pr create \
-            --base main \
-            --head "${{ steps.v.outputs.branch }}" \
-            --title "chore(release): v${{ steps.v.outputs.version }}" \
-            --body "$(cat <<BODY
-          Prepares **v${{ steps.v.outputs.version }}**. Nothing is published by merging this.
+      # The pull request is opened by a human, from the link below.
+      #
+      # This workflow could open it itself, but only with "Allow GitHub Actions to
+      # create and approve pull requests" enabled — and that is one toggle covering
+      # both verbs. Granting it would let a workflow approve pull requests, which is
+      # precisely the review requirement the main-protection ruleset exists to
+      # enforce. Trading that away to save a click on a release that happens a few
+      # times a year is a bad trade, and it would quietly undo the protection the
+      # rest of this flow was built to establish.
+      - name: Summarise, and link the pull request to open
+        run: |
+          url="${{ github.server_url }}/${{ github.repository }}/compare/main...${{ steps.v.outputs.branch }}?expand=1"
 
-          - \`package.json\` set to ${{ steps.v.outputs.version }}
-          - \`CHANGELOG.md\`: \`[Unreleased]\` cut into \`[${{ steps.v.outputs.version }}]\`, a fresh empty \`[Unreleased]\` left above it
+          {
+            echo "## Release v${{ steps.v.outputs.version }} is prepared"
+            echo
+            echo "\`package.json\` is set to ${{ steps.v.outputs.version }} and the changelog is cut."
+            echo
+            echo "### 1. Open the pull request"
+            echo
+            echo "[Open the release pull request]($url)"
+            echo
+            echo "### 2. After merging it"
+            echo
+            echo "Publish a GitHub Release tagged \`v${{ steps.v.outputs.version }}\` from main's HEAD."
+            echo "\`release.yml\` will verify, wait for your approval on the \`production\`"
+            echo "environment, and publish to npm."
+            echo
+            echo "### The notes that will appear on the Release page"
+            echo
+            cat "$RUNNER_TEMP/release-notes.md"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          ## After merging
-
-          Publish a GitHub Release tagged \`v${{ steps.v.outputs.version }}\` **from main's HEAD**. \`release.yml\` will verify, wait for your approval on the \`production\` environment, and publish to npm.
-
-          ## The notes this will put on the Release page
-
-          $(cat "$RUNNER_TEMP/release-notes.md")
-          BODY
-          )"
+          echo "::notice::Release v${{ steps.v.outputs.version }} prepared. Open the pull request: $url"

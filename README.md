@@ -251,8 +251,11 @@ is prepared for your review, and only then does anything reach npm.
 2. Run the **Prepare release** workflow with the version (`1.2.0`, no leading `v`).
    It refuses early if that version is already on npm or if `[Unreleased]` is
    empty, then stamps `package.json`, cuts `[Unreleased]` into
-   `## [1.2.0] - <today>`, and opens a pull request for you to review.
-3. Merge it.
+   `## [1.2.0] - <today>`, pushes a `release/v1.2.0` branch, and links the pull
+   request to open. The workflow does not open it itself: that would need *"Allow
+   GitHub Actions to create and approve pull requests"*, one toggle that also grants
+   approval — and approval is exactly what `main-protection` requires a human for.
+3. Open that pull request, review it, and merge it.
 4. Publish a GitHub Release tagged `v1.2.0` **from `main`'s HEAD**.
 
 Publishing the Release triggers `.github/workflows/release.yml`, which:
