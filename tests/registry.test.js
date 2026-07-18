@@ -406,3 +406,35 @@ test('the template workflow runs the derived checks, not its own hardcoded ones'
     'no hardcoded per-template `check:` — that is what this replaced',
   );
 });
+
+test('every template, and the fullstack composition, is exercised by some workflow', () => {
+  // Coverage asserted as a rule rather than remembered. The fullstack path — the
+  // shape the README leads with, and the only one that writes two projects and
+  // installs both — had no CI at all and worked by luck. android-compose is the one
+  // deliberate exception and has to say so in the workflow that skips it.
+  const dir = path.join(ROOT, '.github', 'workflows');
+  const workflows = fs
+    .readdirSync(dir)
+    .map((f) => fs.readFileSync(path.join(dir, f), 'utf8'))
+    .join('\n');
+
+  for (const template of TEMPLATES) {
+    if (template.framework === 'android-compose') {
+      // Needs the Android SDK and a Gradle wrapper, and wrappers are binaries the
+      // templates do not ship. The exemption is fine; going unmentioned is not.
+      assert.match(
+        workflows,
+        /android-compose is deliberately absent/,
+        'android-compose is untested and must say why in the workflow that skips it',
+      );
+      continue;
+    }
+    assert.match(
+      workflows,
+      new RegExp(`\\b${template.framework}\\b`),
+      `${template.framework} is in the registry but no workflow ever scaffolds it`,
+    );
+  }
+
+  assert.match(workflows, /--client/, 'the fullstack composition must be exercised somewhere');
+});

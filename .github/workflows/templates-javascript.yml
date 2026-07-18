@@ -77,3 +77,58 @@ jobs:
             fi
             echo "::endgroup::"
           done < ../checks.txt
+
+  # The fullstack composition — a backend at the root with a frontend in client/ —
+  # had no coverage at all. It is the shape the README leads with, it is the only
+  # path that writes two projects and installs both, and nothing verified it. It
+  # worked; that was luck rather than evidence.
+  #
+  # Both halves are checked with the same derived checks the single-stack jobs use,
+  # so the client is held to exactly the standard it would be held to on its own.
+  fullstack:
+    name: ${{ matrix.backend }} + ${{ matrix.client }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - backend: express
+            client: react-vite
+          - backend: express
+            client: react-vite-ts
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - run: |
+          node bin/lattice.js demo --stack ${{ matrix.backend }} --database memory \
+            --client ${{ matrix.client }} --no-database-start
+
+      - name: The frontend really landed in client/
+        run: |
+          test -f demo/package.json || { echo "::error::no backend at the root"; exit 1; }
+          test -f demo/client/package.json || { echo "::error::no frontend in client/"; exit 1; }
+
+      - name: Check the backend
+        working-directory: demo
+        run: |
+          set -euo pipefail
+          while IFS= read -r c; do
+            [ -z "$c" ] && continue
+            echo "::group::backend — $c"
+            eval "$c" || { echo "::error::backend: $c failed"; exit 1; }
+            echo "::endgroup::"
+          done < <(node ../scripts/template-checks.js --stack ${{ matrix.backend }})
+
+      - name: Check the client
+        working-directory: demo/client
+        run: |
+          set -euo pipefail
+          while IFS= read -r c; do
+            [ -z "$c" ] && continue
+            echo "::group::client — $c"
+            eval "$c" || { echo "::error::client: $c failed"; exit 1; }
+            echo "::endgroup::"
+          done < <(node ../../scripts/template-checks.js --stack ${{ matrix.client }})
