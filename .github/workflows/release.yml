@@ -75,6 +75,15 @@ jobs:
     name: Publish create-lattice
     needs: verify
     runs-on: ubuntu-latest
+    # The approval gate. `npm publish` is the one step in this repository that
+    # cannot be undone — a version on the registry can never be replaced — so it
+    # waits for a human. The environment's required reviewer is asked only after
+    # `verify` is green, which means the question being approved is "ship this
+    # tested code", not "start a build and hope".
+    #
+    # Deliberately not on `github-packages`: that job is the cosmetic badge copy
+    # described below, and gating it would mean approving the same release twice.
+    environment: production
     permissions:
       contents: write # push the version commit and move the tag
       id-token: write # mints the OIDC token that signs the npm provenance
