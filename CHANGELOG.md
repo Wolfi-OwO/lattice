@@ -15,6 +15,8 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
 
+## [0.0.1] - 2026-07-19
+
 ### Fixed
 
 - **The Python templates told you to activate a virtualenv they never created.**
@@ -227,4 +229,5 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
   both shipped green, because the test guarding the spelling only looked at the
   templates and never at the scaffolder itself. It looks at both now.
 
-[Unreleased]: https://github.com/Wolfi-OwO/lattice/commits/main
+[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v0.0.1...HEAD
+[0.0.1]: https://github.com/Wolfi-OwO/lattice/releases/tag/v0.0.1
