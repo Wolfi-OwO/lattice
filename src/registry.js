@@ -108,7 +108,7 @@ export const TEMPLATES = [
     hint: 'Feature-packaged REST API, Lombok, MapStruct, Testcontainers-ready',
     vars: ['javaPackage', 'port'],
     installer: 'maven',
-    post: ['mvn spring-boot:run'],
+    post: ['./mvnw spring-boot:run'],
   },
   {
     category: 'backend',
@@ -166,7 +166,7 @@ export const TEMPLATES = [
     hint: 'MVC + service + DAL layering, FXML views',
     vars: ['javaPackage'],
     installer: 'maven',
-    post: ['mvn javafx:run'],
+    post: ['./mvnw javafx:run'],
   },
 
   // ----------------------------------------------------------------- mobile

@@ -79,6 +79,14 @@ export function copyTemplate(from, to, vars) {
         const content = fs.readFileSync(srcPath, 'utf8');
         fs.writeFileSync(destPath, render(content, vars), 'utf8');
       }
+
+      // Carry the source file's permissions over. writeFileSync creates 0644, so
+      // without this an executable in a template arrives unexecutable — and the
+      // first thing the user types is `./mvnw`, which then fails with Permission
+      // denied. copyFileSync happens to preserve mode; the render path does not,
+      // so the two disagreed depending on whether a file was binary.
+      fs.chmodSync(destPath, fs.statSync(srcPath).mode);
+
       written.push(path.relative(to, destPath));
     }
   };

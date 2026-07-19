@@ -1,7 +1,7 @@
 {
   "name": "create-lattice",
   "version": "1.0.1",
-  "description": "Pick a stack, pick a database, get a project that already runs. Scaffolds backend, frontend, fullstack, desktop GUI, mobile, CLI and ML projects across JavaScript, TypeScript, Java, Python, C#, Rust, Kotlin, Swift and Dart — installed, wired up and booting.",
+  "description": "Pick a stack, pick a database, get a project that already runs. Scaffolds backend, frontend, fullstack, desktop GUI, mobile, CLI and ML projects across JavaScript, TypeScript, Java, Python, C#, Rust, Kotlin, Swift and Dart \u2014 installed, wired up and booting.",
   "type": "module",
   "bin": {
     "create-lattice": "bin/lattice.js",
@@ -17,12 +17,16 @@
     "overlays",
     "CHANGELOG.md",
     "CONVENTIONS.md",
-    "STRUCTURE.md"
+    "STRUCTURE.md",
+    "!stacks/**/.gradle",
+    "!stacks/**/target",
+    "!stacks/**/build",
+    "!stacks/**/node_modules"
   ],
   "scripts": {
     "start": "node bin/lattice.js",
     "list": "node bin/lattice.js --list",
-    "test": "node --test tests/cli.test.js tests/scaffold.test.js tests/storage.test.js tests/registry.test.js tests/transaction.test.js tests/changelog.test.js tests/doctor.test.js tests/enterprise.test.js tests/generators.test.js",
+    "test": "node --test tests/cli.test.js tests/scaffold.test.js tests/storage.test.js tests/registry.test.js tests/transaction.test.js tests/structure.test.js tests/changelog.test.js tests/doctor.test.js tests/enterprise.test.js tests/generators.test.js",
     "doctor": "node bin/lattice.js doctor"
   },
   "keywords": [

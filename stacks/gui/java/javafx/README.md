@@ -3,8 +3,8 @@
 Desktop app — JavaFX 21, Maven, MVC.
 
 ```bash
-mvn javafx:run
-mvn test
+./mvnw javafx:run
+./mvnw test
 ```
 
 Needs JDK 21. The JavaFX SDK does not need to be installed separately — Maven
