@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { CATEGORIES, TEMPLATES, FULLSTACK_BACKENDS, FULLSTACK_FRONTENDS, findTemplate } from '../src/registry.js';
 import { checksFor, checkableTemplates, NOT_CHECKED } from '../scripts/template-checks.js';
+import { EXPECTED_BEHIND, EXPECTED_MISSING_FILES } from '../scripts/drift-expectations.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STACKS = path.join(ROOT, 'stacks');
@@ -437,4 +438,38 @@ test('every template, and the fullstack composition, is exercised by some workfl
   }
 
   assert.match(workflows, /--client/, 'the fullstack composition must be exercised somewhere');
+});
+
+test('every expected drift difference carries a reason', () => {
+  // The list of intended differences is what stops the weekly drift report from
+  // crying wolf. It is also one careless append away from becoming "warnings we got
+  // tired of", which is the same failure in slower motion — so an entry without a
+  // reason is a test failure, not a style note.
+  const entries = [
+    ...Object.entries(EXPECTED_BEHIND).map(([k, v]) => [`dependency ${k}`, v]),
+    ...Object.entries(EXPECTED_MISSING_FILES).flatMap(([stack, files]) =>
+      Object.entries(files).map(([f, v]) => [`${stack}:${f}`, v]),
+    ),
+  ];
+
+  assert.ok(entries.length > 0, 'the expectations file is not empty');
+
+  for (const [what, reason] of entries) {
+    assert.equal(typeof reason, 'string', `${what}: reason must be text`);
+    assert.ok(
+      reason.trim().length > 20,
+      `${what}: "${reason}" is not a reason — say why the difference is intended`,
+    );
+  }
+});
+
+test('the drift workflow actually filters through the expectations', () => {
+  // Without this the expectations file exists and is ignored, which is worse than
+  // not having one: it reads as though the noise was handled.
+  const workflow = fs.readFileSync(
+    path.join(ROOT, '.github', 'workflows', 'template-drift.yml'),
+    'utf8',
+  );
+  assert.match(workflow, /drift-expectations\.js --files/, 'file drift must be filtered');
+  assert.match(workflow, /EXPECTED_BEHIND/, 'dependency drift must be filtered');
 });
