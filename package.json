@@ -1,6 +1,6 @@
 {
   "name": "create-lattice",
-  "version": "2.1.0",
+  "version": "0.0.1",
   "description": "Pick a stack, pick a database, get a project that already runs. Scaffolds backend, frontend, fullstack, desktop GUI, mobile, CLI and ML projects across JavaScript, TypeScript, Java, Python, C#, Rust, Kotlin, Swift and Dart — installed, wired up and booting.",
   "type": "module",
   "bin": {

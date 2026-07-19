@@ -4,7 +4,9 @@ Every notable change to lattice, newest first. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions are
 [semantic](https://semver.org/spec/v2.0.0.html).
 
-**Write your changes under `## [Unreleased]` as you make them**, not at release
+**Write your changes under `## [Unreleased]
+
+` as you make them**, not at release
 time — by then nobody remembers what changed, and a release with no notes is a
 release nobody can review. The **Prepare release** workflow moves that section
 under the new version number and stamps it with the date, leaving `[Unreleased]`
@@ -12,8 +14,6 @@ empty for the next change, and opens a pull request for you to review. A release
 whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
-
-## [2.1.0] - 2026-07-18
 
 ### Fixed
 
@@ -83,8 +83,6 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
   deliberate, and a job that adopted upstream's output wholesale would delete the
   router, API client and layout conventions that make these templates worth having.
 
-## [2.0.0] - 2026-07-18
-
 ### Added
 
 - **`--generator <id>`** — scaffold with a framework's own official tool instead of
@@ -143,8 +141,6 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
   `docs/adr/` with the first two decision records (zero-dependency core; why lattice
   is a library, not an enterprise-layered app). `lattice doctor` scores itself 100
   now — it did not before, and it said so.
-
-## [1.0.0] - 2026-07-15
 
 ### Added
 
@@ -231,8 +227,4 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
   both shipped green, because the test guarding the spelling only looked at the
   templates and never at the scaffolder itself. It looks at both now.
 
-[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v2.1.0...HEAD
-[2.1.0]: https://github.com/Wolfi-OwO/lattice/compare/v2.0.0...v2.1.0
-[2.0.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.0.0...v2.0.0
-[1.1.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/Wolfi-OwO/lattice/releases/tag/v1.0.0
+[Unreleased]: https://github.com/Wolfi-OwO/lattice/commits/main
