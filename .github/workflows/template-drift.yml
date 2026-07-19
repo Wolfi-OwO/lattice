@@ -66,12 +66,18 @@ jobs:
           # .gitignore, so templates carry _gitignore and it lands correctly.
           sed -i 's|^_gitignore$|.gitignore|; s|^_env\.example$|.env.example|' ours.txt
 
-          missing=$(comm -23 theirs.txt ours.txt || true)
+          # Differences that are meant to be there are filtered out, so a warning
+          # here means something new. Reported raw, this warned every week about the
+          # same eight intended files, and a report that always warns is one nobody
+          # reads on the week it matters.
+          node scripts/drift-expectations.js --files ${{ matrix.stack }} | sort > expected.txt
+          missing=$(comm -23 theirs.txt ours.txt | comm -23 - expected.txt || true)
+
           if [ -n "$missing" ]; then
-            echo "::warning::${{ matrix.stack }} does not ship files that create-vite does"
+            echo "::warning::${{ matrix.stack }}: create-vite ships files this template does not, and they are not on the expected list"
             echo "$missing" | sed 's/^/    /'
           else
-            echo "Nothing upstream ships that this template does not."
+            echo "No unexpected differences. (Intended ones are listed in scripts/drift-expectations.js.)"
           fi
 
           {
@@ -91,16 +97,21 @@ jobs:
       # it is where deprecations like `baseUrl` accumulate silently.
       - name: Dependency majors behind upstream
         run: |
-          node - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
-          const fs = require('node:fs');
+          node --input-type=module - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = await import('node:fs');
           const major = (r) => Number(String(r).replace(/^[^0-9]*/, '').split('.')[0]);
           const ours = JSON.parse(fs.readFileSync('ours/package.json', 'utf8'));
           const theirs = JSON.parse(fs.readFileSync('theirs/package.json', 'utf8'));
           const all = (p) => ({ ...p.dependencies, ...p.devDependencies });
           const [a, b] = [all(ours), all(theirs)];
 
+          // Same filter, same reason: two of these are pinned back deliberately and
+          // saying so every week trains everyone to ignore the row that is real.
+          const { EXPECTED_BEHIND } = await import('./scripts/drift-expectations.js');
+
           const behind = Object.keys(b)
             .filter((name) => a[name] && major(a[name]) < major(b[name]))
+            .filter((name) => !(name in EXPECTED_BEHIND))
             .map((name) => `| \`${name}\` | ${a[name]} | ${b[name]} |`);
 
           console.log('\n#### Dependencies behind upstream\n');
