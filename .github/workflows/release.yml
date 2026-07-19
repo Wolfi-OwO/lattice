@@ -158,8 +158,37 @@ jobs:
       # one-time publish credential, and the trusted publisher configured on
       # npmjs.org (create-lattice -> this repo -> release.yml) is what makes npm
       # trust it. Nothing is stored — there is no NPM_TOKEN to leak or rotate.
+      # Normally this is a plain `npm publish` and npm applies `latest` itself. It
+      # refuses to do that when the version being published is *lower* than one
+      # already on the registry, which is where this package currently sits:
+      # versioning restarted at 0.0.1 while an orphaned 1.0.0 remains, outside
+      # npm's unpublish window and above its download exemption, so only npm
+      # support can remove it. Until then the tag is named explicitly and `latest`
+      # is moved afterwards. scripts/publish-tag.js decides which case applies, and
+      # answers `latest` — making this a plain publish again — the moment 1.0.0 is
+      # gone.
       - name: Publish to npm (trusted publishing — no token)
-        run: npm publish --provenance --access public
+        run: |
+          tag="$(node scripts/publish-tag.js --version '${{ steps.v.outputs.version }}')"
+          echo "publishing under dist-tag: $tag"
+          npm publish --provenance --access public --tag "$tag"
+
+          if [ "$tag" = latest ]; then
+            exit 0
+          fi
+
+          # The tarball is on the registry now and that step is irreversible; moving
+          # a pointer is not. So a failure here is reported with the exact command
+          # to run rather than failing the release — leaving `latest` on the old
+          # version would silently serve pre-restart code to every
+          # `npm create lattice@latest`, which is the outcome worth shouting about.
+          if npm dist-tag add "create-lattice@${{ steps.v.outputs.version }}" latest; then
+            echo "moved latest -> ${{ steps.v.outputs.version }}"
+          else
+            echo "::error::Published, but could not move the latest tag."
+            echo "::error::Run: npm dist-tag add create-lattice@${{ steps.v.outputs.version }} latest"
+            exit 1
+          fi
 
   # Writing the Release body needs `contents: write`, which the publish job above
   # deliberately does not have — so it is a separate job.
