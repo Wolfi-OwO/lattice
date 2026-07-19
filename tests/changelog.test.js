@@ -10,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { cut, notesFor, parseChangelog, hasEntries, repositoryUrl } from '../scripts/release-changelog.js';
+import { tagFor } from '../scripts/publish-tag.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPOSITORY = 'https://github.com/Wolfi-OwO/lattice';
@@ -123,5 +124,37 @@ test('notesFor refuses a version the changelog has no section for', () => {
     () => notesFor(CHANGELOG, '9.9.9'),
     /has no "## \[9\.9\.9\]" section/,
     'a missing section names the merge that did not happen',
+  );
+});
+
+test('a version below the registry\'s latest is published under an explicit tag', () => {
+  // npm refuses to apply `latest` implicitly to a version lower than one already
+  // published, which is exactly where this package sits: 0.0.1 restarting beneath
+  // an orphaned 1.0.0 that only npm support can remove. Getting this wrong means
+  // either a refused publish, or `latest` left pointing at pre-restart code — and
+  // the second is worse, because it is silent.
+  assert.equal(tagFor('0.0.1', '1.0.0'), 'previous');
+  assert.equal(tagFor('1.2.3', '1.10.0'), 'previous', 'compared numerically, not as strings');
+
+  // Every ordinary case stays a plain publish.
+  assert.equal(tagFor('1.0.1', '1.0.0'), 'latest');
+  assert.equal(tagFor('2.0.0', '1.9.9'), 'latest');
+  assert.equal(tagFor('1.0.0', '1.0.0'), 'latest');
+
+  // And this all becomes a no-op once 1.0.0 is gone from the registry.
+  assert.equal(tagFor('0.0.1', null), 'latest', 'nothing higher exists — publish normally');
+});
+
+test('the release workflow uses the tag the script chooses, and moves latest', () => {
+  const workflow = fs.readFileSync(
+    path.join(ROOT, '.github', 'workflows', 'release.yml'),
+    'utf8',
+  );
+  assert.match(workflow, /publish-tag\.js --version/, 'the tag must be derived, not hardcoded');
+  assert.match(workflow, /npm dist-tag add/, 'latest must be moved when a fallback tag was used');
+  assert.match(
+    workflow,
+    /npm publish --provenance --access public --tag/,
+    'provenance must survive the change',
   );
 });
