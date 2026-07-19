@@ -240,7 +240,12 @@ test('the npm tarball carries no build output', () => {
   );
 });
 
-test('an executable in a template is still executable after scaffolding', () => {
+// Windows has no POSIX permission bits — Node reports a synthetic mode there, and
+// Windows users run mvnw.cmd rather than ./mvnw. These two assertions are about the
+// executable bit, so they only mean anything where one exists.
+const posixOnly = { skip: process.platform === 'win32' ? 'no executable bit on Windows' : false };
+
+test('an executable in a template is still executable after scaffolding', posixOnly, () => {
   // writeFileSync creates 0644, so the render path dropped the bit while the
   // binary path kept it — and `./mvnw` is the very first thing a Java user types.
   // It failed with Permission denied, which reads as a broken scaffold rather than
@@ -259,7 +264,7 @@ test('an executable in a template is still executable after scaffolding', () => 
   assert.match(fs.readFileSync(path.join(target, 'runner'), 'utf8'), /echo demo/, 'still rendered');
 });
 
-test('every Maven template scaffolds an executable wrapper', () => {
+test('every Maven template scaffolds an executable wrapper', posixOnly, () => {
   for (const framework of MAVEN) {
     const mode = fs.statSync(path.join(dirOf(framework), 'mvnw')).mode;
     assert.ok(mode & 0o111, `${framework}: mvnw is not executable in the template itself`);

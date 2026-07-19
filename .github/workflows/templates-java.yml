@@ -149,11 +149,18 @@ jobs:
           # `mvn wrapper:wrapper` without the script-only type.
           ! find demo -name '*.jar' -print -quit | grep -q . || { echo "::error::a wrapper jar was scaffolded"; exit 1; }
 
-      - name: Build with the wrapper, with Maven deliberately absent
-        working-directory: demo
+      # The ubuntu runner image preinstalls Maven whether or not setup-java asks for
+      # it, so without this the wrapper is never exercised and the job proves
+      # nothing. The runner is ephemeral; removing it affects this job only.
+      - name: Take Maven off PATH
         run: |
+          while command -v mvn >/dev/null; do sudo rm -f "$(command -v mvn)"; done
           if command -v mvn >/dev/null; then
-            echo "::error::mvn is on PATH — this job cannot prove anything"
+            echo "::error::mvn is still on PATH — this job cannot prove anything"
             exit 1
           fi
-          ./mvnw -B ${{ matrix.stack == 'spring-boot' && 'test' || 'compile' }}
+          echo "no mvn on PATH — the wrapper is now the only way to build"
+
+      - name: Build with the wrapper, with Maven absent
+        working-directory: demo
+        run: ./mvnw -B ${{ matrix.stack == 'spring-boot' && 'test' || 'compile' }}
