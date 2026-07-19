@@ -63,6 +63,16 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
   with a compiled binary, and the storage matrix pins Node 20, so its ABI was only
   ever exercised against one runtime.
 - `mongoose` to `^9`, verified against a real MongoDB container.
+- **React 19, Vite 8, TypeScript 6, React Router 7.** The frontend templates were a
+  full generation behind `create-vite` on every axis — not broken, which is why it
+  needed a deliberate change rather than waiting for a failure. No template source
+  had to change: the components, router, hooks and API client were already written
+  against APIs that survived all four majors.
+
+  TypeScript 6 rather than 7, because `create-vite` pins `~6` and the official
+  generator is what decides here. ESLint stays on 9: `eslint-plugin-react` caps its
+  peer range at `^9.7`, so 10 cannot install alongside it, and a template that
+  cannot `npm install` is worse than one a major behind.
 
 ### Added
 
