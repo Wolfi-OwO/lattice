@@ -43,6 +43,7 @@ import {
   languagesFor,
 } from '../src/registry.js';
 import { findGenerator, generatorChoices } from '../src/generators.js';
+import { beginGeneration } from '../src/transaction.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STACK_ROOT = path.join(ROOT, 'stacks');
@@ -402,24 +403,53 @@ async function main() {
 
   // ------------------------------------------------------------- scaffold
 
-  const files = copyTemplate(path.join(STACK_ROOT, template.dir), target, vars);
+  // Everything below is written to a staging directory and only becomes the real
+  // project once it has all succeeded. See src/transaction.js — a failure partway
+  // used to leave a half-written tree that then blocked its own retry.
+  const generation = beginGeneration(target);
+  const staged = generation.path;
 
+  let files = [];
   let clientFiles = [];
-  if (client) {
-    clientFiles = copyTemplate(path.join(STACK_ROOT, client.dir), path.join(target, 'client'), {
-      ...vars,
-      projectName: `${vars.projectName}-client`,
-    });
-  }
-
   let enterpriseFiles = [];
   let enterpriseToolchain = null;
-  if (args.flags.enterprise) {
-    ({ files: enterpriseFiles, toolchain: enterpriseToolchain } = overlayEnterprise(
-      path.join(ROOT, 'overlays', 'enterprise'),
-      target,
-      vars,
-    ));
+
+  try {
+    files = copyTemplate(path.join(STACK_ROOT, template.dir), staged, vars);
+
+    if (client) {
+      clientFiles = copyTemplate(path.join(STACK_ROOT, client.dir), path.join(staged, 'client'), {
+        ...vars,
+        projectName: `${vars.projectName}-client`,
+      });
+    }
+
+    if (args.flags.enterprise) {
+      ({ files: enterpriseFiles, toolchain: enterpriseToolchain } = overlayEnterprise(
+        path.join(ROOT, 'overlays', 'enterprise'),
+        staged,
+        vars,
+      ));
+    }
+
+    if (storage) {
+      // Keep only the chosen adapter, then add exactly the deps it needs.
+      pruneAdapters(staged, STORAGE[storage].adapter);
+      mergeDeps(staged, depsFor(storage, fileFormat));
+
+      writeEnv(staged, {
+        base: template.env?.(vars) ?? {},
+        storage,
+        vars: { ...vars, fileFormat },
+      });
+
+      writeCompose(staged, { storage, vars });
+    }
+
+    generation.commit();
+  } catch (error) {
+    generation.rollback();
+    throw error;
   }
 
   console.log(
@@ -441,17 +471,7 @@ async function main() {
   // ---------------------------------------------------------------- wire up
 
   if (storage) {
-    // Keep only the chosen adapter, then add exactly the deps it needs.
-    pruneAdapters(target, STORAGE[storage].adapter);
-    mergeDeps(target, depsFor(storage, fileFormat));
-
-    writeEnv(target, {
-      base: template.env?.(vars) ?? {},
-      storage,
-      vars: { ...vars, fileFormat },
-    });
-
-    const composed = writeCompose(target, { storage, vars });
+    const composed = Boolean(STORAGE[storage].server);
     console.log(
       `${c.green('✔')} Wired up ${c.gray(`(.env written, ${STORAGE[storage].adapter} adapter${composed ? ', compose file' : ''})`)}`,
     );
