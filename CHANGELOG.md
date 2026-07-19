@@ -15,6 +15,21 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-19
+
+### Changed
+
+- **Renumbered from 0.0.1.** The code is identical; only the version differs.
+  0.0.1 is published and correct, but npm will not apply the `latest` tag to a
+  version below one already published, and 1.0.0 cannot be removed — it is outside
+  npm's 72-hour unpublish window and above its 300-downloads-a-week exemption.
+  Moving the tag afterwards is not available either: trusted publishing mints a
+  credential scoped to publishing, and a dist-tag change is refused with E401.
+- 1.1.0, 2.0.0 and 2.1.0 were unpublished earlier and npm retires those numbers
+  permanently, so the first free version above 1.0.0 is 1.0.1. Numbering above the
+  old release is what lets `latest` apply on its own — no tag juggling, and nothing
+  left pointing at pre-restart code.
+
 ## [0.0.1] - 2026-07-19
 
 ### Added
