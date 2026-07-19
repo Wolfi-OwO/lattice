@@ -17,6 +17,19 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [0.0.1] - 2026-07-19
 
+### Added
+
+- **Generation is all-or-nothing.** Every file a scaffold writes goes to a staging
+  directory first, and the project appears at its real path only once generation has
+  fully succeeded. A failure — unreadable template, full disk, Ctrl-C — leaves the
+  working directory exactly as it was. Previously a failure partway through left a
+  half-written project that then blocked its own retry, because `isEmptyDir`
+  correctly saw a non-empty directory and demanded `--force`.
+
+  Installing dependencies and starting the database stay outside the transaction:
+  both are recoverable by design, and rolling back a valid project because a
+  registry blipped would destroy work that is entirely fine.
+
 ### Fixed
 
 - **The Python templates told you to activate a virtualenv they never created.**
