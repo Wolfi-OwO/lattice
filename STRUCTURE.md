@@ -174,8 +174,16 @@ deploy concern, not a template concern.
 
 ## Things deliberately left out
 
-**No `mvnw`/`gradlew` wrappers in the repo.** They are binaries; generate them
-once with `mvn wrapper:wrapper` / `gradle wrapper`.
+**No `gradlew` wrapper in the repo.** Gradle's wrapper needs `gradle-wrapper.jar`
+and has no script-only form, so shipping one means committing a binary. Generate
+it once with `gradle wrapper`, or let Android Studio do it on first open.
+
+**`mvnw` *is* shipped**, in Maven's script-only distribution — `mvnw` resolves
+Maven itself, so there is no `maven-wrapper.jar` and the no-binaries rule holds.
+It is shipped because the alternative was worse: without it the Java templates
+ran only for people who already had a compatible Maven on PATH, and CI could not
+see the problem because `actions/setup-java` provides one. A scaffolder exists to
+remove exactly that kind of precondition.
 
 **No CI config.** It is too provider-specific to guess, and a stale
 `.gitlab-ci.yml` is worse than none.

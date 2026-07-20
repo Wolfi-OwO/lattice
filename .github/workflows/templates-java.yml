@@ -5,9 +5,16 @@ name: Templates · Java
 # none — a job that spun up Xvfb would be testing Xvfb, not lattice.
 #
 # android-compose is deliberately absent. It needs the Android SDK and a Gradle
-# wrapper, and the templates ship no wrappers on purpose (they are binaries —
-# see "Things deliberately left out" in STRUCTURE.md). A job that generated a
-# wrapper just to have something to run would be testing Gradle, not lattice.
+# wrapper, and Gradle's wrapper has no script-only form — shipping one means
+# committing gradle-wrapper.jar, which STRUCTURE.md refuses. A job that generated
+# a wrapper just to have something to run would be testing Gradle, not lattice.
+#
+# The Maven templates DO ship a wrapper now, in Maven's script-only distribution:
+# mvnw resolves Maven itself, so there is no jar. That closes a gap these jobs
+# could not see — `actions/setup-java` puts Maven on PATH, so CI built the
+# templates happily while anyone without a global Maven got nothing at all. The
+# `wrapper` job below therefore runs with no Maven installed, which is the only
+# configuration that actually tests what the wrapper is for.
 
 on:
   push:
@@ -110,3 +117,50 @@ jobs:
           # three are true.
           echo "liveness:  $(curl -fsS http://localhost:3000/api/health/liveness)"
           echo "readiness: $(curl -fsS http://localhost:3000/api/health/readiness)"
+
+  # No `mvn` on PATH, on purpose. setup-java installs a JDK but this job never
+  # asks for Maven, so the only way the build can succeed is the wrapper doing its
+  # job: resolving and running Maven itself. That is precisely the situation the
+  # bug was reported from, and the one every other job here hides.
+  wrapper:
+    name: ${{ matrix.stack }} · no global Maven
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [spring-boot, javafx]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - run: node bin/lattice.js demo --stack ${{ matrix.stack }} --package at.htlvillach.demo --no-database-start
+
+      - name: The wrapper is there and executable
+        run: |
+          test -x demo/mvnw || { echo "::error::demo/mvnw is missing or not executable"; exit 1; }
+          test -f demo/.mvn/wrapper/maven-wrapper.properties || { echo "::error::no wrapper properties"; exit 1; }
+          # The binary this project refuses to ship. If it ever appears, someone ran
+          # `mvn wrapper:wrapper` without the script-only type.
+          ! find demo -name '*.jar' -print -quit | grep -q . || { echo "::error::a wrapper jar was scaffolded"; exit 1; }
+
+      # The ubuntu runner image preinstalls Maven whether or not setup-java asks for
+      # it, so without this the wrapper is never exercised and the job proves
+      # nothing. The runner is ephemeral; removing it affects this job only.
+      - name: Take Maven off PATH
+        run: |
+          while command -v mvn >/dev/null; do sudo rm -f "$(command -v mvn)"; done
+          if command -v mvn >/dev/null; then
+            echo "::error::mvn is still on PATH — this job cannot prove anything"
+            exit 1
+          fi
+          echo "no mvn on PATH — the wrapper is now the only way to build"
+
+      - name: Build with the wrapper, with Maven absent
+        working-directory: demo
+        run: ./mvnw -B ${{ matrix.stack == 'spring-boot' && 'test' || 'compile' }}

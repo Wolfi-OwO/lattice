@@ -138,17 +138,24 @@ test('no template ships a real dotfile, a lockfile, a wrapper or build output', 
   // npm rewrites a packaged `.gitignore` to `.npmignore`, so a template's
   // gitignore has to travel as `_gitignore` and be renamed on the way out. The
   // rest are things that must be generated, not committed: a lockfile pins a
-  // template to versions that rot, and a wrapper is a binary.
+  // template to versions that rot, and a wrapper used to mean a binary.
   const FORBIDDEN = [
     '.gitignore',
     'package-lock.json',
     'yarn.lock',
     'pnpm-lock.yaml',
     'Cargo.lock',
+    // mvnw and mvnw.cmd are no longer here. The rule was never "no wrappers", it
+    // was "no binaries" — and Maven's script-only distribution satisfies it: mvnw
+    // resolves Maven itself, so there is no maven-wrapper.jar to commit. Without a
+    // wrapper the Java templates only ran for people who already had the right
+    // Maven on PATH, which is what a scaffolder exists to remove.
+    //
+    // gradlew stays forbidden: Gradle has no script-only equivalent, so shipping
+    // one means committing gradle-wrapper.jar. That template's next steps say how
+    // to generate it instead.
     'gradlew',
     'gradlew.bat',
-    'mvnw',
-    'mvnw.cmd',
   ];
   const FORBIDDEN_DIRS = ['node_modules', 'target', 'build', 'dist', '.gradle', 'bin', 'obj', '.venv'];
 
@@ -472,4 +479,17 @@ test('the drift workflow actually filters through the expectations', () => {
   );
   assert.match(workflow, /drift-expectations\.js --files/, 'file drift must be filtered');
   assert.match(workflow, /EXPECTED_BEHIND/, 'dependency drift must be filtered');
+});
+
+test('no wrapper jar is ever committed, in any form', () => {
+  // The rule the wrapper exemption must not erode. A script-only mvnw is fine; a
+  // maven-wrapper.jar or gradle-wrapper.jar is the binary STRUCTURE.md refuses,
+  // and it would arrive by someone innocently running `mvn wrapper:wrapper`
+  // without the type flag.
+  const tracked = execFileSync('git', ['ls-files', '-z', '--', STACKS], { cwd: ROOT, encoding: 'utf8' })
+    .split('\0')
+    .filter(Boolean);
+
+  const jars = tracked.filter((f) => f.endsWith('.jar'));
+  assert.deepEqual(jars, [], `wrapper/binary jars must never be committed — found ${jars.join(', ')}`);
 });

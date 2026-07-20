@@ -6,15 +6,15 @@ REST API — Spring Boot 3, Java 21, JPA, Flyway, Spring Security + JWT.
 
 ```bash
 docker compose up -d database   # Postgres on :5432
-mvn spring-boot:run             # http://localhost:{{port}}
-mvn test
+./mvnw spring-boot:run             # http://localhost:{{port}}
+./mvnw test
 ```
 
 ## Demo data
 
 ```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=seed                                    # database:seed
-mvn spring-boot:run -Dspring-boot.run.profiles=seed -Dspring-boot.run.arguments=--reset
+./mvnw spring-boot:run -Dspring-boot.run.profiles=seed                                    # database:seed
+./mvnw spring-boot:run -Dspring-boot.run.profiles=seed -Dspring-boot.run.arguments=--reset
 ```
 
 The loader and its data live in [`database/`](database/README.md). It is
