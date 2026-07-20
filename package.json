@@ -26,7 +26,7 @@
   "scripts": {
     "start": "node bin/lattice.js",
     "list": "node bin/lattice.js --list",
-    "test": "node --test tests/cli.test.js tests/scaffold.test.js tests/storage.test.js tests/registry.test.js tests/transaction.test.js tests/structure.test.js tests/changelog.test.js tests/doctor.test.js tests/enterprise.test.js tests/generators.test.js",
+    "test": "node --test tests/cli.test.js tests/scaffold.test.js tests/storage.test.js tests/registry.test.js tests/transaction.test.js tests/structure.test.js tests/verify.test.js tests/changelog.test.js tests/doctor.test.js tests/enterprise.test.js tests/generators.test.js",
     "doctor": "node bin/lattice.js doctor"
   },
   "keywords": [
