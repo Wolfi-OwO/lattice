@@ -26,6 +26,7 @@ import {
   hasDocker,
   install,
   mergeDeps,
+  detectToolchain,
   overlayEnterprise,
   pruneAdapters,
   runGenerator,
@@ -44,6 +45,7 @@ import {
 } from '../src/registry.js';
 import { findGenerator, generatorChoices } from '../src/generators.js';
 import { beginGeneration } from '../src/transaction.js';
+import { verifyStructure, describeViolations } from '../src/verify.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STACK_ROOT = path.join(ROOT, 'stacks');
@@ -444,6 +446,15 @@ async function main() {
       });
 
       writeCompose(staged, { storage, vars });
+    }
+
+    // The structural gate, deliberately the last thing before the commit. Checking
+    // the staged tree rather than the committed one is what lets a violation roll
+    // back completely instead of leaving a rejected project on disk — the reason
+    // this and the transaction were built in that order.
+    const structure = verifyStructure(staged, detectToolchain(staged));
+    if (!structure.ok) {
+      throw new Error(describeViolations(structure.violations));
     }
 
     generation.commit();
