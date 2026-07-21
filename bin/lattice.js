@@ -27,6 +27,8 @@ import {
   install,
   mergeDeps,
   detectToolchain,
+  driverLoads,
+  repairDriver,
   overlayEnterprise,
   pruneAdapters,
   runGenerator,
@@ -503,6 +505,25 @@ async function main() {
 
       if (result.ok) {
         console.log(`${c.green('✔')} Installed dependencies in ${label} ${c.gray(`(${pm})`)}      `);
+
+        // Exiting 0 is not the same as a working project. better-sqlite3 compiles
+        // a binding during install, and npm has been observed reporting success
+        // while skipping that step entirely — leaving a project that fails on its
+        // first command with "Could not locate the bindings file". Asking the
+        // project to load its own driver is the only check that cannot be fooled.
+        const driver = dir === target ? Object.keys(depsFor(storage, fileFormat))[0] : null;
+        const smoke = dir === target ? STORAGE[storage]?.smoke : null;
+
+        if (driver && smoke && !driverLoads(dir, smoke)) {
+          process.stdout.write(`${c.gray('⋯')} ${driver} did not load — rebuilding…\r`);
+
+          if (repairDriver(dir, driver, smoke, pm)) {
+            console.log(`${c.green('✔')} Rebuilt ${driver} ${c.gray('(its install step had been skipped)')}   `);
+          } else {
+            console.log(`${c.yellow('!')} ${driver} is installed but will not load          `);
+            console.log(c.gray(`    Run "${pm} rebuild ${driver}" in ${label}, then try again.`));
+          }
+        }
       } else {
         console.log(`${c.yellow('!')} ${pm} install failed in ${label}       `);
         console.log(c.gray(result.error.split('\n').map((l) => `    ${l}`).join('\n')));
