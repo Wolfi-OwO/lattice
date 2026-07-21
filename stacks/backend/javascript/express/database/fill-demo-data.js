@@ -31,6 +31,7 @@ const DATA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data')
  */
 const DOMAINS = {
   users: seedUsers,
+  products: seedProducts,
 };
 
 /**
@@ -38,6 +39,32 @@ const DOMAINS = {
  * unique. Re-running therefore updates the name and role of a demo user rather
  * than failing on a duplicate — seeding is not a once-per-database event.
  */
+async function seedProducts(rows, { reset }) {
+  if (reset) {
+    const { items } = await database.products.list({ page: 1, limit: 1000, q: '' });
+    for (const product of items) await database.products.remove(product.id);
+  }
+
+  let created = 0;
+  let updated = 0;
+
+  for (const row of rows) {
+    // Matched on SKU, the natural key the API already enforces as unique — so a
+    // second run adjusts price and stock rather than failing on a duplicate.
+    const existing = await database.products.findBySku(row.sku);
+
+    if (existing) {
+      await database.products.update(existing.id, row);
+      updated += 1;
+    } else {
+      await database.products.create(row);
+      created += 1;
+    }
+  }
+
+  return { created, updated };
+}
+
 async function seedUsers(rows, { reset }) {
   if (reset) {
     const { items } = await database.users.list({ page: 1, limit: 1000, q: '' });

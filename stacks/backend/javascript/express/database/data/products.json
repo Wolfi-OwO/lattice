@@ -1,0 +1,30 @@
+[
+  {
+    "sku": "DESK-001",
+    "name": "Standing desk",
+    "description": "Electric sit-stand desk, 160x80cm, memory presets.",
+    "priceCents": 79900,
+    "stock": 12
+  },
+  {
+    "sku": "CHAIR-002",
+    "name": "Ergonomic chair",
+    "description": "Mesh back, adjustable lumbar support and armrests.",
+    "priceCents": 44900,
+    "stock": 30
+  },
+  {
+    "sku": "LAMP-003",
+    "name": "Desk lamp",
+    "description": "Dimmable LED with adjustable colour temperature.",
+    "priceCents": 5900,
+    "stock": 0
+  },
+  {
+    "sku": "MON-004",
+    "name": "27-inch monitor",
+    "description": "4K IPS panel, USB-C power delivery, height adjustable.",
+    "priceCents": 52900,
+    "stock": 7
+  }
+]

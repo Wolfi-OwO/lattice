@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import mysql from 'mysql2/promise';
-import { toPublicUser, toPublicUsers } from '../serialize.js';
+import {
+  toPublicUser,
+  toPublicUsers,
+  toPublicProduct,
+  toPublicProducts,
+} from '../serialize.js';
 import { logger } from '../../utils/logger.js';
 
 const SCHEMA = `
@@ -13,6 +18,19 @@ const SCHEMA = `
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+  CREATE TABLE IF NOT EXISTS products (
+    id          CHAR(36)     PRIMARY KEY,
+    sku         VARCHAR(64)  NOT NULL UNIQUE,
+    name        VARCHAR(255) NOT NULL,
+    description TEXT         NOT NULL,
+    -- Integer cents, never DECIMAL-as-float: money that drifts by a cent is a bug
+    -- nobody can reproduce.
+    price_cents INT          NOT NULL,
+    stock       INT          NOT NULL DEFAULT 0,
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
 const COLUMNS = {
@@ -21,6 +39,28 @@ const COLUMNS = {
   passwordHash: 'password_hash',
   role: 'role',
 };
+
+const PRODUCT_COLUMNS = {
+  sku: 'sku',
+  name: 'name',
+  description: 'description',
+  priceCents: 'price_cents',
+  stock: 'stock',
+};
+
+function productRow(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    sku: r.sku,
+    name: r.name,
+    description: r.description,
+    priceCents: r.price_cents,
+    stock: r.stock,
+    createdAt: r.created_at?.toISOString(),
+    updatedAt: r.updated_at?.toISOString(),
+  };
+}
 
 function row(r) {
   if (!r) return null;
@@ -123,5 +163,65 @@ export async function createAdapter({ url, autoCreate = false }) {
     },
   };
 
-  return { users, close: () => pool.end() };
+  const products = {
+    async list({ page, limit, q }) {
+      const where = q ? 'WHERE name LIKE ? OR sku LIKE ?' : '';
+      const params = q ? [`%${q}%`, `%${q}%`] : [];
+
+      const [countRows] = await pool.query(`SELECT COUNT(*) AS total FROM products ${where}`, params);
+      const [rows] = await pool.query(
+        `SELECT * FROM products ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        [...params, limit, (page - 1) * limit],
+      );
+
+      return { items: toPublicProducts(rows.map(productRow)), total: countRows[0].total };
+    },
+
+    async findById(id) {
+      const [rows] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
+      return toPublicProduct(productRow(rows[0]));
+    },
+
+    async findBySku(sku) {
+      const [rows] = await pool.query('SELECT * FROM products WHERE sku = ?', [
+        String(sku).toUpperCase(),
+      ]);
+      return toPublicProduct(productRow(rows[0]));
+    },
+
+    async create({ sku, name, description = '', priceCents, stock = 0 }) {
+      const id = randomUUID();
+      await pool.query(
+        `INSERT INTO products (id, sku, name, description, price_cents, stock)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [id, String(sku).toUpperCase(), name, description, priceCents, stock],
+      );
+      return products.findById(id);
+    },
+
+    async update(id, patch) {
+      const entries = Object.entries(patch).filter(([key]) => key in PRODUCT_COLUMNS);
+      if (entries.length === 0) return products.findById(id);
+
+      const sets = entries.map(([key]) => `${PRODUCT_COLUMNS[key]} = ?`);
+      const values = entries.map(([key, value]) =>
+        key === 'sku' ? String(value).toUpperCase() : value,
+      );
+
+      const [result] = await pool.query(
+        `UPDATE products SET ${sets.join(', ')} WHERE id = ?`,
+        [...values, id],
+      );
+
+      if (result.affectedRows === 0) return null;
+      return products.findById(id);
+    },
+
+    async remove(id) {
+      const [result] = await pool.query('DELETE FROM products WHERE id = ?', [id]);
+      return result.affectedRows > 0;
+    },
+  };
+
+  return { users, products, close: () => pool.end() };
 }
