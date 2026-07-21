@@ -1,7 +1,14 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { toPublicUser, toPublicUsers, matchesQuery, paginate } from '../serialize.js';
+import {
+  toPublicUser,
+  toPublicUsers,
+  toPublicProduct,
+  toPublicProducts,
+  matchesQuery,
+  paginate,
+} from '../serialize.js';
 
 /**
  * Rows on disk, no database.
@@ -63,40 +70,56 @@ export async function createAdapter({ dir, format = 'json' }) {
 
   const dataDir = path.resolve(dir);
   await fs.mkdir(dataDir, { recursive: true });
-  const file = path.join(dataDir, `users.${codec.ext}`);
 
-  async function readAll() {
-    try {
-      return parse(await fs.readFile(file, 'utf8'));
-    } catch (error) {
-      if (error.code === 'ENOENT') return [];
-      throw error;
+  /**
+   * One file and one write queue per collection.
+   *
+   * The queue is deliberately per-collection rather than global: a product write
+   * has no reason to wait behind a user write, and serialising them together
+   * would make every mutation in the process contend on one chain. What must not
+   * interleave is two read-modify-writes of the *same* file, which is exactly
+   * what this preserves.
+   */
+  function collection(name) {
+    const file = path.join(dataDir, `${name}.${codec.ext}`);
+
+    async function readAll() {
+      try {
+        return parse(await fs.readFile(file, 'utf8'));
+      } catch (error) {
+        if (error.code === 'ENOENT') return [];
+        throw error;
+      }
     }
+
+    async function writeAll(rows) {
+      const temp = `${file}.${process.pid}.tmp`;
+      await fs.writeFile(temp, stringify(rows), 'utf8');
+      await fs.rename(temp, file);
+    }
+
+    let queue = Promise.resolve();
+
+    function mutate(fn) {
+      const next = queue.then(async () => {
+        const rows = await readAll();
+        const [result, changed] = await fn(rows);
+        if (changed) await writeAll(rows);
+        return result;
+      });
+
+      // Keep the chain alive even if this mutation rejects, or every subsequent
+      // write would inherit the rejection.
+      queue = next.catch(() => {});
+      return next;
+    }
+
+    return { readAll, mutate, settled: () => queue };
   }
 
-  async function writeAll(rows) {
-    const temp = `${file}.${process.pid}.tmp`;
-    await fs.writeFile(temp, stringify(rows), 'utf8');
-    await fs.rename(temp, file);
-  }
-
-  // The write queue. Each mutation waits for the previous one to land, so a
-  // read-modify-write can never interleave with another.
-  let queue = Promise.resolve();
-
-  function mutate(fn) {
-    const next = queue.then(async () => {
-      const rows = await readAll();
-      const [result, changed] = await fn(rows);
-      if (changed) await writeAll(rows);
-      return result;
-    });
-
-    // Keep the chain alive even if this mutation rejects, or every subsequent
-    // write would inherit the rejection.
-    queue = next.catch(() => {});
-    return next;
-  }
+  const userStore = collection('users');
+  const productStore = collection('products');
+  const { readAll, mutate } = userStore;
 
   const users = {
     async list({ page, limit, q }) {
@@ -159,5 +182,70 @@ export async function createAdapter({ dir, format = 'json' }) {
     },
   };
 
-  return { users, close: async () => queue };
+  const products = {
+    async list({ page, limit, q }) {
+      const rows = (await productStore.readAll()).filter((row) => matchesQuery(row, q, ['name', 'sku']));
+      const { items, total } = paginate(rows, { page, limit });
+      return { items: toPublicProducts(items), total };
+    },
+
+    async findById(id) {
+      const rows = await productStore.readAll();
+      return toPublicProduct(rows.find((row) => row.id === id));
+    },
+
+    async findBySku(sku) {
+      const rows = await productStore.readAll();
+      const found = rows.find((row) => String(row.sku).toUpperCase() === String(sku).toUpperCase());
+      return toPublicProduct(found);
+    },
+
+    create({ sku, name, description = '', priceCents, stock = 0 }) {
+      return productStore.mutate((rows) => {
+        const now = new Date().toISOString();
+        const row = {
+          id: randomUUID(),
+          sku: String(sku).toUpperCase(),
+          name,
+          description,
+          priceCents,
+          stock,
+          createdAt: now,
+          updatedAt: now,
+        };
+        rows.push(row);
+        return [toPublicProduct(row), true];
+      });
+    },
+
+    update(id, patch) {
+      return productStore.mutate((rows) => {
+        const row = rows.find((r) => r.id === id);
+        if (!row) return [null, false];
+
+        Object.assign(row, patch, { updatedAt: new Date().toISOString() });
+        if (patch.sku) row.sku = String(patch.sku).toUpperCase();
+
+        return [toPublicProduct(row), true];
+      });
+    },
+
+    remove(id) {
+      return productStore.mutate((rows) => {
+        const index = rows.findIndex((row) => row.id === id);
+        if (index === -1) return [false, false];
+
+        rows.splice(index, 1);
+        return [true, true];
+      });
+    },
+  };
+
+  return {
+    users,
+    products,
+    // Both queues, so close() waits for every pending write rather than just the
+    // users one.
+    close: async () => Promise.all([userStore.settled(), productStore.settled()]),
+  };
 }

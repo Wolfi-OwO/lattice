@@ -13,6 +13,13 @@
  *   users.create({ email, name, passwordHash, role })
  *   users.update(id, patch)                 -> user | null
  *   users.remove(id)                        -> boolean
+ *
+ *   products.list({ page, limit, q })       -> { items, total }
+ *   products.findById(id)                   -> product | null
+ *   products.findBySku(sku)                 -> product | null
+ *   products.create({ sku, name, description, priceCents, stock })
+ *   products.update(id, patch)              -> product | null
+ *   products.remove(id)                     -> boolean
  *   close()
  *
  * Users returned from an adapter are always public-shaped: `passwordHash` is
@@ -27,6 +34,7 @@ import { createAdapter } from './adapters/{{databaseAdapter}}.js';
 /** Populated by connectDatabase(). Imported by services as `database.users`. */
 export const database = {
   users: null,
+  products: null,
   close: async () => {},
 };
 
@@ -34,6 +42,7 @@ export async function connectDatabase() {
   const adapter = await createAdapter(config.database);
 
   database.users = adapter.users;
+  database.products = adapter.products;
   database.close = adapter.close ?? (async () => {});
 
   logger.info(`Storage ready — {{databaseLabel}}`);
@@ -43,6 +52,7 @@ export async function connectDatabase() {
 export async function disconnectDatabase() {
   await database.close();
   database.users = null;
+  database.products = null;
   logger.info('Storage closed');
 }
 
