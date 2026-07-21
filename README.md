@@ -1,5 +1,7 @@
 # lattice
 
+![Repo views](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Wolfi-OwO/Wolfi-OwO/main/traffic/badges/lattice.json)
+
 Pick a stack, pick a database, get a project that already runs.
 
 ```bash
