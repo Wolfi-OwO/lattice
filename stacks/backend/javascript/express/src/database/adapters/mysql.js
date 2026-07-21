@@ -104,7 +104,14 @@ export async function createAdapter({ url, autoCreate = false }) {
     logger.error(`mysql pool error: ${error.message}`);
   });
 
-  await pool.query(SCHEMA);
+  // One statement per call. MySQL rejects multiple statements in a single query
+  // unless the connection opts into `multipleStatements`, and opting in widens the
+  // SQL-injection surface for every query the pool ever runs — a steep price for a
+  // convenience needed exactly once at startup. Postgres and SQLite accept the
+  // whole script, which is why this only bites here.
+  for (const statement of SCHEMA.split(';').map((s) => s.trim()).filter(Boolean)) {
+    await pool.query(statement);
+  }
 
   const users = {
     async list({ page, limit, q }) {
