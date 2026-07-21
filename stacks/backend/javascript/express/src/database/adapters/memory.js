@@ -71,7 +71,9 @@ export async function createAdapter() {
 
   const products = {
     async list({ page, limit, q }) {
-      const matched = [...productRows.values()].filter((row) => matchesQuery(row, q, ['name', 'sku']));
+      const matched = [...productRows.values()].filter((row) =>
+        matchesQuery(row, q, ['name', 'sku']),
+      );
       const { items, total } = paginate(matched, { page, limit });
       return { items: toPublicProducts(items), total };
     },

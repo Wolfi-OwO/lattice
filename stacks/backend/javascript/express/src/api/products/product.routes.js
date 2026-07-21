@@ -17,8 +17,18 @@ export const productRoutes = Router();
 productRoutes.get('/', validate(listProductsSchema, 'query'), asyncHandler(controller.list));
 productRoutes.get('/:id', asyncHandler(controller.get));
 
-productRoutes.post('/', requireAuth, validate(createProductSchema), asyncHandler(controller.create));
-productRoutes.patch('/:id', requireAuth, validate(updateProductSchema), asyncHandler(controller.update));
+productRoutes.post(
+  '/',
+  requireAuth,
+  validate(createProductSchema),
+  asyncHandler(controller.create),
+);
+productRoutes.patch(
+  '/:id',
+  requireAuth,
+  validate(updateProductSchema),
+  asyncHandler(controller.update),
+);
 
 // Stock is a delta, not an assignment — see product.service.js.
 productRoutes.post(
