@@ -27,6 +27,7 @@ compose file.
 | `error`     | `err`                          |
 | `number`    | `num`, `no`                    |
 | `identifier` / `id` (`id` is universal and stays) | `ident`, `idx` |
+| `dto` (the second and last permitted initialism — see rule 4, and only where the ecosystem uses it natively) | inventing `dataTransfer` |
 | `message`   | `msg`                          |
 | `properties`| `props` (React's `props` parameter stays — it is the framework's word) |
 
@@ -124,6 +125,48 @@ status codes.
 
 **Entities never leave the service layer.** The database model is not the API
 contract. Every backend converts to a data-transfer object before responding.
+
+### Where each of those lives
+
+```
+src/models/<domain>.<ext>    the record, as the selected storage stores it
+src/database/                the seam: adapters, connection, serialization
+src/dto/<domain>/            the shapes crossing the boundary — where the language uses them
+```
+
+`models/` is **storage-specific and pruned at scaffold time**, exactly like the
+adapters are. A `--database mongo` project gets a Mongoose schema; a `--database
+postgres` project gets the table definition. It is the one place that knows how a
+record is physically stored, which is why `database/` — the seam — must not also
+know: two files describing one table is how they drift.
+
+For `memory` and `file` there is no schema to write, so the model carries what
+those adapters genuinely need instead: the field list and the natural key that
+makes seeding idempotent. `models/` exists in every project regardless of
+storage, because a convention with exceptions is one nobody can rely on.
+
+`dto/` is **conditional, and absent by default.** In Java it is the ecosystem's
+own word and a Spring template ships it. In JavaScript a plain object literal is
+the data-transfer object, and a `dto/` directory full of shapes the language does
+not check is ceremony — those templates express the same boundary through
+validation schemas and `toPublic<Domain>` instead. A directory that exists only
+to satisfy a diagram is worse than no directory.
+
+Where it does exist, it is split by domain and named for the use case:
+
+```
+src/dto/user/create.<ext>            → UserCreate
+src/dto/user/password-update.<ext>   → PasswordUpdate
+```
+
+File names stay kebab-case per rule 1; the exported type is PascalCase. The file
+is not `user-create` inside `user/` — the directory already said `user`.
+
+**`dto` is the one initialism rule 1 permits besides `id`**, and only in the
+ecosystems that use it natively. It is not a shortening this repository invented;
+it is what the Spring and NestJS documentation calls the thing, and spelling it
+`data-transfer-object/` would read as written by someone who had never opened
+either.
 
 ---
 
