@@ -39,6 +39,9 @@ export const STORAGE = {
     // boundary — and the mongodb job scaffolds and tests against a real container,
     // so this is verified rather than assumed.
     deps: { mongoose: '^9.7.4' },
+    // Pure JavaScript — importing it is the whole check. No connection is opened;
+    // this asks whether the package is usable, not whether a server is running.
+    smoke: "require('mongoose')",
     durable: true,
     server: true,
     defaultPort: 27017,
@@ -66,6 +69,7 @@ export const STORAGE = {
     adapter: 'postgres',
     needsUrl: true,
     deps: { pg: '^8.12.0' },
+    smoke: "require('pg')",
     durable: true,
     server: true,
     defaultPort: 5432,
@@ -98,6 +102,7 @@ export const STORAGE = {
     adapter: 'mysql',
     needsUrl: true,
     deps: { mysql2: '^3.11.0' },
+    smoke: "require('mysql2')",
     durable: true,
     server: true,
     defaultPort: 3306,
@@ -134,6 +139,11 @@ export const STORAGE = {
     // toolchain. CI runs Node 20 and never saw it; anyone on current Node hit it
     // immediately. v12 declares support through Node 26.
     deps: { 'better-sqlite3': '^12.11.1' },
+    // Requiring better-sqlite3 proves nothing: the native binding is loaded when a
+    // Database is constructed, not at import. A scaffold whose binding was never
+    // built imports cleanly and then dies on the first query, which is exactly how
+    // this shipped broken. Opening an in-memory database exercises the binding.
+    smoke: "new (require('better-sqlite3'))(':memory:').close()",
     durable: true,
     server: false,
     env: (v) => ({ DATABASE_URL: `file:./data/${v.projectName}.db` }),
