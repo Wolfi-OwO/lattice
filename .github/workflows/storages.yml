@@ -110,6 +110,15 @@ jobs:
       fail-fast: false
       matrix:
         node: [20, 24]
+        # `file` needs a --format: the CLI refuses to guess one non-interactively,
+        # which is correct behaviour and was my invocation's bug, not its own.
+        include:
+          - database: memory
+            extra: ''
+          - database: file
+            extra: --format json
+          - database: sqlite
+            extra: ''
         database: [memory, file, sqlite]
     steps:
       - uses: actions/checkout@v7
@@ -117,7 +126,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      - run: node bin/lattice.js demo --stack express --database ${{ matrix.database }} --no-database-start
+      - run: node bin/lattice.js demo --stack express --database ${{ matrix.database }} ${{ matrix.extra }} --no-database-start
 
       - name: The driver loads, not merely installs
         working-directory: demo
