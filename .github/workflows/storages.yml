@@ -90,3 +90,61 @@ jobs:
       # only running it proves the binary matches this Node's ABI.
       - working-directory: demo
         run: npm test
+
+  # Every storage, scaffolded and then actually used, on current Node.
+  #
+  # The gap this closes: the matrix above pins Node 20, where better-sqlite3 has a
+  # prebuilt binary and nothing has to compile. On Node 24 the binary is built at
+  # install time — and when that step is skipped, `npm install` still exits 0, the
+  # package is present, and `require('better-sqlite3')` even succeeds. The failure
+  # only appears when something opens a database, which is why a scaffold that
+  # passed every check here shipped broken to a user.
+  #
+  # So this job does not ask whether install succeeded. It asks the project to run
+  # its own suite against its own storage, which is the only question a user cares
+  # about.
+  usable:
+    name: ${{ matrix.database }} · node ${{ matrix.node }} · really runs
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 24]
+        # `file` needs a --format: the CLI refuses to guess one non-interactively,
+        # which is correct behaviour and was my invocation's bug, not its own.
+        include:
+          - database: memory
+            extra: ''
+          - database: file
+            extra: --format json
+          - database: sqlite
+            extra: ''
+        database: [memory, file, sqlite]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+
+      - run: node bin/lattice.js demo --stack express --database ${{ matrix.database }} ${{ matrix.extra }} --no-database-start
+
+      - name: The driver loads, not merely installs
+        working-directory: demo
+        run: |
+          # Read the smoke expression from the same place the CLI reads it, so this
+          # job cannot drift from what lattice itself checks.
+          expr=$(node -e "import('${{ github.workspace }}/src/storage.js').then(m => console.log(m.STORAGE['${{ matrix.database }}'].smoke ?? ''))")
+          if [ -n "$expr" ]; then
+            echo "smoke: $expr"
+            node -e "$expr" || { echo "::error::${{ matrix.database }}: driver installed but will not load"; exit 1; }
+          else
+            echo "no driver to verify for ${{ matrix.database }}"
+          fi
+
+      - name: The generated suite passes against that storage
+        working-directory: demo
+        run: npm test
+
+      - name: Seeding works end to end
+        working-directory: demo
+        run: npm run database:seed

@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
-import { toPublicUser, toPublicUsers } from '../serialize.js';
+import {
+  toPublicUser,
+  toPublicUsers,
+  toPublicProduct,
+  toPublicProducts,
+} from '../serialize.js';
 import { logger } from '../../utils/logger.js';
 
 /**
@@ -17,6 +22,19 @@ const SCHEMA = `
     role          TEXT NOT NULL DEFAULT 'user',
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+
+  CREATE TABLE IF NOT EXISTS products (
+    id          TEXT PRIMARY KEY,
+    sku         TEXT NOT NULL UNIQUE,
+    name        TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    -- Integer cents, never NUMERIC-as-float. Money that drifts by a cent is a bug
+    -- nobody can reproduce.
+    price_cents INTEGER NOT NULL,
+    stock       INTEGER NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
   );
 `;
 
@@ -66,6 +84,28 @@ const COLUMNS = {
   passwordHash: 'password_hash',
   role: 'role',
 };
+
+const PRODUCT_COLUMNS = {
+  sku: 'sku',
+  name: 'name',
+  description: 'description',
+  priceCents: 'price_cents',
+  stock: 'stock',
+};
+
+function productRow(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    sku: r.sku,
+    name: r.name,
+    description: r.description,
+    priceCents: r.price_cents,
+    stock: r.stock,
+    createdAt: r.created_at?.toISOString(),
+    updatedAt: r.updated_at?.toISOString(),
+  };
+}
 
 function row(r) {
   if (!r) return null;
@@ -203,5 +243,67 @@ export async function createAdapter({ url, autoCreate = false }) {
     },
   };
 
-  return { users, close: () => pool.end() };
+  const products = {
+    async list({ page, limit, q }) {
+      const where = q ? 'WHERE name ILIKE $1 OR sku ILIKE $1' : '';
+      const params = q ? [`%${q}%`] : [];
+
+      const { rows: countRows } = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM products ${where}`,
+        params,
+      );
+
+      const { rows } = await pool.query(
+        `SELECT * FROM products ${where} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, (page - 1) * limit],
+      );
+
+      return { items: toPublicProducts(rows.map(productRow)), total: countRows[0].total };
+    },
+
+    async findById(id) {
+      const { rows } = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
+      return toPublicProduct(productRow(rows[0]));
+    },
+
+    async findBySku(sku) {
+      const { rows } = await pool.query('SELECT * FROM products WHERE sku = $1', [
+        String(sku).toUpperCase(),
+      ]);
+      return toPublicProduct(productRow(rows[0]));
+    },
+
+    async create({ sku, name, description = '', priceCents, stock = 0 }) {
+      const { rows } = await pool.query(
+        `INSERT INTO products (id, sku, name, description, price_cents, stock)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [randomUUID(), String(sku).toUpperCase(), name, description, priceCents, stock],
+      );
+      return toPublicProduct(productRow(rows[0]));
+    },
+
+    async update(id, patch) {
+      const entries = Object.entries(patch).filter(([key]) => key in PRODUCT_COLUMNS);
+      if (entries.length === 0) return products.findById(id);
+
+      const sets = entries.map(([key], i) => `${PRODUCT_COLUMNS[key]} = $${i + 1}`);
+      const values = entries.map(([key, value]) =>
+        key === 'sku' ? String(value).toUpperCase() : value,
+      );
+
+      const { rows } = await pool.query(
+        `UPDATE products SET ${sets.join(', ')}, updated_at = now() WHERE id = $${values.length + 1} RETURNING *`,
+        [...values, id],
+      );
+
+      return toPublicProduct(productRow(rows[0]));
+    },
+
+    async remove(id) {
+      const { rowCount } = await pool.query('DELETE FROM products WHERE id = $1', [id]);
+      return rowCount > 0;
+    },
+  };
+
+  return { users, products, close: () => pool.end() };
 }

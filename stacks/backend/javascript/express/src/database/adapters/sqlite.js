@@ -2,7 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
-import { toPublicUser, toPublicUsers } from '../serialize.js';
+import {
+  toPublicUser,
+  toPublicUsers,
+  toPublicProduct,
+  toPublicProducts,
+} from '../serialize.js';
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS users (
@@ -14,6 +19,19 @@ const SCHEMA = `
     created_at    TEXT NOT NULL,
     updated_at    TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS products (
+    id          TEXT PRIMARY KEY,
+    sku         TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    name        TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    -- Integer cents, never a float. Binary floating point cannot represent 0.10
+    -- exactly, and a price that drifts by a cent is a bug nobody can reproduce.
+    price_cents INTEGER NOT NULL,
+    stock       INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+  );
 `;
 
 const COLUMNS = {
@@ -22,6 +40,28 @@ const COLUMNS = {
   passwordHash: 'password_hash',
   role: 'role',
 };
+
+const PRODUCT_COLUMNS = {
+  sku: 'sku',
+  name: 'name',
+  description: 'description',
+  priceCents: 'price_cents',
+  stock: 'stock',
+};
+
+function productRow(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    sku: r.sku,
+    name: r.name,
+    description: r.description,
+    priceCents: r.price_cents,
+    stock: r.stock,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
 
 function row(r) {
   if (!r) return null;
@@ -163,5 +203,64 @@ export async function createAdapter({ url }) {
     },
   };
 
-  return { users, close: async () => sqlite.close() };
+  const products = {
+    async list({ page, limit, q }) {
+      const where = q ? 'WHERE name LIKE @q OR sku LIKE @q' : '';
+      const params = q ? { q: `%${q}%` } : {};
+
+      const { total } = sqlite.prepare(`SELECT COUNT(*) AS total FROM products ${where}`).get(params);
+
+      const rows = sqlite
+        .prepare(
+          `SELECT * FROM products ${where} ORDER BY created_at DESC LIMIT @limit OFFSET @offset`,
+        )
+        .all({ ...params, limit, offset: (page - 1) * limit });
+
+      return { items: toPublicProducts(rows.map(productRow)), total };
+    },
+
+    async findById(id) {
+      return toPublicProduct(productRow(sqlite.prepare('SELECT * FROM products WHERE id = ?').get(id)));
+    },
+
+    async findBySku(sku) {
+      const found = sqlite.prepare('SELECT * FROM products WHERE sku = ?').get(String(sku).toUpperCase());
+      return toPublicProduct(productRow(found));
+    },
+
+    async create({ sku, name, description = '', priceCents, stock = 0 }) {
+      const now = new Date().toISOString();
+      const id = randomUUID();
+
+      sqlite
+        .prepare(
+          `INSERT INTO products (id, sku, name, description, price_cents, stock, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(id, String(sku).toUpperCase(), name, description, priceCents, stock, now, now);
+
+      return products.findById(id);
+    },
+
+    async update(id, patch) {
+      const entries = Object.entries(patch).filter(([key]) => key in PRODUCT_COLUMNS);
+      if (entries.length === 0) return products.findById(id);
+
+      const sets = entries.map(([key]) => `${PRODUCT_COLUMNS[key]} = ?`);
+      const values = entries.map(([key, value]) => (key === 'sku' ? String(value).toUpperCase() : value));
+
+      const result = sqlite
+        .prepare(`UPDATE products SET ${sets.join(', ')}, updated_at = ? WHERE id = ?`)
+        .run(...values, new Date().toISOString(), id);
+
+      if (result.changes === 0) return null;
+      return products.findById(id);
+    },
+
+    async remove(id) {
+      return sqlite.prepare('DELETE FROM products WHERE id = ?').run(id).changes > 0;
+    },
+  };
+
+  return { users, products, close: async () => sqlite.close() };
 }

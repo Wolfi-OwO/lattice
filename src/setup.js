@@ -233,6 +233,56 @@ export function install(target, packageManager, capture) {
 }
 
 /**
+ * Does the storage driver this project chose actually load?
+ *
+ * `npm install` exiting 0 is not the same as a working project, and for a native
+ * addon the two came apart badly. better-sqlite3 compiles a binding at install
+ * time; when lattice ran the install, npm reported success and produced no
+ * binding at all, so every scaffolded SQLite project failed on its first command:
+ *
+ *   Error: Could not locate the bindings file
+ *
+ * The install script simply did not run. It runs when the same `npm install` is
+ * typed in a shell, in the same directory, with the same environment — reproduced
+ * both ways, repeatedly. Rather than keep guessing at npm's reasoning, this asks
+ * the only question that matters: can the project load its driver? A require() in
+ * the project's own context answers it in about fifty milliseconds and cannot be
+ * fooled by an exit code.
+ *
+ * Pure-JavaScript drivers are checked too. They cost nothing to check and a
+ * missing package is worth catching for the same reason.
+ */
+export function driverLoads(target, smoke) {
+  if (!smoke) return true;
+
+  const result = spawnSync(process.execPath, ['-e', smoke], {
+    cwd: target,
+    stdio: 'ignore',
+    timeout: 60_000,
+  });
+
+  return result.status === 0;
+}
+
+/**
+ * Repair a driver that installed but cannot load.
+ *
+ * `npm rebuild` re-runs the install scripts npm skipped, which is exactly the
+ * missing step. It is attempted once and its success is re-verified rather than
+ * assumed — the whole point of this pair of functions is that "the command
+ * exited 0" is not evidence.
+ */
+export function repairDriver(target, driver, smoke, packageManager = 'npm') {
+  spawnSync(packageManager, ['rebuild', driver], {
+    cwd: target,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: 10 * 60 * 1000,
+  });
+
+  return driverLoads(target, smoke);
+}
+
+/**
  * `--wait` blocks until the service reports healthy, rather than merely started.
  * Without it the container is up but the database is still initialising, and the
  * very next thing the user runs (`npm test`, `npm run dev`) dies on a refused

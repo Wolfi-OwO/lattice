@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { healthRoutes } from './health/health.routes.js';
 import { userRoutes } from './users/user.routes.js';
+import { productRoutes } from './products/product.routes.js';
 
 /**
  * One place that knows every resource. Add a folder under api/, then mount it
@@ -15,3 +16,4 @@ export const api = Router();
 
 api.use('/health', healthRoutes);
 api.use('/users', userRoutes);
+api.use('/products', productRoutes);

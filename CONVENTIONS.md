@@ -139,8 +139,13 @@ database/
     └── users.json          one file per domain — never one big seed file
 ```
 
-- **One file per domain** (`users.json`, `products.json`, …). Adding a domain is
-  adding a file; two people adding two domains do not collide in one file.
+- **One file per domain** (`users.json`, `products.json`, …), so two people adding
+  two domains do not collide in one file.
+- Adding a domain's **demo data** is adding a file and registering its loader.
+  Adding the **domain** is not — it is a repository in every adapter the template
+  supports, plus the service, controller, validation and routes. Adding products
+  to the express template touched fifteen files. This rule governs the seed data
+  only, and says nothing about what the rest of a domain costs.
 - The loader goes through the **repository**, never through a driver — so one
   loader works against every storage the template supports.
 - It is **idempotent**: rows are matched on their natural key, so running it
