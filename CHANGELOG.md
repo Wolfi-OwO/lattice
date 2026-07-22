@@ -6,6 +6,15 @@ Every notable change to lattice, newest first. The format is
 
 **Write your changes under `## [Unreleased]
 
+` as you make them**, not at release
+time — by then nobody remembers what changed, and a release with no notes is a
+release nobody can review. The **Prepare release** workflow moves that section
+under the new version number and stamps it with the date, leaving `[Unreleased]`
+empty for the next change, and opens a pull request for you to review. A release
+whose `[Unreleased]` section is empty is refused before any of that happens.
+
+## [Unreleased]
+
 ### Added
 
 - **A products domain, in every storage adapter.** Until now every template shipped
@@ -43,15 +52,6 @@ Every notable change to lattice, newest first. The format is
   repository in all six adapters, the `DOMAINS` registration, and four API files.
   The scope is now explicit and the real number is written down.
 - Where models and data-transfer objects live is now stated rather than implied.
-
-` as you make them**, not at release
-time — by then nobody remembers what changed, and a release with no notes is a
-release nobody can review. The **Prepare release** workflow moves that section
-under the new version number and stamps it with the date, leaving `[Unreleased]`
-empty for the next change, and opens a pull request for you to review. A release
-whose `[Unreleased]` section is empty is refused before any of that happens.
-
-## [Unreleased]
 
 ## [1.0.1] - 2026-07-19
 
