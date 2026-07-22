@@ -15,6 +15,8 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-22
+
 ### Added
 
 - **A products domain, in every storage adapter.** Until now every template shipped
@@ -295,5 +297,6 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
   both shipped green, because the test guarding the spelling only looked at the
   templates and never at the scaffolder itself. It looks at both now.
 
-[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.0.1...v1.2.0
 [0.0.1]: https://github.com/Wolfi-OwO/lattice/releases/tag/v0.0.1
