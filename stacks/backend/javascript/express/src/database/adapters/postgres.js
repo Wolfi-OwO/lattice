@@ -1,42 +1,29 @@
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
-import {
-  toPublicUser,
-  toPublicUsers,
-  toPublicProduct,
-  toPublicProducts,
-} from '../serialize.js';
+import { toPublicUser, toPublicUsers, toPublicProduct, toPublicProducts } from '../serialize.js';
 import { logger } from '../../utils/logger.js';
-
+import { MODELS, user, product } from '../../models/index.js';
+import { createTables, columnsOf } from '../schema.js';
 /**
  * The schema is created on boot so a fresh clone runs with no migration step.
- * The moment this table needs to *change*, that is the signal to adopt a real
+ * The moment a table needs to *change*, that is the signal to adopt a real
  * migration tool — edit-in-place on a live table is how schemas drift.
+ *
+ * The tables are described in src/models/, one file per record, and this adapter
+ * only says how Postgres spells them. The seam knows how to talk to Postgres,
+ * the model knows what the row looks like, and nothing knows both.
  */
-const SCHEMA = `
-  CREATE TABLE IF NOT EXISTS users (
-    id            TEXT PRIMARY KEY,
-    email         TEXT NOT NULL UNIQUE,
-    name          TEXT NOT NULL,
-    password_hash TEXT NOT NULL,
-    role          TEXT NOT NULL DEFAULT 'user',
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-  );
+const DIALECT = {
+  types: {
+    id: () => 'TEXT PRIMARY KEY',
+    string: () => 'TEXT',
+    enum: () => 'TEXT',
+    integer: () => 'INTEGER',
+  },
+  timestamp: () => 'TIMESTAMPTZ NOT NULL DEFAULT now()',
+};
 
-  CREATE TABLE IF NOT EXISTS products (
-    id          TEXT PRIMARY KEY,
-    sku         TEXT NOT NULL UNIQUE,
-    name        TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    -- Integer cents, never NUMERIC-as-float. Money that drifts by a cent is a bug
-    -- nobody can reproduce.
-    price_cents INTEGER NOT NULL,
-    stock       INTEGER NOT NULL DEFAULT 0,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-  );
-`;
+const SCHEMA = createTables(MODELS, DIALECT).join('\n\n  ');
 
 /**
  * An arbitrary but fixed key. Advisory locks are just numbers Postgres agrees to
@@ -78,20 +65,9 @@ async function ensureSchema(pool) {
   }
 }
 
-const COLUMNS = {
-  email: 'email',
-  name: 'name',
-  passwordHash: 'password_hash',
-  role: 'role',
-};
+const COLUMNS = columnsOf(user);
 
-const PRODUCT_COLUMNS = {
-  sku: 'sku',
-  name: 'name',
-  description: 'description',
-  priceCents: 'price_cents',
-  stock: 'stock',
-};
+const PRODUCT_COLUMNS = columnsOf(product);
 
 function productRow(r) {
   if (!r) return null;
