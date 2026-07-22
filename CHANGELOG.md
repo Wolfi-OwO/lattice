@@ -6,6 +6,44 @@ Every notable change to lattice, newest first. The format is
 
 **Write your changes under `## [Unreleased]
 
+### Added
+
+- **A products domain, in every storage adapter.** Until now every template shipped
+  exactly one domain, so the claim that the repository seam is domain-agnostic had
+  never been tested by anything. Products tests it across all six adapters.
+- **A generated project whose layout would silently not work is now rejected.** The
+  gate runs on the staged tree, as the last thing before the transaction commits, so
+  a violation rolls the whole generation back instead of leaving a rejected project
+  on disk. Every rule describes a placement that is *silently* wrong: a `.java`
+  outside `src/main/java` is not on Maven's source path, so the class does not exist
+  at runtime and no compiler error points at it; a test under `src/main` is packaged
+  into the shipped artifact along with its test-only dependencies. Anything that
+  merely offends taste stays in `lattice doctor`, which scores rather than refuses.
+- **The Java templates ship a Maven wrapper.** A scaffolded Spring Boot project had
+  no way to build: its README and the CLI both say `mvn spring-boot:run`, and the
+  template shipped no wrapper, so the project only ran for someone who already had a
+  compatible Maven installed. CI never saw it, because `actions/setup-java` puts
+  Maven on PATH. Both Java templates now ship `mvnw`, `mvnw.cmd` and the wrapper
+  properties — Maven's script-only distribution has no `maven-wrapper.jar`, so no
+  binary is committed.
+
+### Fixed
+
+- **A project is only installed if its storage driver actually works.**
+  `--database sqlite` produced a project that died on its first command with
+  `Error: Could not locate the bindings file`. better-sqlite3 compiles a native
+  binding during install, and when lattice spawned npm that install script was
+  silently skipped: npm exited 0, the package was present, lattice printed
+  "Installed dependencies", and nothing worked. Deterministic, three runs out of three.
+
+### Documentation
+
+- Rule 5 said "adding a domain is adding a file". Shipping the products domain
+  proved that false — fifteen files, of which one was the seed data. The rest was a
+  repository in all six adapters, the `DOMAINS` registration, and four API files.
+  The scope is now explicit and the real number is written down.
+- Where models and data-transfer objects live is now stated rather than implied.
+
 ` as you make them**, not at release
 time — by then nobody remembers what changed, and a release with no notes is a
 release nobody can review. The **Prepare release** workflow moves that section
