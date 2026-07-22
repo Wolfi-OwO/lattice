@@ -30,6 +30,16 @@ export async function clearUsers() {
   for (const user of items) await database.users.remove(user.id);
 }
 
-export function authHeader() {
-  return { authorization: `Bearer ${signToken({ id: 'test', email: 't@e.st', role: 'admin' })}` };
+export async function clearProducts() {
+  const { items } = await database.products.list({ page: 1, limit: 500, q: '' });
+  for (const product of items) await database.products.remove(product.id);
+}
+
+/**
+ * Defaults to admin so every existing call site keeps the access it had. Pass a
+ * role to test what a lesser one cannot do — the products suite uses that to
+ * prove a plain user is refused a delete rather than merely not offered one.
+ */
+export function authHeader(role = 'admin') {
+  return { authorization: `Bearer ${signToken({ id: 'test', email: 't@e.st', role })}` };
 }

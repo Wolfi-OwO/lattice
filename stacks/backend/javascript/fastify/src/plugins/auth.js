@@ -27,6 +27,21 @@ export async function requireAuth(request) {
   }
 }
 
+/**
+ * Use after requireAuth: `preHandler: [requireAuth, requireRole('admin')]`.
+ *
+ * Kept separate from requireAuth rather than folded in as an option, so that a
+ * route missing the role check reads as missing — an argument that defaults to
+ * "any role" is the shape where a forgotten parameter silently means public.
+ */
+export const requireRole =
+  (...roles) =>
+  async (request) => {
+    if (!request.user || !roles.includes(request.user.role)) {
+      throw ApiError.forbidden();
+    }
+  };
+
 /** Issued on login. The payload is the minimum a request needs to be authorised. */
 export function signToken(user) {
   return jwt.sign({ sub: user.id, email: user.email, role: user.role }, config.jwt.secret, {
