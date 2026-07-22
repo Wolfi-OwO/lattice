@@ -10,8 +10,10 @@ export const NATURAL_KEY = 'sku';
 
 export const FIELDS = {
   id: { type: 'id' },
-  sku: { type: 'string', required: true, unique: true, uppercase: true, trim: true },
-  name: { type: 'string', required: true, trim: true },
+  sku: { type: 'string', required: true, unique: true, uppercase: true, trim: true, maxLength: 64 },
+  name: { type: 'string', required: true, trim: true, maxLength: 255 },
+  // No maxLength on purpose: a description is prose, and capping it at some
+  // round number is a limit nobody chose. Unbounded strings become TEXT.
   description: { type: 'string', default: '' },
   // Integer cents, never a float. Binary floating point cannot hold 0.10
   // exactly, and money that drifts by a cent is a bug nobody can reproduce.

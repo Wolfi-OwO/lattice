@@ -1,53 +1,35 @@
+import { MODELS, user, product } from '../../models/index.js';
+import { createTables, columnsOf } from '../schema.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
-import {
-  toPublicUser,
-  toPublicUsers,
-  toPublicProduct,
-  toPublicProducts,
-} from '../serialize.js';
+import { toPublicUser, toPublicUsers, toPublicProduct, toPublicProducts } from '../serialize.js';
 
-const SCHEMA = `
-  CREATE TABLE IF NOT EXISTS users (
-    id            TEXT PRIMARY KEY,
-    email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    name          TEXT NOT NULL,
-    password_hash TEXT NOT NULL,
-    role          TEXT NOT NULL DEFAULT 'user',
-    created_at    TEXT NOT NULL,
-    updated_at    TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS products (
-    id          TEXT PRIMARY KEY,
-    sku         TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    name        TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    -- Integer cents, never a float. Binary floating point cannot represent 0.10
-    -- exactly, and a price that drifts by a cent is a bug nobody can reproduce.
-    price_cents INTEGER NOT NULL,
-    stock       INTEGER NOT NULL DEFAULT 0,
-    created_at  TEXT NOT NULL,
-    updated_at  TEXT NOT NULL
-  );
-`;
-
-const COLUMNS = {
-  email: 'email',
-  name: 'name',
-  passwordHash: 'password_hash',
-  role: 'role',
+/**
+ * The tables are described in src/models/; this adapter only says how SQLite
+ * spells them.
+ *
+ * Timestamps are TEXT with no default: SQLite has no timestamp type, and the
+ * adapter writes ISO-8601 strings so they sort lexically the way they sort
+ * chronologically.
+ */
+const DIALECT = {
+  types: {
+    id: () => 'TEXT PRIMARY KEY',
+    string: () => 'TEXT',
+    enum: () => 'TEXT',
+    integer: () => 'INTEGER',
+  },
+  timestamp: () => 'TEXT NOT NULL',
+  caseInsensitiveUnique: true,
 };
 
-const PRODUCT_COLUMNS = {
-  sku: 'sku',
-  name: 'name',
-  description: 'description',
-  priceCents: 'price_cents',
-  stock: 'stock',
-};
+const SCHEMA = createTables(MODELS, DIALECT).join('\n\n  ');
+
+const COLUMNS = columnsOf(user);
+
+const PRODUCT_COLUMNS = columnsOf(product);
 
 function productRow(r) {
   if (!r) return null;
@@ -208,7 +190,9 @@ export async function createAdapter({ url }) {
       const where = q ? 'WHERE name LIKE @q OR sku LIKE @q' : '';
       const params = q ? { q: `%${q}%` } : {};
 
-      const { total } = sqlite.prepare(`SELECT COUNT(*) AS total FROM products ${where}`).get(params);
+      const { total } = sqlite
+        .prepare(`SELECT COUNT(*) AS total FROM products ${where}`)
+        .get(params);
 
       const rows = sqlite
         .prepare(
@@ -220,11 +204,15 @@ export async function createAdapter({ url }) {
     },
 
     async findById(id) {
-      return toPublicProduct(productRow(sqlite.prepare('SELECT * FROM products WHERE id = ?').get(id)));
+      return toPublicProduct(
+        productRow(sqlite.prepare('SELECT * FROM products WHERE id = ?').get(id)),
+      );
     },
 
     async findBySku(sku) {
-      const found = sqlite.prepare('SELECT * FROM products WHERE sku = ?').get(String(sku).toUpperCase());
+      const found = sqlite
+        .prepare('SELECT * FROM products WHERE sku = ?')
+        .get(String(sku).toUpperCase());
       return toPublicProduct(productRow(found));
     },
 
@@ -247,7 +235,9 @@ export async function createAdapter({ url }) {
       if (entries.length === 0) return products.findById(id);
 
       const sets = entries.map(([key]) => `${PRODUCT_COLUMNS[key]} = ?`);
-      const values = entries.map(([key, value]) => (key === 'sku' ? String(value).toUpperCase() : value));
+      const values = entries.map(([key, value]) =>
+        key === 'sku' ? String(value).toUpperCase() : value,
+      );
 
       const result = sqlite
         .prepare(`UPDATE products SET ${sets.join(', ')}, updated_at = ? WHERE id = ?`)

@@ -2,58 +2,28 @@ import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { toPublicUser, toPublicUsers, toPublicProduct, toPublicProducts } from '../serialize.js';
 import { logger } from '../../utils/logger.js';
+import { MODELS, user, product } from '../../models/index.js';
+import { createTables, columnsOf } from '../schema.js';
 /**
  * The schema is created on boot so a fresh clone runs with no migration step.
  * The moment a table needs to *change*, that is the signal to adopt a real
  * migration tool — edit-in-place on a live table is how schemas drift.
  *
- * The tables themselves are described in src/models/, one file per record, and
- * this adapter only applies what they declare. It deliberately does not carry a
- * second copy: the seam knows how to talk to Postgres, the model knows what the
- * row looks like, and nothing knows both.
+ * The tables are described in src/models/, one file per record, and this adapter
+ * only says how Postgres spells them. The seam knows how to talk to Postgres,
+ * the model knows what the row looks like, and nothing knows both.
  */
-import { MODELS } from '../../models/index.js';
-
-/** How this driver spells each of the model's declared types. */
-const COLUMN_TYPE = {
-  id: 'TEXT PRIMARY KEY',
-  string: 'TEXT',
-  enum: 'TEXT',
-  integer: 'INTEGER',
-  timestamp: 'TIMESTAMPTZ',
+const DIALECT = {
+  types: {
+    id: () => 'TEXT PRIMARY KEY',
+    string: () => 'TEXT',
+    enum: () => 'TEXT',
+    integer: () => 'INTEGER',
+  },
+  timestamp: () => 'TIMESTAMPTZ NOT NULL DEFAULT now()',
 };
 
-/** One model's CREATE TABLE, derived from what the model declares. */
-function createTable(model) {
-  const columns = Object.entries(model.FIELDS).map(([field, spec]) => {
-    const name = spec.column ?? field;
-    const parts = [name.padEnd(13), COLUMN_TYPE[spec.type]];
-
-    if (spec.type !== 'id') {
-      // A column with a default is never null: the default is what makes that
-      // true. Emitting one without NOT NULL would let an explicit NULL through
-      // the gap and put a row in the table the model says cannot exist.
-      const defaulted = spec.default !== undefined || spec.type === 'timestamp';
-      if (spec.required || defaulted) parts.push('NOT NULL');
-      if (spec.unique) parts.push('UNIQUE');
-
-      if (spec.type === 'timestamp') parts.push('DEFAULT now()');
-      else if (spec.default !== undefined) {
-        // Quote text, never numbers. Postgres would coerce '0' into an integer
-        // column and hide the mistake here, but SQLite stores it as the string
-        // it looks like — so one adapter's tolerance becomes another's bug.
-        const literal = spec.type === 'integer' ? spec.default : `'${spec.default}'`;
-        parts.push(`DEFAULT ${literal}`);
-      }
-    }
-
-    return `    ${parts.join(' ')}`;
-  });
-
-  return `CREATE TABLE IF NOT EXISTS ${model.NAME} (\n${columns.join(',\n')}\n  );`;
-}
-
-const SCHEMA = MODELS.map(createTable).join('\n\n  ');
+const SCHEMA = createTables(MODELS, DIALECT).join('\n\n  ');
 
 /**
  * An arbitrary but fixed key. Advisory locks are just numbers Postgres agrees to
@@ -95,20 +65,9 @@ async function ensureSchema(pool) {
   }
 }
 
-const COLUMNS = {
-  email: 'email',
-  name: 'name',
-  passwordHash: 'password_hash',
-  role: 'role',
-};
+const COLUMNS = columnsOf(user);
 
-const PRODUCT_COLUMNS = {
-  sku: 'sku',
-  name: 'name',
-  description: 'description',
-  priceCents: 'price_cents',
-  stock: 'stock',
-};
+const PRODUCT_COLUMNS = columnsOf(product);
 
 function productRow(r) {
   if (!r) return null;

@@ -1,34 +1,53 @@
 import mongoose from 'mongoose';
-import {
-  toPublicUser,
-  toPublicUsers,
-  toPublicProduct,
-  toPublicProducts,
-} from '../serialize.js';
+import { toPublicUser, toPublicUsers, toPublicProduct, toPublicProducts } from '../serialize.js';
 import { logger } from '../../utils/logger.js';
+import { user, product } from '../../models/index.js';
 
-const userSchema = new mongoose.Schema(
-  {
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    name: { type: String, required: true, trim: true },
-    passwordHash: { type: String, required: true, select: false },
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
-  },
-  { timestamps: true },
-);
+/**
+ * The Mongoose schema, derived from the same model the SQL adapters read.
+ *
+ * Mongo needs no migration, so it would have been easy to leave a hand-written
+ * schema here and let it drift from the tables — the drift would not surface
+ * until someone switched storage and found a field missing. Deriving it means
+ * a field added to the model reaches every storage at once, which is the
+ * property the models directory exists to buy.
+ */
+const MONGO_TYPE = { string: String, enum: String, integer: Number };
 
-const productSchema = new mongoose.Schema(
-  {
-    sku: { type: String, required: true, unique: true, uppercase: true, trim: true },
-    name: { type: String, required: true, trim: true },
-    description: { type: String, default: '' },
-    // Integer cents, never a Double: binary floating point cannot hold 0.10
-    // exactly, and money that drifts by a cent is a bug nobody can reproduce.
-    priceCents: { type: Number, required: true, min: 0 },
-    stock: { type: Number, default: 0, min: 0 },
-  },
-  { timestamps: true },
-);
+function mongoField(spec) {
+  const field = { type: MONGO_TYPE[spec.type] };
+
+  if (spec.required) field.required = true;
+  if (spec.unique) field.unique = true;
+  if (spec.lowercase) field.lowercase = true;
+  if (spec.uppercase) field.uppercase = true;
+  if (spec.trim) field.trim = true;
+  if (spec.values) field.enum = spec.values;
+  if (spec.default !== undefined) field.default = spec.default;
+  if (spec.min !== undefined) field.min = spec.min;
+  // Never loaded unless a query asks for it by name, so a stray find() cannot
+  // put a password hash somewhere it was not meant to go.
+  if (spec.secret) field.select = false;
+
+  return field;
+}
+
+/**
+ * `id` is Mongo's `_id` and the timestamps are Mongoose's own, so neither is
+ * declared as a field — declaring them would shadow what the driver provides.
+ */
+function schemaOf(model) {
+  const definition = Object.fromEntries(
+    Object.entries(model.FIELDS)
+      .filter(([, spec]) => spec.type !== 'id' && spec.type !== 'timestamp')
+      .map(([field, spec]) => [field, mongoField(spec)]),
+  );
+
+  return new mongoose.Schema(definition, { timestamps: true });
+}
+
+const userSchema = schemaOf(user);
+const productSchema = schemaOf(product);
 
 /** Mongo's `_id` is the only id the rest of the app is allowed not to know about. */
 function productRow(doc) {

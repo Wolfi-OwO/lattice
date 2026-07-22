@@ -24,12 +24,28 @@ export const NATURAL_KEY = 'email';
 
 export const FIELDS = {
   id: { type: 'id' },
-  email: { type: 'string', required: true, unique: true, lowercase: true, trim: true },
-  name: { type: 'string', required: true, trim: true },
+  // maxLength is what makes a VARCHAR possible: MySQL cannot index a TEXT column
+  // without a prefix length, so a unique field needs a bound or the UNIQUE
+  // constraint fails outright. Fields with no bound become TEXT.
+  email: {
+    type: 'string',
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+    maxLength: 255,
+  },
+  name: { type: 'string', required: true, trim: true, maxLength: 255 },
   // `select: false` in Mongo, and never in toPublicUser anywhere else. A hash is
   // not a secret the way a password is, but it is a thing to attack offline.
-  passwordHash: { type: 'string', required: true, column: 'password_hash', secret: true },
-  role: { type: 'enum', values: ['user', 'admin'], default: 'user' },
+  passwordHash: {
+    type: 'string',
+    required: true,
+    column: 'password_hash',
+    secret: true,
+    maxLength: 255,
+  },
+  role: { type: 'enum', values: ['user', 'admin'], default: 'user', maxLength: 32 },
   createdAt: { type: 'timestamp', column: 'created_at' },
   updatedAt: { type: 'timestamp', column: 'updated_at' },
 };

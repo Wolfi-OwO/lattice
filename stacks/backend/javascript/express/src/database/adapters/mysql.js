@@ -1,52 +1,43 @@
 import { randomUUID } from 'node:crypto';
 import mysql from 'mysql2/promise';
-import {
-  toPublicUser,
-  toPublicUsers,
-  toPublicProduct,
-  toPublicProducts,
-} from '../serialize.js';
+import { toPublicUser, toPublicUsers, toPublicProduct, toPublicProducts } from '../serialize.js';
 import { logger } from '../../utils/logger.js';
+import { MODELS, user, product } from '../../models/index.js';
+import { createTables, columnsOf } from '../schema.js';
 
-const SCHEMA = `
-  CREATE TABLE IF NOT EXISTS users (
-    id            CHAR(36)     PRIMARY KEY,
-    email         VARCHAR(255) NOT NULL UNIQUE,
-    name          VARCHAR(255) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    role          VARCHAR(32)  NOT NULL DEFAULT 'user',
-    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-  CREATE TABLE IF NOT EXISTS products (
-    id          CHAR(36)     PRIMARY KEY,
-    sku         VARCHAR(64)  NOT NULL UNIQUE,
-    name        VARCHAR(255) NOT NULL,
-    description TEXT         NOT NULL,
-    -- Integer cents, never DECIMAL-as-float: money that drifts by a cent is a bug
-    -- nobody can reproduce.
-    price_cents INT          NOT NULL,
-    stock       INT          NOT NULL DEFAULT 0,
-    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-`;
-
-const COLUMNS = {
-  email: 'email',
-  name: 'name',
-  passwordHash: 'password_hash',
-  role: 'role',
+/**
+ * The tables are described in src/models/; this adapter only says how MySQL
+ * spells them.
+ *
+ * VARCHAR needs a length and TEXT cannot be indexed without a prefix, so a
+ * bounded string becomes VARCHAR(n) and an unbounded one becomes TEXT. That is
+ * why every unique field in the models carries a maxLength — without one, the
+ * UNIQUE constraint below would not build.
+ */
+const DIALECT = {
+  types: {
+    id: () => 'CHAR(36) PRIMARY KEY',
+    string: (spec) => (spec.maxLength ? `VARCHAR(${spec.maxLength})` : 'TEXT'),
+    enum: (spec) => `VARCHAR(${spec.maxLength ?? 32})`,
+    integer: () => 'INT',
+  },
+  // updated_at maintains itself. created_at must not, or an edit would rewrite
+  // when the row was created.
+  timestamp: (field) =>
+    field === 'updatedAt'
+      ? 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
+      : 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
+  tableSuffix: ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
+  // An unbounded string is TEXT here, and MySQL refuses a DEFAULT on TEXT.
+  // The column stays NOT NULL; the adapter supplies the value on insert.
+  supportsDefault: (spec) => !(spec.type === 'string' && !spec.maxLength),
 };
 
-const PRODUCT_COLUMNS = {
-  sku: 'sku',
-  name: 'name',
-  description: 'description',
-  priceCents: 'price_cents',
-  stock: 'stock',
-};
+const SCHEMA = createTables(MODELS, DIALECT);
+
+const COLUMNS = columnsOf(user);
+
+const PRODUCT_COLUMNS = columnsOf(product);
 
 function productRow(r) {
   if (!r) return null;
@@ -109,7 +100,11 @@ export async function createAdapter({ url, autoCreate = false }) {
   // SQL-injection surface for every query the pool ever runs — a steep price for a
   // convenience needed exactly once at startup. Postgres and SQLite accept the
   // whole script, which is why this only bites here.
-  for (const statement of SCHEMA.split(';').map((s) => s.trim()).filter(Boolean)) {
+  //
+  // createTables hands them over already separate, so unlike the previous version
+  // there is no script to split on ';' — and no chance of splitting on one that
+  // lives inside a string literal.
+  for (const statement of SCHEMA) {
     await pool.query(statement);
   }
 
@@ -175,7 +170,10 @@ export async function createAdapter({ url, autoCreate = false }) {
       const where = q ? 'WHERE name LIKE ? OR sku LIKE ?' : '';
       const params = q ? [`%${q}%`, `%${q}%`] : [];
 
-      const [countRows] = await pool.query(`SELECT COUNT(*) AS total FROM products ${where}`, params);
+      const [countRows] = await pool.query(
+        `SELECT COUNT(*) AS total FROM products ${where}`,
+        params,
+      );
       const [rows] = await pool.query(
         `SELECT * FROM products ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, (page - 1) * limit],
@@ -215,10 +213,10 @@ export async function createAdapter({ url, autoCreate = false }) {
         key === 'sku' ? String(value).toUpperCase() : value,
       );
 
-      const [result] = await pool.query(
-        `UPDATE products SET ${sets.join(', ')} WHERE id = ?`,
-        [...values, id],
-      );
+      const [result] = await pool.query(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`, [
+        ...values,
+        id,
+      ]);
 
       if (result.affectedRows === 0) return null;
       return products.findById(id);
