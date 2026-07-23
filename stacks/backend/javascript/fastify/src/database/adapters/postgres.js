@@ -1,24 +1,29 @@
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
-import { toPublicUser, toPublicUsers } from '../serialize.js';
+import { toPublicUser, toPublicUsers, toPublicProduct, toPublicProducts } from '../serialize.js';
 import { logger } from '../../utils/logger.js';
-
+import { MODELS, user, product } from '../../models/index.js';
+import { createTables, columnsOf } from '../schema.js';
 /**
  * The schema is created on boot so a fresh clone runs with no migration step.
- * The moment this table needs to *change*, that is the signal to adopt a real
+ * The moment a table needs to *change*, that is the signal to adopt a real
  * migration tool — edit-in-place on a live table is how schemas drift.
+ *
+ * The tables are described in src/models/, one file per record, and this adapter
+ * only says how Postgres spells them. The seam knows how to talk to Postgres,
+ * the model knows what the row looks like, and nothing knows both.
  */
-const SCHEMA = `
-  CREATE TABLE IF NOT EXISTS users (
-    id            TEXT PRIMARY KEY,
-    email         TEXT NOT NULL UNIQUE,
-    name          TEXT NOT NULL,
-    password_hash TEXT NOT NULL,
-    role          TEXT NOT NULL DEFAULT 'user',
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-  );
-`;
+const DIALECT = {
+  types: {
+    id: () => 'TEXT PRIMARY KEY',
+    string: () => 'TEXT',
+    enum: () => 'TEXT',
+    integer: () => 'INTEGER',
+  },
+  timestamp: () => 'TIMESTAMPTZ NOT NULL DEFAULT now()',
+};
+
+const SCHEMA = createTables(MODELS, DIALECT).join('\n\n  ');
 
 /**
  * An arbitrary but fixed key. Advisory locks are just numbers Postgres agrees to
@@ -29,11 +34,11 @@ const SCHEMA_LOCK = 4_021_977;
 
 /**
  * `CREATE TABLE IF NOT EXISTS` is not safe to run concurrently, which is not what
- * the name suggests and is the trap this exists for. The existence check and the
- * create are not one atomic step: two connections can both find no table, both
- * proceed, and the loser dies on the unique index behind `pg_type` — the table's
- * row type is inserted there, so the collision surfaces as
- * `pg_type_typname_nsp_index`, a message that says nothing about tables at all.
+ * the name suggests. The existence check and the create are not one atomic step:
+ * two connections can both find no table, both proceed, and the loser dies on the
+ * unique index behind `pg_type` — the table's row type is inserted there, so the
+ * collision surfaces as `pg_type_typname_nsp_index`, a message that says nothing
+ * about tables at all.
  *
  * node:test runs test files in a process each, and each one boots the app, so a
  * fresh database is created by two processes at once. It failed in CI exactly
@@ -57,12 +62,23 @@ async function ensureSchema(pool) {
   }
 }
 
-const COLUMNS = {
-  email: 'email',
-  name: 'name',
-  passwordHash: 'password_hash',
-  role: 'role',
-};
+const COLUMNS = columnsOf(user);
+
+const PRODUCT_COLUMNS = columnsOf(product);
+
+function productRow(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    sku: r.sku,
+    name: r.name,
+    description: r.description,
+    priceCents: r.price_cents,
+    stock: r.stock,
+    createdAt: r.created_at?.toISOString(),
+    updatedAt: r.updated_at?.toISOString(),
+  };
+}
 
 function row(r) {
   if (!r) return null;
@@ -198,5 +214,67 @@ export async function createAdapter({ url, autoCreate = false }) {
     },
   };
 
-  return { users, close: () => pool.end() };
+  const products = {
+    async list({ page, limit, q }) {
+      const where = q ? 'WHERE name ILIKE $1 OR sku ILIKE $1' : '';
+      const params = q ? [`%${q}%`] : [];
+
+      const { rows: countRows } = await pool.query(
+        `SELECT COUNT(*)::int AS total FROM products ${where}`,
+        params,
+      );
+
+      const { rows } = await pool.query(
+        `SELECT * FROM products ${where} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, (page - 1) * limit],
+      );
+
+      return { items: toPublicProducts(rows.map(productRow)), total: countRows[0].total };
+    },
+
+    async findById(id) {
+      const { rows } = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
+      return toPublicProduct(productRow(rows[0]));
+    },
+
+    async findBySku(sku) {
+      const { rows } = await pool.query('SELECT * FROM products WHERE sku = $1', [
+        String(sku).toUpperCase(),
+      ]);
+      return toPublicProduct(productRow(rows[0]));
+    },
+
+    async create({ sku, name, description = '', priceCents, stock = 0 }) {
+      const { rows } = await pool.query(
+        `INSERT INTO products (id, sku, name, description, price_cents, stock)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [randomUUID(), String(sku).toUpperCase(), name, description, priceCents, stock],
+      );
+      return toPublicProduct(productRow(rows[0]));
+    },
+
+    async update(id, patch) {
+      const entries = Object.entries(patch).filter(([key]) => key in PRODUCT_COLUMNS);
+      if (entries.length === 0) return products.findById(id);
+
+      const sets = entries.map(([key], i) => `${PRODUCT_COLUMNS[key]} = $${i + 1}`);
+      const values = entries.map(([key, value]) =>
+        key === 'sku' ? String(value).toUpperCase() : value,
+      );
+
+      const { rows } = await pool.query(
+        `UPDATE products SET ${sets.join(', ')}, updated_at = now() WHERE id = $${values.length + 1} RETURNING *`,
+        [...values, id],
+      );
+
+      return toPublicProduct(productRow(rows[0]));
+    },
+
+    async remove(id) {
+      const { rowCount } = await pool.query('DELETE FROM products WHERE id = $1', [id]);
+      return rowCount > 0;
+    },
+  };
+
+  return { users, products, close: () => pool.end() };
 }

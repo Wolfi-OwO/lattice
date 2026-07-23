@@ -21,6 +21,17 @@ export async function createApp() {
     logger: false,
     trustProxy: true,
     bodyLimit: 1_048_576,
+
+    // Fastify defaults ajv to `removeAdditional: true`, which turns
+    // `additionalProperties: false` into "quietly delete them" rather than
+    // "refuse them". That is the wrong half of the choice for an API: a client
+    // that PATCHes a field we do not accept gets 200 and believes it was
+    // applied. The products template makes that concrete — `stock` is excluded
+    // from PATCH on purpose, and under the default a caller setting it is told
+    // the write succeeded while the value is dropped on the floor.
+    //
+    // Rejecting instead makes a typo'd or unsupported field a 400 that names it.
+    ajv: { customOptions: { removeAdditional: false } },
   });
 
   // These two go FIRST, before any route is registered, and the order is not

@@ -10,7 +10,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "database:seed": "node database/fill-demo-data.js",
-    "test": "cross-env NODE_ENV=test node --test tests/health.test.js tests/users.test.js",
+    "test": "cross-env NODE_ENV=test node --test tests/health.test.js tests/users.test.js tests/products.test.js",
     "lint": "eslint src tests",
     "format": "prettier --write ."
   },
