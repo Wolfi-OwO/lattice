@@ -84,6 +84,33 @@ test('scaffolding spring-boot expands the package into real directories', () => 
   fs.rmSync(target, { recursive: true, force: true });
 });
 
+test('copyTemplate skips build output and dependency directories', () => {
+  // A synthetic template, so the test does not depend on any real one being dirty.
+  // Build output lands in template dirs whenever someone runs a build from a git
+  // clone; copying it out once produced a project whose stray target/classes broke
+  // spring-boot:repackage. The published package is protected by the files
+  // allowlist, but a clone is not, so the copy itself has to refuse these.
+  const source = tempDir();
+  fs.writeFileSync(path.join(source, 'keep.txt'), 'real file');
+
+  for (const dir of ['target', 'build', 'node_modules', '.git', '.gradle']) {
+    fs.mkdirSync(path.join(source, dir), { recursive: true });
+    fs.writeFileSync(path.join(source, dir, 'junk'), 'should not be copied');
+  }
+
+  const target = tempDir();
+  const files = copyTemplate(source, target, {});
+
+  assert.ok(fs.existsSync(path.join(target, 'keep.txt')), 'a real file is still copied');
+  for (const dir of ['target', 'build', 'node_modules', '.git', '.gradle']) {
+    assert.ok(!fs.existsSync(path.join(target, dir)), `${dir}/ must not be copied`);
+  }
+  assert.deepEqual(files, ['keep.txt'], 'only the real file is reported as written');
+
+  fs.rmSync(source, { recursive: true, force: true });
+  fs.rmSync(target, { recursive: true, force: true });
+});
+
 test('no template leaves an unsubstituted placeholder behind', () => {
   const vars = buildVars({
     projectName: 'demo',

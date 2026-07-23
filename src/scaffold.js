@@ -33,6 +33,27 @@ const RENAME = new Map([
 /** Extensions we never token-substitute (binary or would corrupt). */
 const BINARY = new Set(['.png', '.jpg', '.jpeg', '.gif', '.ico', '.jar', '.woff', '.woff2']);
 
+/**
+ * Directories a template must never carry into a generated project: build
+ * output and dependency caches. The published npm package already excludes these
+ * via the `files` allowlist in package.json, so this does not matter to an
+ * installed user — but it matters when scaffolding from a git clone, where a
+ * `./mvnw test` run inside a template dir leaves a `target/` behind. Copying that
+ * out produced a project whose target/classes held a stray FillDemoData.class at
+ * the wrong package path, and spring-boot:repackage then died building the jar
+ * manifest. The same set is what verify.js walks past for the same reason.
+ */
+const IGNORED_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'target',
+  'build',
+  'dist',
+  '.gradle',
+  '__pycache__',
+  '.venv',
+]);
+
 export function render(content, vars) {
   return content.replace(/\{\{(\w+)\}\}/g, (match, key) =>
     Object.hasOwn(vars, key) ? String(vars[key]) : match,
@@ -62,6 +83,8 @@ export function copyTemplate(from, to, vars) {
     fs.mkdirSync(destDir, { recursive: true });
 
     for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
+
       const srcPath = path.join(srcDir, entry.name);
       const name = renderPathSegment(entry.name, vars);
       const destPath = path.join(destDir, name);
