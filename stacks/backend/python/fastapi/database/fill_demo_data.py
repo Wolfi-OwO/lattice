@@ -31,8 +31,9 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from app.database.session import SessionLocal  # noqa: E402
 from app.models.user import Role  # noqa: E402
+from app.schemas.product import ProductCreate, ProductUpdate  # noqa: E402
 from app.schemas.user import UserCreate, UserUpdate  # noqa: E402
-from app.services import user_service  # noqa: E402
+from app.services import product_service, user_service  # noqa: E402
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 
@@ -78,12 +79,58 @@ def fill_users(database: Session, rows: list[dict[str, Any]], *, reset: bool) ->
     return created, updated
 
 
+def fill_products(database: Session, rows: list[dict[str, Any]], *, reset: bool) -> tuple[int, int]:
+    """Matched on SKU, the natural key the API already enforces as unique — so a
+    second run adjusts price and stock rather than failing on a duplicate."""
+    if reset:
+        page = product_service.list_products(database, page=1, limit=1000, q=None)
+        for product in page.items:
+            product_service.delete_product(database, product.id)
+
+    created = 0
+    updated = 0
+
+    for row in rows:
+        existing = product_service.find_product_by_sku(database, row["sku"])
+        if existing is not None:
+            product_service.update_product(
+                database,
+                existing.id,
+                ProductUpdate(
+                    name=row["name"],
+                    description=row.get("description", ""),
+                    price_cents=row["price_cents"],
+                ),
+            )
+            # stock is not on ProductUpdate — it moves as a delta. On a re-seed we
+            # set it to the demo value directly, which is the one place allowed to.
+            existing.stock = row.get("stock", 0)
+            database.commit()
+            updated += 1
+            continue
+
+        product_service.create_product(
+            database,
+            ProductCreate(
+                sku=row["sku"],
+                name=row["name"],
+                description=row.get("description", ""),
+                price_cents=row["price_cents"],
+                stock=row.get("stock", 0),
+            ),
+        )
+        created += 1
+
+    return created, updated
+
+
 # How a row in data/<domain>.json becomes a row in the database.
 #
 # One entry per domain. A data file with no entry here is a mistake worth
 # hearing about, so it is reported rather than skipped quietly.
 DOMAINS: dict[str, Callable[..., tuple[int, int]]] = {
     "users": fill_users,
+    "products": fill_products,
 }
 
 

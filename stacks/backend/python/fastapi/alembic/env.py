@@ -8,7 +8,7 @@ from app.database.session import Base
 
 # Importing the models registers them on Base.metadata, which is what makes
 # `alembic revision --autogenerate` able to see them.
-from app.models import user  # noqa: F401
+from app.models import product, user  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
