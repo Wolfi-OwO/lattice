@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import { CATEGORIES, TEMPLATES, FULLSTACK_BACKENDS, FULLSTACK_FRONTENDS, findTemplate } from '../src/registry.js';
@@ -145,17 +146,13 @@ test('no template ships a real dotfile, a lockfile, a wrapper or build output', 
     'yarn.lock',
     'pnpm-lock.yaml',
     'Cargo.lock',
-    // mvnw and mvnw.cmd are no longer here. The rule was never "no wrappers", it
-    // was "no binaries" — and Maven's script-only distribution satisfies it: mvnw
-    // resolves Maven itself, so there is no maven-wrapper.jar to commit. Without a
-    // wrapper the Java templates only ran for people who already had the right
-    // Maven on PATH, which is what a scaffolder exists to remove.
-    //
-    // gradlew stays forbidden: Gradle has no script-only equivalent, so shipping
-    // one means committing gradle-wrapper.jar. That template's next steps say how
-    // to generate it instead.
-    'gradlew',
-    'gradlew.bat',
+    // No wrapper scripts here — mvnw, gradlew and their variants are all legitimate
+    // now. The rule was never "no wrappers", it was "no binaries", and the two are
+    // handled differently: Maven ships a script-only distribution (mvnw resolves
+    // Maven itself, no jar), while Gradle has no such form, so android-compose
+    // commits exactly one gradle-wrapper.jar under a documented STRUCTURE.md
+    // exception. That jar is guarded separately, by checksum, in the test below —
+    // this list is only about scripts and generated files.
   ];
   const FORBIDDEN_DIRS = ['node_modules', 'target', 'build', 'dist', '.gradle', 'bin', 'obj', '.venv'];
 
@@ -418,8 +415,9 @@ test('the template workflow runs the derived checks, not its own hardcoded ones'
 test('every template, and the fullstack composition, is exercised by some workflow', () => {
   // Coverage asserted as a rule rather than remembered. The fullstack path — the
   // shape the README leads with, and the only one that writes two projects and
-  // installs both — had no CI at all and worked by luck. android-compose is the one
-  // deliberate exception and has to say so in the workflow that skips it.
+  // installs both — had no CI at all and worked by luck. Every template, with no
+  // exceptions now, has to be named in a workflow: android-compose was the last
+  // one skipped, and it now has an `android` job that builds it with the SDK.
   const dir = path.join(ROOT, '.github', 'workflows');
   const workflows = fs
     .readdirSync(dir)
@@ -427,16 +425,6 @@ test('every template, and the fullstack composition, is exercised by some workfl
     .join('\n');
 
   for (const template of TEMPLATES) {
-    if (template.framework === 'android-compose') {
-      // Needs the Android SDK and a Gradle wrapper, and wrappers are binaries the
-      // templates do not ship. The exemption is fine; going unmentioned is not.
-      assert.match(
-        workflows,
-        /android-compose is deliberately absent/,
-        'android-compose is untested and must say why in the workflow that skips it',
-      );
-      continue;
-    }
     assert.match(
       workflows,
       new RegExp(`\\b${template.framework}\\b`),
@@ -481,15 +469,38 @@ test('the drift workflow actually filters through the expectations', () => {
   assert.match(workflow, /EXPECTED_BEHIND/, 'dependency drift must be filtered');
 });
 
-test('no wrapper jar is ever committed, in any form', () => {
-  // The rule the wrapper exemption must not erode. A script-only mvnw is fine; a
-  // maven-wrapper.jar or gradle-wrapper.jar is the binary STRUCTURE.md refuses,
-  // and it would arrive by someone innocently running `mvn wrapper:wrapper`
-  // without the type flag.
+test('the only committed jar is the validated Gradle wrapper', () => {
+  // STRUCTURE.md permits exactly one binary in the tree: the Gradle wrapper jar
+  // for android-compose, because Gradle has no script-only wrapper. Every other
+  // jar is forbidden — a maven-wrapper.jar or a second gradle-wrapper.jar would
+  // arrive by someone innocently running a `wrapper` goal without the script-only
+  // type, and that is the erosion this test exists to stop.
+  //
+  // The one permitted jar is not trusted by its path alone: it must be the exact
+  // published Gradle 8.10.2 wrapper, byte for byte. CI re-checks this with
+  // gradle/actions/wrapper-validation on every push; pinning the hash here means
+  // a bad swap fails the fast unit suite too, not only the Android job.
+  const GRADLE_WRAPPER = 'stacks/mobile/kotlin/android-compose/gradle/wrapper/gradle-wrapper.jar';
+  const GRADLE_WRAPPER_SHA256 =
+    '2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046';
+
   const tracked = execFileSync('git', ['ls-files', '-z', '--', STACKS], { cwd: ROOT, encoding: 'utf8' })
     .split('\0')
     .filter(Boolean);
 
   const jars = tracked.filter((f) => f.endsWith('.jar'));
-  assert.deepEqual(jars, [], `wrapper/binary jars must never be committed — found ${jars.join(', ')}`);
+  assert.deepEqual(
+    jars,
+    [GRADLE_WRAPPER],
+    `the only permitted jar is the Gradle wrapper — found ${jars.join(', ')}`,
+  );
+
+  const digest = createHash('sha256')
+    .update(fs.readFileSync(path.join(ROOT, GRADLE_WRAPPER)))
+    .digest('hex');
+  assert.equal(
+    digest,
+    GRADLE_WRAPPER_SHA256,
+    'the committed gradle-wrapper.jar is not the validated Gradle 8.10.2 wrapper',
+  );
 });

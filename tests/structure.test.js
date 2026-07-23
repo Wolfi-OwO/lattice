@@ -131,27 +131,22 @@ test('Gradle templates ship a wrapper and a version catalog', () => {
       has(framework, 'gradle', 'libs.versions.toml'),
       `${framework}: no version catalog — every dependency version would be inline`,
     );
-    // Gradle's wrapper is not shippable here and Maven's is: Gradle needs
-    // gradle-wrapper.jar, with no script-only equivalent, and STRUCTURE.md refuses
-    // to commit binaries. So the bar for Gradle is that the template says how to
-    // produce the wrapper rather than leaving the user to work it out — Android
-    // Studio also generates it on first open, which is how most people meet it.
-    const template = TEMPLATES.find((t) => t.framework === framework);
-    const steps = (template.post ?? []).join('\n');
-
-    if (has(framework, 'gradlew')) {
-      assert.ok(has(framework, 'gradlew.bat'), `${framework}: ships gradlew but not gradlew.bat`);
-      assert.ok(
-        has(framework, 'gradle', 'wrapper', 'gradle-wrapper.properties'),
-        `${framework}: a wrapper without its properties cannot resolve a distribution`,
-      );
-    } else {
-      assert.match(
-        steps,
-        /gradle wrapper/,
-        `${framework}: ships no wrapper, so the next steps must say how to create one`,
-      );
-    }
+    // The full Gradle wrapper ships — all four parts, or none is usable. Gradle
+    // has no script-only wrapper the way Maven does, so a working template must
+    // commit gradle-wrapper.jar; STRUCTURE.md carves the one exception for it and
+    // CI validates its checksum. Shipping gradlew without the jar, or the jar
+    // without gradlew, leaves a clone that cannot build — which is the whole
+    // failure this template spent its existence in.
+    assert.ok(has(framework, 'gradlew'), `${framework}: no gradlew — a clone cannot build`);
+    assert.ok(has(framework, 'gradlew.bat'), `${framework}: ships gradlew but not gradlew.bat`);
+    assert.ok(
+      has(framework, 'gradle', 'wrapper', 'gradle-wrapper.properties'),
+      `${framework}: a wrapper without its properties cannot resolve a distribution`,
+    );
+    assert.ok(
+      has(framework, 'gradle', 'wrapper', 'gradle-wrapper.jar'),
+      `${framework}: gradlew is inert without gradle-wrapper.jar`,
+    );
   }
 });
 
@@ -202,10 +197,10 @@ test('every template ships whatever its ecosystem needs to be run at all', () =>
   const ENTRY_POINT = {
     npm: ['_package.json'],
     maven: ['mvnw', 'pom.xml'],
-    // No gradlew: Gradle's wrapper needs a binary jar, so the template ships the
-    // build definition and its next steps say how to generate the wrapper. The
-    // Gradle test above enforces that instruction exists.
-    gradle: ['build.gradle.kts', 'settings.gradle.kts'],
+    // gradlew is the entry point now: the wrapper ships in full (the Gradle test
+    // above enforces all four parts), so a clone runs ./gradlew with no Gradle
+    // installed — the same clone-and-run experience mvnw gives the Maven templates.
+    gradle: ['gradlew', 'build.gradle.kts', 'settings.gradle.kts'],
     python: ['requirements.txt'],
   };
 
@@ -268,5 +263,17 @@ test('every Maven template scaffolds an executable wrapper', posixOnly, () => {
   for (const framework of MAVEN) {
     const mode = fs.statSync(path.join(dirOf(framework), 'mvnw')).mode;
     assert.ok(mode & 0o111, `${framework}: mvnw is not executable in the template itself`);
+  }
+});
+
+test('every Gradle template ships an executable gradlew', posixOnly, () => {
+  // Same failure as a non-executable mvnw, and easy to reintroduce: git preserves
+  // the bit, but a file recreated by an editor or a careless copy loses it, and
+  // then `./gradlew` on a fresh clone is "permission denied" before Gradle is even
+  // reached. copyTemplate carries the source mode across, so the template's own
+  // bit is what every scaffolded project inherits.
+  for (const framework of GRADLE) {
+    const mode = fs.statSync(path.join(dirOf(framework), 'gradlew')).mode;
+    assert.ok(mode & 0o111, `${framework}: gradlew is not executable in the template itself`);
   }
 });

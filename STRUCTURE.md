@@ -174,16 +174,27 @@ deploy concern, not a template concern.
 
 ## Things deliberately left out
 
-**No `gradlew` wrapper in the repo.** Gradle's wrapper needs `gradle-wrapper.jar`
-and has no script-only form, so shipping one means committing a binary. Generate
-it once with `gradle wrapper`, or let Android Studio do it on first open.
+**The one committed binary: `gradle-wrapper.jar`.** Gradle's wrapper needs a
+43 KB `gradle-wrapper.jar` and has no script-only form, so shipping a working
+Android template means committing exactly one binary. The alternative — telling
+the user to run `gradle wrapper` first — requires a Gradle they do not have yet
+(the wrapper's whole job is to remove that precondition), and left the template
+unbuildable from a fresh clone for as long as it existed.
 
-**`mvnw` *is* shipped**, in Maven's script-only distribution — `mvnw` resolves
-Maven itself, so there is no `maven-wrapper.jar` and the no-binaries rule holds.
+The jar is not trusted on faith. Its SHA-256 is
+`2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046`, the official
+Gradle 8.10.2 wrapper, and CI runs `gradle/wrapper-validation-action` on every
+push, which fails if the committed jar is anything other than a byte-identical
+published Gradle wrapper. That is what makes one binary acceptable where a blanket
+rule cannot: the tree carries it, but nothing takes it on trust.
+
+**`mvnw` needs no such exception**, because Maven ships a script-only
+distribution — `mvnw` resolves Maven itself, so there is no `maven-wrapper.jar`.
 It is shipped because the alternative was worse: without it the Java templates
 ran only for people who already had a compatible Maven on PATH, and CI could not
 see the problem because `actions/setup-java` provides one. A scaffolder exists to
-remove exactly that kind of precondition.
+remove exactly that kind of precondition — which is the same reason the Gradle
+jar is now committed rather than wished away.
 
 **No CI config.** It is too provider-specific to guess, and a stale
 `.gitlab-ci.yml` is worse than none.
