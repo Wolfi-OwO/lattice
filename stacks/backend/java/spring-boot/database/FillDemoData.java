@@ -23,6 +23,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import {{javaPackage}}.product.Product;
+import {{javaPackage}}.product.ProductRepository;
 import {{javaPackage}}.user.User;
 import {{javaPackage}}.user.UserRepository;
 
@@ -59,6 +61,7 @@ public class FillDemoData implements CommandLineRunner {
     private static final Path DATA_DIRECTORY = Path.of("database", "data");
 
     private final UserRepository users;
+    private final ProductRepository products;
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
     private final ConfigurableApplicationContext context;
@@ -70,7 +73,7 @@ public class FillDemoData implements CommandLineRunner {
      * hearing about, so it is reported rather than skipped quietly.
      */
     private Map<String, DomainLoader> domains() {
-        return Map.of("users", this::fillUsers);
+        return Map.of("users", this::fillUsers, "products", this::fillProducts);
     }
 
     @Override
@@ -151,6 +154,45 @@ public class FillDemoData implements CommandLineRunner {
         return new Result(created, updated);
     }
 
+    /**
+     * Matched on SKU, the natural key the API already enforces as unique — so a
+     * second run adjusts price and stock rather than failing on a duplicate.
+     */
+    private Result fillProducts(Path file, boolean reset) throws IOException {
+        if (reset) {
+            products.deleteAll();
+        }
+
+        int created = 0;
+        int updated = 0;
+
+        for (DemoProduct row : read(file, new TypeReference<List<DemoProduct>>() {})) {
+            Optional<Product> existing = products.findBySkuIgnoreCase(row.sku());
+
+            if (existing.isPresent()) {
+                Product product = existing.get();
+                product.setName(row.name());
+                product.setDescription(row.description() == null ? "" : row.description());
+                product.setPriceCents(row.priceCents());
+                product.setStock(row.stock() == null ? 0 : row.stock());
+                products.save(product);
+                updated++;
+                continue;
+            }
+
+            products.save(Product.builder()
+                    .sku(row.sku())
+                    .name(row.name())
+                    .description(row.description() == null ? "" : row.description())
+                    .priceCents(row.priceCents())
+                    .stock(row.stock() == null ? 0 : row.stock())
+                    .build());
+            created++;
+        }
+
+        return new Result(created, updated);
+    }
+
     private <T> T read(Path file, TypeReference<T> shape) throws IOException {
         try {
             return objectMapper.readValue(file.toFile(), shape);
@@ -192,4 +234,12 @@ public class FillDemoData implements CommandLineRunner {
      * and a private record would leave it fighting the access check.
      */
     public record DemoUser(String email, String name, String password, String role) {}
+
+    /**
+     * The shape of one row in data/products.json. {@code description} and
+     * {@code stock} are optional; boxed so an absent one is null rather than a
+     * silent zero.
+     */
+    public record DemoProduct(
+            String sku, String name, String description, Long priceCents, Integer stock) {}
 }
