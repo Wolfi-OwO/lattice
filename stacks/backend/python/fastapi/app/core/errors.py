@@ -12,6 +12,10 @@ class ApiError(Exception):
         self.message = message
 
     @classmethod
+    def bad_request(cls, message: str) -> "ApiError":
+        return cls(status.HTTP_400_BAD_REQUEST, message)
+
+    @classmethod
     def not_found(cls, message: str) -> "ApiError":
         return cls(status.HTTP_404_NOT_FOUND, message)
 
