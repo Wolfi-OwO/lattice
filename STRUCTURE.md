@@ -238,10 +238,13 @@ Everything here was actually run, not just written:
 
 - `express` — scaffolded, installed and tested against **all six storages**
   (MongoDB, PostgreSQL, MySQL, SQLite, files as JSON/NDJSON/YAML, in-memory):
-  5 Mocha tests green in all eight combinations, with the Postgres, MySQL and
-  Mongo runs hitting real containers that the CLI started itself. The server was
-  booted and the CRUD surface exercised over HTTP (create, paginate, validation
-  errors, 401 guard).
+  32 Mocha tests green (users and products) in all eight combinations, with the
+  Postgres, MySQL and Mongo runs hitting real containers that the CLI started
+  itself. The server was booted and the CRUD surface exercised over HTTP (create,
+  paginate, validation errors, 401 guard).
+- `fastify` — the same storage seam as express, so the same **eight
+  combinations**: 28 node:test cases green (users and products) against every
+  storage, real containers included.
 - **Graceful shutdown** — the real generated server was drained under SIGTERM, in
   both JavaScript backends: `/readiness` flips to 503 while `/liveness` stays 200,
   then the process exits cleanly.
@@ -250,16 +253,20 @@ Everything here was actually run, not just written:
   200 by itself when the database came back, with no restart.
 - `react-vite-ts` as a fullstack client — `tsc -b` under `strict` + `vite build`
   clean, installed automatically alongside the backend.
-- `fastapi` — 4 pytest tests green.
+- `fastapi` — 29 pytest tests green (users and products).
 - `ml-project` — tests green; `python -m src.models.train` trains end to end.
 - `node-cli` — tests green, CLI runs.
-- `spring-boot` — **3 JUnit tests green** under `mvn test`, run in a
-  `maven:3.9-eclipse-temurin-17` container (there is no Maven on this machine).
+- `spring-boot` — **25 JUnit tests green** (users and products) under `mvn test`,
+  run in a `maven:3.9-eclipse-temurin-17` container (there is no Maven on this
+  machine).
 - `javafx` — compiles and packages (`mvn -DskipTests package`). Its tests want a
   display server, so CI builds it rather than running them.
-- `android-compose` — **still not built**. It needs the Android SDK and a Gradle
-  wrapper, and the templates ship no wrappers on purpose. This is the one
-  template whose claim rests on review rather than execution.
+- `android-compose` — **`./gradlew assembleDebug` builds the debug APK** in the
+  `android` job, on a runner with only a JDK and the Android SDK. Nothing installs
+  Gradle: the committed wrapper downloads it, which is the same path a user
+  cloning the generated project takes. The job first runs
+  `gradle/actions/wrapper-validation`, so a green build also certifies the one
+  committed binary is an unmodified Gradle wrapper.
 
 Both JVM templates target **JDK 17**.
 
