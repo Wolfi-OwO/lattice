@@ -4,9 +4,7 @@ Every notable change to lattice, newest first. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions are
 [semantic](https://semver.org/spec/v2.0.0.html).
 
-**Write your changes under `## [Unreleased]
-
-` as you make them**, not at release
+**Write your changes under `## [Unreleased]` as you make them**, not at release
 time — by then nobody remembers what changed, and a release with no notes is a
 release nobody can review. The **Prepare release** workflow moves that section
 under the new version number and stamps it with the date, leaving `[Unreleased]`
@@ -14,6 +12,81 @@ empty for the next change, and opens a pull request for you to review. A release
 whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
+
+### Added
+
+- **Every backend template now ships the products domain, not just Express.** 1.2.0
+  claimed the repository seam was domain-agnostic and proved it across six storage
+  adapters — but only inside one template. Fastify, Spring Boot and FastAPI still
+  shipped a single domain each, so the claim held for one language. All four now
+  carry products: money as integer cents, stock moved by a signed delta rather than
+  set to an absolute, and SKU as a natural key so seeding is idempotent. The three
+  latent bugs below are what porting it found; none were reachable before, because
+  the code that exposes them did not exist.
+- **`src/models/` in the Fastify template**, matching the Express layout: one flat
+  file per domain, describing the record in storage-neutral terms, with each
+  dialect's DDL derived from it rather than written out six times.
+- **`requireRole` in the Fastify template.** It shipped `requireAuth` alone, so a
+  route could ask whether a caller was authenticated but not whether they were
+  allowed — every admin-only operation was open to any signed-in user, and the
+  template had no way to express otherwise.
+- **The Android template builds.** It was the last template whose correctness rested
+  on review rather than execution, because Gradle's wrapper has no script-only form
+  and the no-binaries rule forbade committing `gradle-wrapper.jar` — so the template
+  shipped a build definition nobody could run. The wrapper now ships under a single
+  documented exception, and a CI job builds the debug APK on a runner with no Gradle
+  installed, which is the path a user cloning the generated project takes. The jar is
+  not trusted on faith: its SHA-256 is pinned in the unit suite, and CI runs
+  `gradle/actions/wrapper-validation`, which fails unless it is a byte-identical
+  published Gradle wrapper.
+
+### Fixed
+
+- **Fastify accepted writes it had been told to reject, and reported success.**
+  Fastify defaults ajv to `removeAdditional: true`, which quietly turns
+  `additionalProperties: false` from "refuse these" into "delete these". A caller
+  PATCHing a read-only field was told the write succeeded while the value was
+  dropped on the floor — the request returned 200 where it should have returned 400,
+  and no log recorded that anything had been discarded. Now `removeAdditional: false`.
+- **Spring Boot answered every authorization denial with 500.** `@PreAuthorize`
+  throws inside the dispatcher, past the filter chain, so `AccessDeniedException`
+  reached `@RestControllerAdvice` as an unhandled exception rather than being turned
+  into a response by `ExceptionTranslationFilter`. A forbidden request looked like a
+  server crash to any client, and to any log-based alert.
+- **Spring Boot answered unauthenticated requests with 403 instead of 401.** Without
+  an explicit `authenticationEntryPoint` the container's default page shape won, so a
+  caller who had sent no credentials was told their credentials were insufficient —
+  the one response that tells a client not to bother retrying with a token.
+- **The scaffolder copied build output into new projects.** `copyTemplate` walked the
+  template tree indiscriminately, so anything a local build had left behind —
+  `target/`, `build/`, `node_modules/`, `__pycache__/`, `.gradle/` — was copied into
+  the generated project. A stale class file from a previous build was enough to make
+  `spring-boot:repackage` fail with an `IllegalArgumentException` in a project the
+  user had just created and never built. Those directories are now skipped by name.
+- **The Android template was missing a dependency its own source needed.**
+  `UsersScreen` imports `androidx.lifecycle.compose.collectAsStateWithLifecycle`,
+  which lives in `lifecycle-runtime-compose` — a dependency the build never declared.
+  The screen could not compile, and every other error in the build cascaded from that
+  one unresolved import. It went unnoticed for exactly one reason: without a wrapper
+  the template had never once been built.
+
+### Changed
+
+- **The Express products domain has tests.** It shipped in 1.2.0 with none — the
+  suite people saw pass covered health and users, so the domain added to prove the
+  storage seam was itself unverified. 26 tests now cover it, including the cases that
+  differ per adapter: SKU case-insensitivity, a refused stock movement leaving the row
+  untouched, PATCH refusing to set stock directly, and a float price being rejected.
+- **Test counts across the templates**, as a result: Express 5 → 32, Fastify 0 → 28,
+  Spring Boot 3 → 25, FastAPI 4 → 29.
+
+### Documentation
+
+- STRUCTURE.md carried a "no binaries in the repository" rule with no exceptions and
+  a verification section written before any of the above existed — it still described
+  Android as unbuildable and understated every test count. Both are now accurate, and
+  the one committed binary is documented as an exception with its justification and
+  its digest rather than left to be discovered.
 
 ## [1.2.0] - 2026-07-22
 
