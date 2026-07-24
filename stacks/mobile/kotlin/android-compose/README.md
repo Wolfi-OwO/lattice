@@ -8,8 +8,9 @@ Open in Android Studio, or:
 ./gradlew assembleDebug
 ```
 
-(Gradle wrapper: run `gradle wrapper` once, or let Android Studio generate it
-on first open.)
+The Gradle wrapper is committed, so `./gradlew` works on a fresh clone with no
+Gradle installed — it downloads the exact Gradle version pinned in
+`gradle/wrapper/gradle-wrapper.properties`.
 
 ## Layout
 

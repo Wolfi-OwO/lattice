@@ -1,15 +1,18 @@
 name: Templates · Java
 
-# Both templates target JDK 17. Spring Boot's suite runs for real; JavaFX only
+# The JVM templates target JDK 17. Spring Boot's suite runs for real; JavaFX only
 # compiles, because its tests want a display server and a headless runner has
 # none — a job that spun up Xvfb would be testing Xvfb, not lattice.
 #
-# android-compose is deliberately absent. It needs the Android SDK and a Gradle
-# wrapper, and Gradle's wrapper has no script-only form — shipping one means
-# committing gradle-wrapper.jar, which STRUCTURE.md refuses. A job that generated
-# a wrapper just to have something to run would be testing Gradle, not lattice.
+# android-compose builds for real now (the `android` job). It was absent for one
+# reason: Gradle's wrapper has no script-only form, so a working template has to
+# commit gradle-wrapper.jar, which the no-binaries rule refused. STRUCTURE.md now
+# carves a single documented exception for that one jar — and the `android` job
+# earns it by running gradle/actions/wrapper-validation, which fails unless the
+# committed jar is a byte-identical published Gradle wrapper. The tree carries a
+# binary; nothing takes it on trust.
 #
-# The Maven templates DO ship a wrapper now, in Maven's script-only distribution:
+# The Maven templates ship a wrapper too, in Maven's script-only distribution:
 # mvnw resolves Maven itself, so there is no jar. That closes a gap these jobs
 # could not see — `actions/setup-java` puts Maven on PATH, so CI built the
 # templates happily while anyone without a global Maven got nothing at all. The
@@ -117,6 +120,49 @@ jobs:
           # three are true.
           echo "liveness:  $(curl -fsS http://localhost:3000/api/health/liveness)"
           echo "readiness: $(curl -fsS http://localhost:3000/api/health/readiness)"
+
+  # android-compose, built with the SDK it actually needs.
+  #
+  # `mvn test` has an equivalent here — `./gradlew assembleDebug` — but the more
+  # important thing this job does runs before any Kotlin compiles: it validates
+  # the committed gradle-wrapper.jar. That jar is the one binary in the tree
+  # (STRUCTURE.md), and wrapper-validation is what makes committing it defensible
+  # — it fails unless the jar is byte-identical to a published Gradle wrapper, so
+  # a tampered or home-built jar cannot ride in unnoticed. It scans the checkout,
+  # so it validates the template's own jar, not just the scaffolded copy.
+  #
+  # The wrapper then downloads Gradle 8.10.2 itself — nothing here installs
+  # Gradle, exactly as a user cloning the generated project would find it — and
+  # AGP provisions the SDK 34 platform and build-tools under the licenses
+  # setup-android accepts. A green APK means the shipped wrapper works from
+  # nothing but a JDK and the Android SDK.
+  android:
+    name: android-compose · assembleDebug
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Validate before scaffolding anything: this checks the jar committed to the
+      # repo, which is the one whose trustworthiness STRUCTURE.md rests on.
+      - uses: gradle/actions/wrapper-validation@v4
+
+      - uses: android-actions/setup-android@v3
+
+      - run: node bin/lattice.js demo --stack android-compose --package at.htlvillach.demo --no-database-start
+
+      # No Gradle on PATH — ./gradlew is the wrapper resolving Gradle 8.10.2 on its
+      # own, which is the whole point of shipping it. --no-daemon: the daemon buys
+      # nothing on a one-shot runner and only complicates teardown.
+      - name: Build the debug APK with the shipped wrapper
+        working-directory: demo
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
   # No `mvn` on PATH, on purpose. setup-java installs a JDK but this job never
   # asks for Maven, so the only way the build can succeed is the wrapper doing its

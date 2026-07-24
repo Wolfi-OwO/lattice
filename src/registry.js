@@ -179,7 +179,7 @@ export const TEMPLATES = [
     dir: 'mobile/kotlin/android-compose',
     hint: 'Material3, Navigation, Retrofit, version catalog',
     vars: ['javaPackage'],
-    post: ['gradle wrapper   # once, or let Android Studio do it', './gradlew assembleDebug'],
+    post: ['./gradlew assembleDebug'],
   },
 
   // -------------------------------------------------------------------- cli

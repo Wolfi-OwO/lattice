@@ -45,6 +45,11 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    // Provides androidx.lifecycle.compose.collectAsStateWithLifecycle, which
+    // UsersScreen uses to collect the ViewModel's StateFlow in a lifecycle-aware
+    // way. Without it the screen does not compile — runtime-ktx and
+    // viewmodel-compose do not carry that extension.
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
 

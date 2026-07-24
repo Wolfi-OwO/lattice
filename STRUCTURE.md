@@ -174,16 +174,27 @@ deploy concern, not a template concern.
 
 ## Things deliberately left out
 
-**No `gradlew` wrapper in the repo.** Gradle's wrapper needs `gradle-wrapper.jar`
-and has no script-only form, so shipping one means committing a binary. Generate
-it once with `gradle wrapper`, or let Android Studio do it on first open.
+**The one committed binary: `gradle-wrapper.jar`.** Gradle's wrapper needs a
+43 KB `gradle-wrapper.jar` and has no script-only form, so shipping a working
+Android template means committing exactly one binary. The alternative — telling
+the user to run `gradle wrapper` first — requires a Gradle they do not have yet
+(the wrapper's whole job is to remove that precondition), and left the template
+unbuildable from a fresh clone for as long as it existed.
 
-**`mvnw` *is* shipped**, in Maven's script-only distribution — `mvnw` resolves
-Maven itself, so there is no `maven-wrapper.jar` and the no-binaries rule holds.
+The jar is not trusted on faith. Its SHA-256 is
+`2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046`, the official
+Gradle 8.10.2 wrapper, and CI runs `gradle/wrapper-validation-action` on every
+push, which fails if the committed jar is anything other than a byte-identical
+published Gradle wrapper. That is what makes one binary acceptable where a blanket
+rule cannot: the tree carries it, but nothing takes it on trust.
+
+**`mvnw` needs no such exception**, because Maven ships a script-only
+distribution — `mvnw` resolves Maven itself, so there is no `maven-wrapper.jar`.
 It is shipped because the alternative was worse: without it the Java templates
 ran only for people who already had a compatible Maven on PATH, and CI could not
 see the problem because `actions/setup-java` provides one. A scaffolder exists to
-remove exactly that kind of precondition.
+remove exactly that kind of precondition — which is the same reason the Gradle
+jar is now committed rather than wished away.
 
 **No CI config.** It is too provider-specific to guess, and a stale
 `.gitlab-ci.yml` is worse than none.
@@ -227,10 +238,13 @@ Everything here was actually run, not just written:
 
 - `express` — scaffolded, installed and tested against **all six storages**
   (MongoDB, PostgreSQL, MySQL, SQLite, files as JSON/NDJSON/YAML, in-memory):
-  5 Mocha tests green in all eight combinations, with the Postgres, MySQL and
-  Mongo runs hitting real containers that the CLI started itself. The server was
-  booted and the CRUD surface exercised over HTTP (create, paginate, validation
-  errors, 401 guard).
+  32 Mocha tests green (users and products) in all eight combinations, with the
+  Postgres, MySQL and Mongo runs hitting real containers that the CLI started
+  itself. The server was booted and the CRUD surface exercised over HTTP (create,
+  paginate, validation errors, 401 guard).
+- `fastify` — the same storage seam as express, so the same **eight
+  combinations**: 28 node:test cases green (users and products) against every
+  storage, real containers included.
 - **Graceful shutdown** — the real generated server was drained under SIGTERM, in
   both JavaScript backends: `/readiness` flips to 503 while `/liveness` stays 200,
   then the process exits cleanly.
@@ -239,16 +253,20 @@ Everything here was actually run, not just written:
   200 by itself when the database came back, with no restart.
 - `react-vite-ts` as a fullstack client — `tsc -b` under `strict` + `vite build`
   clean, installed automatically alongside the backend.
-- `fastapi` — 4 pytest tests green.
+- `fastapi` — 29 pytest tests green (users and products).
 - `ml-project` — tests green; `python -m src.models.train` trains end to end.
 - `node-cli` — tests green, CLI runs.
-- `spring-boot` — **3 JUnit tests green** under `mvn test`, run in a
-  `maven:3.9-eclipse-temurin-17` container (there is no Maven on this machine).
+- `spring-boot` — **25 JUnit tests green** (users and products) under `mvn test`,
+  run in a `maven:3.9-eclipse-temurin-17` container (there is no Maven on this
+  machine).
 - `javafx` — compiles and packages (`mvn -DskipTests package`). Its tests want a
   display server, so CI builds it rather than running them.
-- `android-compose` — **still not built**. It needs the Android SDK and a Gradle
-  wrapper, and the templates ship no wrappers on purpose. This is the one
-  template whose claim rests on review rather than execution.
+- `android-compose` — **`./gradlew assembleDebug` builds the debug APK** in the
+  `android` job, on a runner with only a JDK and the Android SDK. Nothing installs
+  Gradle: the committed wrapper downloads it, which is the same path a user
+  cloning the generated project takes. The job first runs
+  `gradle/actions/wrapper-validation`, so a green build also certifies the one
+  committed binary is an unmodified Gradle wrapper.
 
 Both JVM templates target **JDK 17**.
 
