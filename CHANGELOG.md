@@ -13,6 +13,8 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-24
+
 ### Added
 
 - **Every backend template now ships the products domain, not just Express.** 1.2.0
@@ -370,6 +372,7 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
   both shipped green, because the test guarding the spelling only looked at the
   templates and never at the scaffolder itself. It looks at both now.
 
-[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.0.1...v1.2.0
 [0.0.1]: https://github.com/Wolfi-OwO/lattice/releases/tag/v0.0.1
