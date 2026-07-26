@@ -248,9 +248,11 @@ export function inspect(targetDir) {
     };
   });
 
-  // Dimensions weigh equally in the headline number — a project strong on tests but
-  // with no security policy should not hide the gap behind an average that rounds it
-  // away. Equal weighting keeps every dimension visible in the total.
+  /*
+   * Dimensions weigh equally in the headline number — a project strong on tests but
+   * with no security policy should not hide the gap behind an average that rounds it
+   * away. Equal weighting keeps every dimension visible in the total.
+   */
   const overall = Math.round(dimensions.reduce((sum, d) => sum + d.score, 0) / dimensions.length);
 
   const gaps = dimensions

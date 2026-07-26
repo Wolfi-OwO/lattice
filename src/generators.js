@@ -37,10 +37,12 @@ const npx = (build) => ({
 });
 
 export const GENERATORS = [
-  // --------------------------------------------------------- create-vite (npm)
-  // Every template create-vite offers. The `-ts` variants only swap file contents,
-  // not layout, so the JS variant stands in for each pair here; pass --template
-  // directly for the TypeScript one.
+  /*
+   * --------------------------------------------------------- create-vite (npm)
+   * Every template create-vite offers. The `-ts` variants only swap file contents,
+   * not layout, so the JS variant stands in for each pair here; pass --template
+   * directly for the TypeScript one.
+   */
   ...[
     ['vite-vanilla', 'Vite · Vanilla JS', 'vanilla', 'static'],
     ['vite-react', 'Vite · React', 'react', 'react'],
@@ -50,11 +52,13 @@ export const GENERATORS = [
     ['vite-preact', 'Vite · Preact', 'preact', 'preact'],
     ['vite-lit', 'Vite · Lit', 'lit', 'lit'],
     ['vite-solid', 'Vite · Solid', 'solid', 'solid'],
-    // Qwik is deliberately absent: @builder.io/qwik pins `vite >=5 <8` while
-    // create-vite now scaffolds vite 8, so the project it generates cannot npm
-    // install without --legacy-peer-deps. Shipping a generator whose output does
-    // not install would be worse than not offering it. Restore it when upstream
-    // widens the peer range.
+    /*
+     * Qwik is deliberately absent: @builder.io/qwik pins `vite >=5 <8` while
+     * create-vite now scaffolds vite 8, so the project it generates cannot npm
+     * install without --legacy-peer-deps. Shipping a generator whose output does
+     * not install would be worse than not offering it. Restore it when upstream
+     * widens the peer range.
+     */
   ].map(([id, label, template, ecosystem]) => ({
     id,
     label,
@@ -118,10 +122,12 @@ export const GENERATORS = [
     id: 'remix',
     label: 'React Router',
     ecosystem: 'react',
-    // Was create-remix. Remix v2 was upstreamed into React Router, and
-    // create-remix@latest is now only a notice telling you to use this — it exits
-    // without creating a directory, which is precisely the silent-stale-argv case
-    // generators.yml exists to catch, and did.
+    /*
+     * Was create-remix. Remix v2 was upstreamed into React Router, and
+     * create-remix@latest is now only a notice telling you to use this — it exits
+     * without creating a directory, which is precisely the silent-stale-argv case
+     * generators.yml exists to catch, and did.
+     */
     ...npx((name) => ['create-react-router@latest', name, '--no-install', '--no-git-init', '--yes']),
   },
   {
@@ -219,8 +225,10 @@ export const GENERATORS = [
     ecosystem: 'ruby',
     requires: 'rails',
     bin: 'rails',
-    // --skip-bundle keeps this consistent with every other generator here: scaffold
-    // fast, install as a separate visible step the user controls.
+    /*
+     * --skip-bundle keeps this consistent with every other generator here: scaffold
+     * fast, install as a separate visible step the user controls.
+     */
     argv: (name) => ['new', name, '--skip-bundle', '--skip-git'],
     next: ['bundle install', 'bin/rails server'],
   },
@@ -244,8 +252,10 @@ export const GENERATORS = [
     // go mod init needs the dir to exist first; runGenerator handles the mkdir + cwd.
     argv: (name) => ['mod', 'init', name],
     inProjectDir: true,
-    // `go mod init` writes go.mod and nothing else — there is no main package yet,
-    // so the honest next step is to write one, not to try to run an empty module.
+    /*
+     * `go mod init` writes go.mod and nothing else — there is no main package yet,
+     * so the honest next step is to write one, not to try to run an empty module.
+     */
     next: ['# write main.go, then:', 'go run .'],
   },
 ];

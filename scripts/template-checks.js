@@ -74,8 +74,10 @@ export function checksFor(template) {
 
   const checks = runnable.map((name) => `npm run ${name}`.replace('run test', 'test'));
 
-  // Formatting is checked, never applied — `format` itself rewrites files, which
-  // in CI would silently "pass" by fixing the very drift it should be reporting.
+  /*
+   * Formatting is checked, never applied — `format` itself rewrites files, which
+   * in CI would silently "pass" by fixing the very drift it should be reporting.
+   */
   if (hasPrettier(template)) checks.push('npx prettier --check .');
 
   return checks;

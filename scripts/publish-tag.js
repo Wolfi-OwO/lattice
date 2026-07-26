@@ -51,9 +51,11 @@ export function currentLatest(run = execFileSync) {
     return run('npm', ['view', PACKAGE, 'version'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
       .trim() || null;
   } catch {
-    // A package that has never been published, or a registry that cannot be
-    // reached. Either way there is nothing higher to collide with; npm itself
-    // will fail loudly later if the registry is genuinely unreachable.
+    /*
+     * A package that has never been published, or a registry that cannot be
+     * reached. Either way there is nothing higher to collide with; npm itself
+     * will fail loudly later if the registry is genuinely unreachable.
+     */
     return null;
   }
 }

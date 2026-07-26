@@ -1,8 +1,10 @@
-// Lives in database/, not src/main/java/, because CONVENTIONS.md rule 5 keeps a
-// backend's demo data and the code that loads it in one place. pom.xml adds this
-// directory as a second compile source root; the package below is what decides
-// where the class actually lands, and it has to stay under {{javaPackage}} so
-// Spring's component scan reaches it.
+/*
+ * Lives in database/, not src/main/java/, because CONVENTIONS.md rule 5 keeps a
+ * backend's demo data and the code that loads it in one place. pom.xml adds this
+ * directory as a second compile source root; the package below is what decides
+ * where the class actually lands, and it has to stay under {{javaPackage}} so
+ * Spring's component scan reaches it.
+ */
 package {{javaPackage}}.database;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -104,9 +106,11 @@ public class FillDemoData implements CommandLineRunner {
             System.exit(SpringApplication.exit(context, () -> 1));
         }
 
-        // The seed profile still boots the web layer (application-seed.yml says
-        // why), so Tomcat would otherwise hold this JVM open forever. Seeding is a
-        // task: it has to end, and it has to end with an exit code CI can read.
+        /*
+         * The seed profile still boots the web layer (application-seed.yml says
+         * why), so Tomcat would otherwise hold this JVM open forever. Seeding is a
+         * task: it has to end, and it has to end with an exit code CI can read.
+         */
         System.exit(SpringApplication.exit(context, () -> 0));
     }
 
@@ -139,9 +143,11 @@ public class FillDemoData implements CommandLineRunner {
                 continue;
             }
 
-            // Hashed here with the encoder the API itself uses, so a demo account
-            // can actually log in. The plaintext in the JSON never reaches the
-            // database.
+            /*
+             * Hashed here with the encoder the API itself uses, so a demo account
+             * can actually log in. The plaintext in the JSON never reaches the
+             * database.
+             */
             users.save(User.builder()
                     .email(row.email())
                     .name(row.name())

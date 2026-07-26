@@ -16,8 +16,10 @@ export default [
     settings: { react: { version: 'detect' } },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      // Without this, every component imported only for use in JSX is
-      // reported as an unused variable.
+      /*
+       * Without this, every component imported only for use in JSX is
+       * reported as an unused variable.
+       */
       'react/jsx-uses-vars': 'error',
       'react/jsx-uses-react': 'error',
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],

@@ -31,8 +31,10 @@ class UsersViewModel(
     }
 
     fun load() {
-        // viewModelScope is cancelled when the ViewModel clears, so a rotation
-        // mid-request cannot leak a coroutine.
+        /*
+         * viewModelScope is cancelled when the ViewModel clears, so a rotation
+         * mid-request cannot leak a coroutine.
+         */
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
 

@@ -40,10 +40,12 @@ export const config = {
     dir: process.env.DATA_DIR ?? './data',
     format: process.env.DATA_FORMAT ?? '{{fileFormat}}',
 
-    // Let the SQL adapters create the database if it does not exist yet. Only
-    // under test: `npm test` on a fresh clone should not require someone to
-    // remember a CREATE DATABASE first. Never in dev or prod, where a typo'd
-    // database name should fail loudly instead of silently making a new one.
+    /*
+     * Let the SQL adapters create the database if it does not exist yet. Only
+     * under test: `npm test` on a fresh clone should not require someone to
+     * remember a CREATE DATABASE first. Never in dev or prod, where a typo'd
+     * database name should fail loudly instead of silently making a new one.
+     */
     autoCreate: env === 'test',
   },
 

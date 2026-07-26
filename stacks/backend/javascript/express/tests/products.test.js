@@ -52,8 +52,10 @@ describe('POST /api/products', () => {
   });
 
   it('rejects a float price', async () => {
-    // The whole reason money is stored as integer cents. If this ever passes,
-    // prices have started drifting somewhere downstream.
+    /*
+     * The whole reason money is stored as integer cents. If this ever passes,
+     * prices have started drifting somewhere downstream.
+     */
     await auth(request(app).post('/api/products'))
       .send({ sku: nextSku(), name: 'Widget', priceCents: 19.99 })
       .expect(400);
@@ -80,8 +82,10 @@ describe('POST /api/products', () => {
   });
 
   it('treats sku case-insensitively when refusing a duplicate', async () => {
-    // The adapters uppercase on write, so `abc-1` and `ABC-1` are one product.
-    // Without this the memory and file adapters would happily store both.
+    /*
+     * The adapters uppercase on write, so `abc-1` and `ABC-1` are one product.
+     * Without this the memory and file adapters would happily store both.
+     */
     const sku = nextSku();
     await createProduct({ sku });
     await auth(request(app).post('/api/products'))
@@ -142,8 +146,10 @@ describe('PATCH /api/products/:id', () => {
   });
 
   it('allows a product to keep its own sku', async () => {
-    // The conflict check excludes the row being edited; without that exclusion
-    // any PATCH carrying the unchanged sku would 409 against itself.
+    /*
+     * The conflict check excludes the row being edited; without that exclusion
+     * any PATCH carrying the unchanged sku would 409 against itself.
+     */
     const product = await createProduct();
     await auth(request(app).patch(`/api/products/${product.id}`))
       .send({ sku: product.sku, name: 'Renamed' })
@@ -151,8 +157,10 @@ describe('PATCH /api/products/:id', () => {
   });
 
   it('will not set stock directly', async () => {
-    // Stock moves through /stock as a delta. If PATCH ever accepts it, a
-    // concurrent sale can be overwritten by a stale absolute value.
+    /*
+     * Stock moves through /stock as a delta. If PATCH ever accepts it, a
+     * concurrent sale can be overwritten by a stale absolute value.
+     */
     const product = await createProduct({ stock: 5 });
     await auth(request(app).patch(`/api/products/${product.id}`))
       .send({ stock: 999 })

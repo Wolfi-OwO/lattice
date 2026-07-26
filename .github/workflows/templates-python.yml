@@ -53,7 +53,10 @@ jobs:
         working-directory: demo
         run: |
           set -euo pipefail
-          node ../scripts/print-next-steps.js --stack ${{ matrix.stack }} > ../steps.txt
+          # --project . so the steps match what the CLI printed: lattice now creates
+          # the venv itself, and the sequence for a project that already has one
+          # is not the sequence for a project that does not.
+          node ../scripts/print-next-steps.js --stack ${{ matrix.stack }} --project . > ../steps.txt
           echo "The CLI tells the user to run:"
           sed 's/^/    /' ../steps.txt
 

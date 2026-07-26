@@ -5,8 +5,10 @@ export default defineConfig({
   plugins: [react(){{viteStylePlugin}}],
   server: {
     port: {{clientPort}},
-    // Proxying /api in dev means the browser only ever talks to one origin,
-    // so there is no CORS and no absolute API URL baked into the code.
+    /*
+     * Proxying /api in dev means the browser only ever talks to one origin,
+     * so there is no CORS and no absolute API URL baked into the code.
+     */
     proxy: {
       '/api': {
         target: 'http://localhost:{{port}}',

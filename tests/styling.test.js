@@ -59,9 +59,11 @@ test('every styling variant ships its stylesheet in both frontends', () => {
 });
 
 test('the two frontends ship byte-identical stylesheets', () => {
-  // They render the same components against the same contract, so a variant that
-  // drifted between them would be a bug nobody would notice until one of the two
-  // looked wrong. Sharing is asserted rather than trusted.
+  /*
+   * They render the same components against the same contract, so a variant that
+   * drifted between them would be a bug nobody would notice until one of the two
+   * looked wrong. Sharing is asserted rather than trusted.
+   */
   for (const id of STYLING_ORDER) {
     const [a, b] = FRONTENDS.map((f) =>
       fs.readFileSync(path.join(STACK_ROOT, f.dir, 'src/styles', STYLING[id].source), 'utf8'),
@@ -120,9 +122,11 @@ test('scaffolding keeps one stylesheet, renames it, and removes the directory', 
         `${id} left src/styles/ behind — the reader cannot tell which file is live`,
       );
 
-      // The variants that were not chosen must be gone, not merely unimported:
-      // a stray bootstrap.scss fails to compile the moment anyone imports it,
-      // because Bootstrap is not installed unless it was chosen.
+      /*
+       * The variants that were not chosen must be gone, not merely unimported:
+       * a stray bootstrap.scss fails to compile the moment anyone imports it,
+       * because Bootstrap is not installed unless it was chosen.
+       */
       const stray = fs
         .readdirSync(path.join(target, 'src'))
         .filter((f) => f.endsWith('.css') || f.endsWith('.scss'));
@@ -132,9 +136,11 @@ test('scaffolding keeps one stylesheet, renames it, and removes the directory', 
 });
 
 test('the entry file is the one the app actually imports', () => {
-  // A mismatch here is the failure this feature is most likely to have: main.jsx
-  // imports a name, pruneStyles produces a name, and nothing else checks they
-  // agree. The app would fail to start with "failed to resolve import".
+  /*
+   * A mismatch here is the failure this feature is most likely to have: main.jsx
+   * imports a name, pruneStyles produces a name, and nothing else checks they
+   * agree. The app would fail to start with "failed to resolve import".
+   */
   for (const frontend of FRONTENDS) {
     for (const id of STYLING_ORDER) {
       const { target } = scaffold(frontend, id);
@@ -162,8 +168,10 @@ test('dependencies land in the right field', () => {
     for (const name of Object.keys(STYLING[id].deps ?? {})) {
       assert.ok(pkg.dependencies?.[name], `${id}: ${name} should be a dependency`);
     }
-    // Sass and Tailwind are compile-time tools. Shipping them as runtime
-    // dependencies would put a CSS compiler in a production install.
+    /*
+     * Sass and Tailwind are compile-time tools. Shipping them as runtime
+     * dependencies would put a CSS compiler in a production install.
+     */
     for (const name of Object.keys(STYLING[id].devDeps ?? {})) {
       assert.ok(pkg.devDependencies?.[name], `${id}: ${name} should be a devDependency`);
       assert.ok(!pkg.dependencies?.[name], `${id}: ${name} must not also be a runtime dependency`);
@@ -210,8 +218,10 @@ test('styling is offered by the frontends and by nothing else', () => {
 });
 
 test('an unknown variant is rejected rather than silently defaulted', () => {
-  // buildVars falls back for robustness, but the CLI must refuse first — a typo
-  // like --styling tailwing should not quietly hand back plain CSS.
+  /*
+   * buildVars falls back for robustness, but the CLI must refuse first — a typo
+   * like --styling tailwing should not quietly hand back plain CSS.
+   */
   assert.ok(!STYLING.tailwing, 'guard against this test rotting if a variant is renamed');
   const vars = buildVars({ projectName: 'shop', styling: 'tailwing' });
   assert.equal(vars.stylesEntry, STYLING[DEFAULT_STYLING].entry);
@@ -220,13 +230,15 @@ test('an unknown variant is rejected rather than silently defaulted', () => {
 // --------------------------------------------------------------- the CLI path
 
 test('a non-interactive run without --styling gets the default, not an error', async () => {
-  // The regression this exists to stop: adding the picker made --styling
-  // *required* in any script, because a select with no TTY refuses rather than
-  // guessing. That broke every existing `--stack react-vite` invocation,
-  // including this repository's own CI.
-  //
-  // A database has no defensible default and must refuse. Styling does: `plain`
-  // is what these templates shipped before the choice existed.
+  /*
+   * The regression this exists to stop: adding the picker made --styling
+   * *required* in any script, because a select with no TTY refuses rather than
+   * guessing. That broke every existing `--stack react-vite` invocation,
+   * including this repository's own CI.
+   *
+   * A database has no defensible default and must refuse. Styling does: `plain`
+   * is what these templates shipped before the choice existed.
+   */
   const cwd = tempDir();
   const target = path.join(cwd, 'demo');
   const cli = path.resolve(import.meta.dirname, '..', 'bin', 'lattice.js');
@@ -249,8 +261,10 @@ test('a non-interactive run without --styling gets the default, not an error', a
 });
 
 test('a non-interactive run still refuses an unknown --styling', () => {
-  // Defaulting when the flag is absent must not become defaulting when it is
-  // wrong. A typo has to fail.
+  /*
+   * Defaulting when the flag is absent must not become defaulting when it is
+   * wrong. A typo has to fail.
+   */
   const cwd = tempDir();
   const cli = path.resolve(import.meta.dirname, '..', 'bin', 'lattice.js');
 

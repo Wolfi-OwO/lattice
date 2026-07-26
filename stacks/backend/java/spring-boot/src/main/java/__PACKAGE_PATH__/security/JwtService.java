@@ -20,8 +20,10 @@ public class JwtService {
     public JwtService(
             @Value("${app.jwt.secret}") String secret,
             @Value("${app.jwt.expiry}") Duration expiry) {
-        // HS256 requires >= 256 bits of key material; a short secret throws here
-        // at startup rather than failing on the first login.
+        /*
+         * HS256 requires >= 256 bits of key material; a short secret throws here
+         * at startup rather than failing on the first login.
+         */
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expiry = expiry;
     }

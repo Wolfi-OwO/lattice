@@ -1,14 +1,16 @@
-// SCSS — the same look as plain.css, expressed with variables, nesting and maths.
-//
-// The class names below are the contract the components are written against
-// (.app__header, .app__nav, .table, .pager, .muted, .error). Every styling
-// variant implements exactly these, which is why swapping one for another needs
-// no change to a single component.
-//
-// Custom properties still carry the palette rather than Sass variables alone:
-// only a custom property can be re-declared inside a media query, which is what
-// makes dark mode one block instead of a duplicated stylesheet. Sass variables
-// then hold what CSS cannot compute — spacing steps, the breakpoint, the radius.
+/*
+ * SCSS — the same look as plain.css, expressed with variables, nesting and maths.
+ *
+ * The class names below are the contract the components are written against
+ * (.app__header, .app__nav, .table, .pager, .muted, .error). Every styling
+ * variant implements exactly these, which is why swapping one for another needs
+ * no change to a single component.
+ *
+ * Custom properties still carry the palette rather than Sass variables alone:
+ * only a custom property can be re-declared inside a media query, which is what
+ * makes dark mode one block instead of a duplicated stylesheet. Sass variables
+ * then hold what CSS cannot compute — spacing steps, the breakpoint, the radius.
+ */
 
 $space: 0.5rem;
 $radius: 6px;

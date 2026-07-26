@@ -16,9 +16,11 @@ test('liveness reports the process alive without consulting storage', async () =
   assert.equal(response.statusCode, 200);
   assert.equal(response.json().status, 'ok');
 
-  // Liveness must say nothing about the database. If it did, a slow database
-  // would read as a dead process and the orchestrator would restart a server
-  // that was fine — turning a blip into a restart loop.
+  /*
+   * Liveness must say nothing about the database. If it did, a slow database
+   * would read as a dead process and the orchestrator would restart a server
+   * that was fine — turning a blip into a restart loop.
+   */
   assert.equal(response.json().storage, undefined);
 });
 

@@ -53,8 +53,10 @@ test('scaffolding keeps exactly one adapter and drops the rest', () => {
 });
 
 test('no driver is imported outside src/database/adapters', () => {
-  // The invariant the whole design rests on: the service layer cannot reach a
-  // driver, so swapping the database cannot break it.
+  /*
+   * The invariant the whole design rests on: the service layer cannot reach a
+   * driver, so swapping the database cannot break it.
+   */
   const DRIVERS = /from '(mongoose|pg|mysql2\/promise|better-sqlite3|yaml)'/;
 
   const walk = (dir) => {

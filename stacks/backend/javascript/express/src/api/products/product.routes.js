@@ -12,8 +12,10 @@ import {
 
 export const productRoutes = Router();
 
-// Reading a catalogue is public; changing it is not. That split mirrors users,
-// where anyone may register but only an authenticated caller may edit.
+/*
+ * Reading a catalogue is public; changing it is not. That split mirrors users,
+ * where anyone may register but only an authenticated caller may edit.
+ */
 productRoutes.get('/', validate(listProductsSchema, 'query'), asyncHandler(controller.list));
 productRoutes.get('/:id', asyncHandler(controller.get));
 

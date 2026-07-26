@@ -49,8 +49,10 @@ public class User {
     void onCreate() {
         Instant now = Instant.now();
         createdAt = now;
-        // Same instant, not a second Instant.now(): a row that has never been
-        // updated must read createdAt == updatedAt, not "a few microseconds off".
+        /*
+         * Same instant, not a second Instant.now(): a row that has never been
+         * updated must read createdAt == updatedAt, not "a few microseconds off".
+         */
         updatedAt = now;
     }
 

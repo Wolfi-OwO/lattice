@@ -64,8 +64,10 @@ const valueOf = (flag) => {
   return at === -1 ? null : argv[at + 1];
 };
 
-// `--files <stack>` prints one expected-missing path per line, for the workflow to
-// filter against. Anything not printed here is drift the job should shout about.
+/*
+ * `--files <stack>` prints one expected-missing path per line, for the workflow to
+ * filter against. Anything not printed here is drift the job should shout about.
+ */
 if (argv.includes('--files')) {
   console.log(Object.keys(EXPECTED_MISSING_FILES[valueOf('--files')] ?? {}).join('\n'));
 } else if (argv.includes('--dependencies')) {

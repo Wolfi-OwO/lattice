@@ -201,12 +201,14 @@ function main(argv) {
     return at === -1 ? null : argv[at + 1];
   };
 
-  // Read the notes for a version already cut into the file. stdout is the notes and
-  // only the notes, so the release workflow can pipe it into the Release body.
-  //
-  // The failure is caught and printed rather than thrown: this runs unattended in
-  // release.yml, where a stack trace in the log buries the one line that says what
-  // to do about it. Every other path in this script exits the same way.
+  /*
+   * Read the notes for a version already cut into the file. stdout is the notes and
+   * only the notes, so the release workflow can pipe it into the Release body.
+   *
+   * The failure is caught and printed rather than thrown: this runs unattended in
+   * release.yml, where a stack trace in the log buries the one line that says what
+   * to do about it. Every other path in this script exits the same way.
+   */
   if (argv.includes('--notes')) {
     try {
       console.log(notesFor(text, valueOf('--notes')));

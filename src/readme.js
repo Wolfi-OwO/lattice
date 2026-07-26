@@ -48,11 +48,13 @@ export const DIRECTORY_DOCS = {
     what: 'Persistence access, one per aggregate.',
     never: 'Business rules, or a driver import outside the adapter layer.',
   },
-  // Two directories legitimately carry this name, and they are not the same thing.
-  // Keyed by full path so the table says so — rendering both from one basename
-  // entry made them read as an accidental duplicate, which is how they get
-  // "cleaned up" into a single directory that then ships seed data inside the
-  // image. CONVENTIONS.md rule 1 keeps the word; the paths carry the difference.
+  /*
+   * Two directories legitimately carry this name, and they are not the same thing.
+   * Keyed by full path so the table says so — rendering both from one basename
+   * entry made them read as an accidental duplicate, which is how they get
+   * "cleaned up" into a single directory that then ships seed data inside the
+   * image. CONVENTIONS.md rule 1 keeps the word; the paths carry the difference.
+   */
   'src/database': {
     what: 'The storage seam: the adapter per engine, and the code that selects one.',
     never: 'Domain logic, demo data, or a driver import outside adapters/.',
@@ -165,9 +167,11 @@ export function buildDirectoryTable(target, fs, path) {
       if (entry.name.startsWith('.') && entry.name !== '.github') continue;
 
       const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
-      // Full path first, then the bare name: `database/` and `src/database/` are
-      // different directories that share a word on purpose, and a table that
-      // describes them identically invites someone to merge them.
+      /*
+       * Full path first, then the bare name: `database/` and `src/database/` are
+       * different directories that share a word on purpose, and a table that
+       * describes them identically invites someone to merge them.
+       */
       const doc = DIRECTORY_DOCS[rel] ?? DIRECTORY_DOCS[entry.name];
       rows.push({
         path: `${rel}/`,

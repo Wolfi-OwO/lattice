@@ -30,8 +30,10 @@ function project(files) {
 // ------------------------------------------------------------------ it catches
 
 test('a Java source outside src/ is rejected, because Maven never compiles it', () => {
-  // The worst kind of wrong: the file exists, the editor is happy, and the class
-  // simply does not exist at runtime. No compiler error points at it.
+  /*
+   * The worst kind of wrong: the file exists, the editor is happy, and the class
+   * simply does not exist at runtime. No compiler error points at it.
+   */
   const target = project(['pom.xml', 'src/main/java/app/Main.java', 'Stray.java']);
   const { ok, violations } = verifyStructure(target, 'maven');
 
@@ -69,8 +71,10 @@ test('a loose source at a Node project root is rejected', () => {
 // ----------------------------------------------------- and what it must not do
 
 test('root configuration files are not mistaken for stray sources', () => {
-  // These belong at the root by their own tool's convention. A gate that rejected
-  // vite.config.ts would be wrong about every Vite project ever generated.
+  /*
+   * These belong at the root by their own tool's convention. A gate that rejected
+   * vite.config.ts would be wrong about every Vite project ever generated.
+   */
   const target = project([
     'package.json',
     'src/main.tsx',
@@ -84,9 +88,11 @@ test('root configuration files are not mistaken for stray sources', () => {
 });
 
 test('a migration tool keeps its own directory', () => {
-  // Alembic loads env.py and versions/* itself rather than importing them as part
-  // of the package. This exemption exists because the gate rejected the real
-  // fastapi template on its first run — the rule was wrong, not the template.
+  /*
+   * Alembic loads env.py and versions/* itself rather than importing them as part
+   * of the package. This exemption exists because the gate rejected the real
+   * fastapi template on its first run — the rule was wrong, not the template.
+   */
   const target = project([
     'pyproject.toml',
     'app/main.py',
@@ -98,16 +104,20 @@ test('a migration tool keeps its own directory', () => {
 });
 
 test('the Java demo-data loader is exempt, as CONVENTIONS rule 5 requires', () => {
-  // database/FillDemoData.java is run standalone through a Spring profile and is
-  // never compiled into the application, so it is outside src/ on purpose.
+  /*
+   * database/FillDemoData.java is run standalone through a Spring profile and is
+   * never compiled into the application, so it is outside src/ on purpose.
+   */
   const target = project(['pom.xml', 'src/main/java/app/Main.java', 'database/FillDemoData.java']);
 
   assert.deepEqual(verifyStructure(target, 'maven').violations, []);
 });
 
 test('build output is never inspected', () => {
-  // target/ and node_modules/ are full of files that would each trip a rule, and
-  // none of them are the project's own.
+  /*
+   * target/ and node_modules/ are full of files that would each trip a rule, and
+   * none of them are the project's own.
+   */
   const target = project([
     'pom.xml',
     'src/main/java/app/Main.java',
@@ -119,8 +129,10 @@ test('build output is never inspected', () => {
 });
 
 test('an unrecognised toolchain is not judged against invented rules', () => {
-  // Guessing at a layout nobody declared would reject correct projects in
-  // ecosystems this repository has no opinion about.
+  /*
+   * Guessing at a layout nobody declared would reject correct projects in
+   * ecosystems this repository has no opinion about.
+   */
   const target = project(['main.go', 'go.mod']);
 
   assert.deepEqual(verifyStructure(target, null), { ok: true, violations: [] });
@@ -130,9 +142,11 @@ test('an unrecognised toolchain is not judged against invented rules', () => {
 // ------------------------------------------------------------------ the report
 
 test('the report says what is wrong, where, and that nothing was written', () => {
-  // A gate that only says "invalid" makes the user guess. Each line names the
-  // file and the consequence, and the last line answers the question they will
-  // actually have: is there a mess to clean up.
+  /*
+   * A gate that only says "invalid" makes the user guess. Each line names the
+   * file and the consequence, and the last line answers the question they will
+   * actually have: is there a mess to clean up.
+   */
   const target = project(['pom.xml', 'Stray.java']);
   const report = describeViolations(verifyStructure(target, 'maven').violations);
 

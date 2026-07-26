@@ -84,8 +84,10 @@ test('every document the site mirrors actually exists', () => {
 });
 
 test('the ADRs are discovered rather than listed', () => {
-  // Adding an ADR must be adding a file. If this ever has to be kept in step
-  // with a list in the script, the list is what stops being updated.
+  /*
+   * Adding an ADR must be adding a file. If this ever has to be kept in step
+   * with a list in the script, the list is what stops being updated.
+   */
   const onDisk = fs
     .readdirSync(path.join(ROOT, 'docs', 'adr'))
     .filter((name) => name.endsWith('.md'));
@@ -100,29 +102,35 @@ test('the ADRs are discovered rather than listed', () => {
 });
 
 test('the ADR index is mirrored as index.md, not as README', () => {
-  // MkDocs treats index.md as a section's landing page. Left as README.md it
-  // becomes a page called "README" *inside* the section, and the section itself
-  // is a heading nobody can click.
+  /*
+   * MkDocs treats index.md as a section's landing page. Left as README.md it
+   * becomes a page called "README" *inside* the section, and the section itself
+   * is a heading nobody can click.
+   */
   const index = mirrorTable().find((entry) => entry.from === 'docs/adr/README.md');
   assert.equal(index?.to, 'adr/index.md');
 });
 
 test('mirrored copies are gitignored', () => {
-  // They are build output. Committing one means the next build overwrites it and
-  // the change is lost, which is a confusing way to find out.
+  /*
+   * They are build output. Committing one means the next build overwrites it and
+   * the change is lost, which is a confusing way to find out.
+   */
   const ignored = read('.gitignore');
   assert.match(ignored, /^\/documentation\/project\/$/m);
   assert.match(ignored, /^\/site\/$/m);
 });
 
 test('no mirrored copy is tracked by git', () => {
-  // Being in .gitignore is not the same as being untracked, and the difference
-  // has already cost once: the styling branch was cut before that ignore rule
-  // existed, so a `git add -A` on it swept all twelve generated files onto main.
-  // Nothing complained — an ignore rule has no effect on a file already staged.
-  //
-  // So this asks git what it is actually tracking rather than what it was told
-  // to ignore.
+  /*
+   * Being in .gitignore is not the same as being untracked, and the difference
+   * has already cost once: the styling branch was cut before that ignore rule
+   * existed, so a `git add -A` on it swept all twelve generated files onto main.
+   * Nothing complained — an ignore rule has no effect on a file already staged.
+   *
+   * So this asks git what it is actually tracking rather than what it was told
+   * to ignore.
+   */
   const { status, stdout } = spawnSync('git', ['ls-files', 'documentation/project'], {
     cwd: ROOT,
     encoding: 'utf8',
@@ -141,9 +149,11 @@ test('no mirrored copy is tracked by git', () => {
 });
 
 test('the site never mirrors the README', () => {
-  // The README is written for someone looking at a repository and the site's
-  // home page for someone looking at a website. Mirroring one over the other
-  // gives the site two front doors that drift apart.
+  /*
+   * The README is written for someone looking at a repository and the site's
+   * home page for someone looking at a website. Mirroring one over the other
+   * gives the site two front doors that drift apart.
+   */
   assert.ok(!ROOT_DOCS.some((doc) => doc.from === 'README.md'));
 });
 
@@ -165,9 +175,11 @@ test('the workflow rebuilds the site for every file it mirrors', () => {
 });
 
 test('the push and pull_request path filters are identical', () => {
-  // GitHub Actions has no YAML anchors, so the list is written twice. If they
-  // drift, a change is checked on one event and not the other — and the one that
-  // silently stops being checked is whichever was not being looked at.
+  /*
+   * GitHub Actions has no YAML anchors, so the list is written twice. If they
+   * drift, a change is checked on one event and not the other — and the one that
+   * silently stops being checked is whichever was not being looked at.
+   */
   const filters = workflowPathFilters();
   assert.equal(filters.length, 2, 'expected exactly two paths: filters in docs.yml');
   assert.deepEqual(filters[0], filters[1]);
@@ -197,9 +209,11 @@ test('a pull request builds the site but never deploys it', () => {
 });
 
 test('the docs toolchain is pinned', () => {
-  // The site is rebuilt by CI on merges nobody is watching. A floating range
-  // means a theme release can turn the build red on a morning when nothing here
-  // changed.
+  /*
+   * The site is rebuilt by CI on merges nobody is watching. A floating range
+   * means a theme release can turn the build red on a morning when nothing here
+   * changed.
+   */
   const lines = read('mkdocs-requirements.txt')
     .split('\n')
     .map((line) => line.trim())
@@ -212,8 +226,10 @@ test('the docs toolchain is pinned', () => {
 });
 
 test('the docs toolchain is not an npm dependency', () => {
-  // ADR-0001 covers dev dependencies too. A docs toolchain in package.json would
-  // be that rule broken with a different label on it.
+  /*
+   * ADR-0001 covers dev dependencies too. A docs toolchain in package.json would
+   * be that rule broken with a different label on it.
+   */
   const pkg = JSON.parse(read('package.json'));
   assert.equal(pkg.dependencies, undefined);
   assert.equal(pkg.devDependencies, undefined);
@@ -222,8 +238,10 @@ test('the docs toolchain is not an npm dependency', () => {
 // ------------------------------------------------------------------ navigation
 
 test('every .nav.yml entry names something that exists', () => {
-  // A name that matches nothing is dropped from the navigation silently, so the
-  // page is live at its URL and reachable from nowhere.
+  /*
+   * A name that matches nothing is dropped from the navigation silently, so the
+   * page is live at its URL and reachable from nowhere.
+   */
   const directories = [DOCS, ...fs.readdirSync(DOCS, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => path.join(DOCS, entry.name))];
@@ -240,9 +258,11 @@ test('every .nav.yml entry names something that exists', () => {
 });
 
 test('every page is reachable from the navigation', () => {
-  // The top-level .nav.yml lists its sections explicitly and ends with '*'. A
-  // section listed by name that is later renamed would vanish from the sidebar
-  // while its pages stayed live.
+  /*
+   * The top-level .nav.yml lists its sections explicitly and ends with '*'. A
+   * section listed by name that is later renamed would vanish from the sidebar
+   * while its pages stayed live.
+   */
   const listed = navEntries(DOCS).map(({ entry }) => entry);
   assert.ok(listed.includes('*'), "documentation/.nav.yml must end with '*' so new folders appear");
 

@@ -202,8 +202,10 @@ export async function text(message, defaultValue = '', validate = () => null) {
       return value;
     }
 
-    // Re-prompting after EOF would spin forever — there is no one left to
-    // answer. Fail loudly instead, naming the flag that would have fixed it.
+    /*
+     * Re-prompting after EOF would spin forever — there is no one left to
+     * answer. Fail loudly instead, naming the flag that would have fixed it.
+     */
     if (eof) {
       throw new Error(`${message} ${error} (no TTY — pass it as a flag)`);
     }

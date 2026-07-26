@@ -47,9 +47,11 @@ public class ProductService {
         Product product = Product.builder()
                 .sku(request.sku())
                 .name(request.name())
-                // The DTO leaves these nullable so "absent" is distinguishable from
-                // "zero"; the defaults are applied here, once, rather than at each
-                // call site.
+                /*
+                 * The DTO leaves these nullable so "absent" is distinguishable from
+                 * "zero"; the defaults are applied here, once, rather than at each
+                 * call site.
+                 */
                 .description(request.description() == null ? "" : request.description())
                 .priceCents(request.priceCents())
                 .stock(request.stock() == null ? 0 : request.stock())
@@ -64,9 +66,11 @@ public class ProductService {
                 .orElseThrow(() -> ApiException.notFound("Product %s not found".formatted(id)));
 
         if (request.sku() != null) {
-            // Checked against the row being edited, not just for existence: without
-            // the id comparison, a PATCH carrying the product's own unchanged SKU
-            // would conflict with itself.
+            /*
+             * Checked against the row being edited, not just for existence: without
+             * the id comparison, a PATCH carrying the product's own unchanged SKU
+             * would conflict with itself.
+             */
             repository.findBySkuIgnoreCase(request.sku()).ifPresent(existing -> {
                 if (!existing.getId().equals(id)) {
                     throw ApiException.conflict(
@@ -80,9 +84,11 @@ public class ProductService {
         if (request.description() != null) product.setDescription(request.description());
         if (request.priceCents() != null) product.setPriceCents(request.priceCents());
 
-        // saveAndFlush, not a bare return of the managed entity — see UserService
-        // for why: @PreUpdate fires at flush, which would otherwise happen after
-        // this method returns and hand the caller a stale updatedAt.
+        /*
+         * saveAndFlush, not a bare return of the managed entity — see UserService
+         * for why: @PreUpdate fires at flush, which would otherwise happen after
+         * this method returns and hand the caller a stale updatedAt.
+         */
         return mapper.toDto(repository.saveAndFlush(product));
     }
 

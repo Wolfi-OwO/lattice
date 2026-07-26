@@ -25,10 +25,12 @@ test('every generator is fully specified and non-interactive', () => {
     const argv = g.argv('sample');
     assert.ok(Array.isArray(argv) && argv.length > 0, `${g.id}: argv builds a non-empty array`);
 
-    // The name has to reach the tool somehow. Most take it as an argument; a few
-    // (`swift package init`, `go mod init` in its directory) are run *inside* a
-    // directory runGenerator has already created, and take the name from there.
-    // Those are exactly the ones flagged inProjectDir, so the two must agree.
+    /*
+     * The name has to reach the tool somehow. Most take it as an argument; a few
+     * (`swift package init`, `go mod init` in its directory) are run *inside* a
+     * directory runGenerator has already created, and take the name from there.
+     * Those are exactly the ones flagged inProjectDir, so the two must agree.
+     */
     if (!g.inProjectDir) {
       assert.ok(argv.includes('sample'), `${g.id}: the project name must reach the argv`);
     }
@@ -42,16 +44,20 @@ test('every generator is fully specified and non-interactive', () => {
 });
 
 test('every generator says how to actually run what it produced', () => {
-  // The bug this pins: the CLI printed a hardcoded "npm install", so scaffolding a Go
-  // module or a cargo crate told the user to run npm in a project with no package.json.
+  /*
+   * The bug this pins: the CLI printed a hardcoded "npm install", so scaffolding a Go
+   * module or a cargo crate told the user to run npm in a project with no package.json.
+   */
   for (const g of GENERATORS) {
     assert.ok(Array.isArray(g.next) && g.next.length > 0, `${g.id}: declares next steps`);
 
     const commands = g.next.filter((step) => !step.startsWith('#'));
     assert.ok(commands.length > 0, `${g.id}: next steps contain a real command`);
 
-    // A next step must belong to the toolchain that produced the project. npm advice
-    // in a cargo/go/dotnet project is the exact defect this test exists for.
+    /*
+     * A next step must belong to the toolchain that produced the project. npm advice
+     * in a cargo/go/dotnet project is the exact defect this test exists for.
+     */
     if (g.bin !== 'npx' && g.bin !== 'ng') {
       assert.ok(
         !commands.some((step) => /\bnpm\b/.test(step)),
@@ -62,10 +68,12 @@ test('every generator says how to actually run what it produced', () => {
 });
 
 test('every generator is exercised by the Generators workflow', () => {
-  // The workflow lists ids by hand — it has to, because each toolchain needs its own
-  // setup action. That list is exactly the kind that silently falls behind the
-  // registry, and a generator nothing ever runs is a generator nobody knows is
-  // broken until a user hits it. So the drift is a test failure instead.
+  /*
+   * The workflow lists ids by hand — it has to, because each toolchain needs its own
+   * setup action. That list is exactly the kind that silently falls behind the
+   * registry, and a generator nothing ever runs is a generator nobody knows is
+   * broken until a user hits it. So the drift is a test failure instead.
+   */
   const workflow = fs.readFileSync(
     path.join(import.meta.dirname, '..', '.github', 'workflows', 'generators.yml'),
     'utf8',
@@ -95,12 +103,14 @@ test('the create-vite template matrix is present, minus the one that cannot inst
     assert.ok(findGenerator(`vite-${t}`), `create-vite template "${t}" should be a generator`);
   }
 
-  // Qwik is offered by create-vite but is deliberately not offered here:
-  // @builder.io/qwik pins `vite >=5 <8` while create-vite scaffolds vite 8, so the
-  // generated project fails `npm install` on a peer conflict. CI caught it. A
-  // generator whose output does not install is worse than one that is absent, so
-  // this asserts the absence is a decision rather than an oversight — delete this
-  // when upstream widens the peer range and the generator comes back.
+  /*
+   * Qwik is offered by create-vite but is deliberately not offered here:
+   * @builder.io/qwik pins `vite >=5 <8` while create-vite scaffolds vite 8, so the
+   * generated project fails `npm install` on a peer conflict. CI caught it. A
+   * generator whose output does not install is worse than one that is absent, so
+   * this asserts the absence is a decision rather than an oversight — delete this
+   * when upstream widens the peer range and the generator comes back.
+   */
   assert.equal(findGenerator('vite-qwik'), null, 'vite-qwik stays out until upstream unpins vite');
 });
 
@@ -115,10 +125,12 @@ test('generatorChoices lists every generator with its ecosystem', () => {
 });
 
 test('runGenerator finds a binary that is really on PATH, on every platform', () => {
-  // The regression this pins: the lookup used to shell out to `which`, which does not
-  // exist on Windows — so on the Windows runner every generator claimed its toolchain
-  // was missing. `node` is on PATH wherever this suite can run at all, so a generator
-  // requiring it must get past the gate and actually execute.
+  /*
+   * The regression this pins: the lookup used to shell out to `which`, which does not
+   * exist on Windows — so on the Windows runner every generator claimed its toolchain
+   * was missing. `node` is on PATH wherever this suite can run at all, so a generator
+   * requiring it must get past the gate and actually execute.
+   */
   const generator = {
     id: 'node-mkdir',
     requires: 'node',

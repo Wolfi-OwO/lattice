@@ -17,26 +17,45 @@ the tool people actually run is whichever version they installed once.
 | --- | --- | --- |
 | **Node ≥ 20** | lattice itself | Enforced by `engines`. npm will warn on older. |
 | **Docker** | `--database mongodb\|postgres\|mysql` | Only to *start* the container. Skip with `--no-database-start`. |
-| **Java 21 + Maven** | `spring-boot`, `javafx` | The templates ship a Maven wrapper, so `./mvnw` works without Maven installed. |
-| **Python ≥ 3.10** | `fastapi`, `ml-project` | lattice does not create the venv for you — see below. |
+| **Java ≥ 17** | `spring-boot`, `javafx` | Maven itself is *not* needed — the templates ship a wrapper, so `./mvnw` fetches it. |
+| **Python ≥ 3.12** | `fastapi`, `ml-project` | Used to build a `.venv` inside the project. |
+| **Android SDK** | `android-compose` | The one stack not auto-installed — see below. |
 | **The framework's own CLI** | `--generator <id>` | `dotnet`, `cargo`, `go`, `flutter`… whichever you asked for. |
 
 Nothing on that list is needed for a stack you are not using. Scaffolding
 `node-cli` needs Node and nothing else.
 
-!!! note "Python projects are not auto-installed"
+Those two version floors are not lattice's opinion — they are read out of the
+project it is about to create, from `<java.version>` in the `pom.xml` and
+`requires-python` in the `pyproject.toml`. If a template raises its floor, the
+check raises with it.
 
-    Every other stack has one obvious package manager, so lattice runs it.
-    Python does not: `pip`, `pipx`, `poetry`, `uv`, `conda` and a bare venv are
-    all normal, and guessing wrong leaves packages somewhere you did not want
-    them. So the Python templates print the three commands instead of running
-    them, and the commands they print create the venv rather than assuming one:
+!!! note "lattice installs dependencies, never runtimes"
 
-    ```bash
-    python -m venv .venv && source .venv/bin/activate
-    pip install -r requirements-dev.txt
-    uvicorn app.main:app --reload
+    If the JDK or Python a project needs is already there and new enough, lattice
+    installs that project's dependencies and it runs on the first command. If it
+    is missing or too old, lattice says so — naming both the version found and
+    the version needed — and leaves the project complete:
+
     ```
+    · Skipped dependency install — Java 11.0.22 is installed, but this project
+      needs 17 or newer.
+      The project is complete; run the steps below once that is sorted.
+    ```
+
+    It will not download a JDK or a Python for you. That changes the machine
+    rather than the directory, and it needs a system package manager lattice
+    would have to guess at — where guessing wrong leaves a second Python nobody
+    wanted.
+
+    Python goes into a **`.venv` inside the project**, built with the standard
+    library's own `venv` module. Nothing outside the project is touched, which is
+    exactly why this is safe to do and `pip install --user` would not be. An
+    existing `.venv` is **reused, not rebuilt**: someone who already made one with
+    `uv` or a different interpreter has expressed a preference.
+
+    Android is the one stack still left alone. Its build needs the Android SDK
+    and accepted licences, and arranging those is not a scaffolder's business.
 
 ## Installing it globally anyway
 

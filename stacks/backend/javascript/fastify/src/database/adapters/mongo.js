@@ -25,8 +25,10 @@ function mongoField(spec) {
   if (spec.values) field.enum = spec.values;
   if (spec.default !== undefined) field.default = spec.default;
   if (spec.min !== undefined) field.min = spec.min;
-  // Never loaded unless a query asks for it by name, so a stray find() cannot
-  // put a password hash somewhere it was not meant to go.
+  /*
+   * Never loaded unless a query asks for it by name, so a stray find() cannot
+   * put a password hash somewhere it was not meant to go.
+   */
   if (spec.secret) field.select = false;
 
   return field;
@@ -85,9 +87,11 @@ const isValidId = (id) => mongoose.isValidObjectId(id);
 export async function createAdapter({ url }) {
   mongoose.set('strictQuery', true);
 
-  // mongoose.connection is an EventEmitter: a post-connect failure emits `error`,
-  // and unhandled, it takes the process down. Log instead — the driver retries,
-  // and /api/health/readiness reports 503 in the meantime.
+  /*
+   * mongoose.connection is an EventEmitter: a post-connect failure emits `error`,
+   * and unhandled, it takes the process down. Log instead — the driver retries,
+   * and /api/health/readiness reports 503 in the meantime.
+   */
   mongoose.connection.on('error', (error) => {
     logger.error(`mongodb connection error: ${error.message}`);
   });

@@ -13,11 +13,21 @@
  * A test that writes its own instructions cannot discover that the shipped ones
  * are wrong. Reading them from the registry is what makes the check real.
  *
- *   --stack <id>    the steps for one template, one per line
- *   --list          every template that declares steps, for a CI matrix
+ * A template may print two different sequences — one for a project whose
+ * dependencies lattice already installed, one for a project that still needs
+ * them — so `--project` points at the generated directory and the state is read
+ * off disk rather than passed in. A flag could be given the wrong value; a
+ * missing .venv cannot.
+ *
+ *   --stack <id>      the steps for one template, one per line
+ *   --project <dir>   look here to decide whether the install already happened
+ *   --list            every template that declares steps, for a CI matrix
  */
 
-import { TEMPLATES } from '../src/registry.js';
+import fs from 'node:fs';
+import path from 'node:path';
+
+import { TEMPLATES, nextSteps } from '../src/registry.js';
 
 const argv = process.argv.slice(2);
 const valueOf = (flag) => {
@@ -42,4 +52,11 @@ if (!template) {
   process.exit(1);
 }
 
-console.log((template.post ?? []).join('\n'));
+/** Whatever this toolchain leaves behind once its dependencies are in place. */
+const INSTALL_MARKER = { python: '.venv', maven: 'target', npm: 'node_modules' };
+
+const projectDir = valueOf('--project');
+const marker = INSTALL_MARKER[template.installer];
+const installed = Boolean(projectDir && marker && fs.existsSync(path.join(projectDir, marker)));
+
+console.log(nextSteps(template, installed).join('\n'));

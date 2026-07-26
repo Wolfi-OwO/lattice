@@ -52,9 +52,11 @@ export const STYLING = {
     source: 'scss.scss',
     entry: 'styles.scss',
     deps: {},
-    // Sass is a compile-time tool: Vite compiles .scss during dev and build, and
-    // nothing imports it at runtime. A dependency here would ship a compiler to
-    // production for no reason.
+    /*
+     * Sass is a compile-time tool: Vite compiles .scss during dev and build, and
+     * nothing imports it at runtime. A dependency here would ship a compiler to
+     * production for no reason.
+     */
     devDeps: { sass: '^1.83.0' },
   },
 
@@ -63,9 +65,11 @@ export const STYLING = {
     hint: "Bootstrap's grid, forms and tables, themed through its own SCSS variables",
     source: 'bootstrap.scss',
     entry: 'styles.scss',
-    // Bootstrap is imported by the stylesheet, which Sass resolves out of
-    // node_modules at build time — but it is a real package the project depends
-    // on, not a tool, so it belongs in dependencies.
+    /*
+     * Bootstrap is imported by the stylesheet, which Sass resolves out of
+     * node_modules at build time — but it is a real package the project depends
+     * on, not a tool, so it belongs in dependencies.
+     */
     deps: { bootstrap: '^5.3.3' },
     devDeps: { sass: '^1.83.0' },
   },
@@ -76,9 +80,11 @@ export const STYLING = {
     source: 'tailwind.css',
     entry: 'styles.css',
     deps: {},
-    // Tailwind v4 needs no tailwind.config.js and no PostCSS config: the Vite
-    // plugin is the whole integration, and the theme is declared in CSS. That is
-    // why this variant adds no config files to the generated project.
+    /*
+     * Tailwind v4 needs no tailwind.config.js and no PostCSS config: the Vite
+     * plugin is the whole integration, and the theme is declared in CSS. That is
+     * why this variant adds no config files to the generated project.
+     */
     devDeps: { tailwindcss: '^4.1.14', '@tailwindcss/vite': '^4.1.14' },
     vitePlugin: 'tailwindcss',
     vitePluginFrom: '@tailwindcss/vite',

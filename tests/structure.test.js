@@ -59,11 +59,13 @@ const PYTHON = ['fastapi', 'ml-project'];
 // ---------------------------------------------------------------- Java / Maven
 
 test('every Maven template can be built without Maven installed', () => {
-  // The reported bug. `mvn spring-boot:run` requires a global Maven of a
-  // compatible version; the wrapper is how a Java project ships that requirement
-  // instead of assuming it. Every Spring Initializr project has shipped one for a
-  // decade, and its absence is why a scaffold that CI builds happily did nothing
-  // at all on the reporter's machine.
+  /*
+   * The reported bug. `mvn spring-boot:run` requires a global Maven of a
+   * compatible version; the wrapper is how a Java project ships that requirement
+   * instead of assuming it. Every Spring Initializr project has shipped one for a
+   * decade, and its absence is why a scaffold that CI builds happily did nothing
+   * at all on the reporter's machine.
+   */
   for (const framework of MAVEN) {
     assert.ok(has(framework, 'mvnw'), `${framework}: no ./mvnw — the project needs a global Maven to run`);
     assert.ok(has(framework, 'mvnw.cmd'), `${framework}: no mvnw.cmd — unusable on Windows`);
@@ -75,9 +77,11 @@ test('every Maven template can be built without Maven installed', () => {
 });
 
 test('the Maven wrapper is a script, never a checked-in binary', () => {
-  // STRUCTURE.md refuses to ship binaries, and that rule stands. Maven's
-  // script-only distribution type exists exactly for this: mvnw resolves Maven
-  // itself, so there is no maven-wrapper.jar to commit.
+  /*
+   * STRUCTURE.md refuses to ship binaries, and that rule stands. Maven's
+   * script-only distribution type exists exactly for this: mvnw resolves Maven
+   * itself, so there is no maven-wrapper.jar to commit.
+   */
   for (const framework of MAVEN) {
     const binaries = filesOf(framework).filter((f) => /\.(jar|class|exe|so|dylib)$/.test(f));
     assert.deepEqual(binaries, [], `${framework}: binaries must not be committed — found ${binaries.join(', ')}`);
@@ -93,8 +97,10 @@ test('the Maven wrapper is a script, never a checked-in binary', () => {
 });
 
 test('Maven templates use the standard directory layout', () => {
-  // Maven resolves these by convention, not configuration. A source file outside
-  // src/main/java is silently not compiled, which is the worst kind of wrong.
+  /*
+   * Maven resolves these by convention, not configuration. A source file outside
+   * src/main/java is silently not compiled, which is the worst kind of wrong.
+   */
   for (const framework of MAVEN) {
     assert.ok(has(framework, 'pom.xml'), `${framework}: no pom.xml`);
     assert.ok(has(framework, 'src', 'main', 'java'), `${framework}: no src/main/java`);
@@ -110,9 +116,11 @@ test('Maven templates declare a wrapper-compatible build, and the run command ma
   for (const framework of MAVEN) {
     const template = TEMPLATES.find((t) => t.framework === framework);
 
-    // The steps the CLI prints are the ones the user types first. Telling them to
-    // run `mvn` when the project ships `./mvnw` is how a scaffold appears broken
-    // to anyone without a global Maven.
+    /*
+     * The steps the CLI prints are the ones the user types first. Telling them to
+     * run `mvn` when the project ships `./mvnw` is how a scaffold appears broken
+     * to anyone without a global Maven.
+     */
     const steps = (template.post ?? []).join('\n');
     assert.match(steps, /\.\/mvnw/, `${framework}: next steps must use ./mvnw, not a global mvn`);
 
@@ -131,12 +139,14 @@ test('Gradle templates ship a wrapper and a version catalog', () => {
       has(framework, 'gradle', 'libs.versions.toml'),
       `${framework}: no version catalog — every dependency version would be inline`,
     );
-    // The full Gradle wrapper ships — all four parts, or none is usable. Gradle
-    // has no script-only wrapper the way Maven does, so a working template must
-    // commit gradle-wrapper.jar; STRUCTURE.md carves the one exception for it and
-    // CI validates its checksum. Shipping gradlew without the jar, or the jar
-    // without gradlew, leaves a clone that cannot build — which is the whole
-    // failure this template spent its existence in.
+    /*
+     * The full Gradle wrapper ships — all four parts, or none is usable. Gradle
+     * has no script-only wrapper the way Maven does, so a working template must
+     * commit gradle-wrapper.jar; STRUCTURE.md carves the one exception for it and
+     * CI validates its checksum. Shipping gradlew without the jar, or the jar
+     * without gradlew, leaves a clone that cannot build — which is the whole
+     * failure this template spent its existence in.
+     */
     assert.ok(has(framework, 'gradlew'), `${framework}: no gradlew — a clone cannot build`);
     assert.ok(has(framework, 'gradlew.bat'), `${framework}: ships gradlew but not gradlew.bat`);
     assert.ok(
@@ -151,10 +161,12 @@ test('Gradle templates ship a wrapper and a version catalog', () => {
 });
 
 test('no build output is committed to any template', () => {
-  // These are generated, machine-specific and frequently binary. A .gradle cache
-  // committed once travels into every project scaffolded from the template.
-  // `bin/` is deliberately absent: for a CLI template it is the entry point, not
-  // output. The rest are directories no ecosystem ever asks you to write by hand.
+  /*
+   * These are generated, machine-specific and frequently binary. A .gradle cache
+   * committed once travels into every project scaffolded from the template.
+   * `bin/` is deliberately absent: for a CLI template it is the entry point, not
+   * output. The rest are directories no ecosystem ever asks you to write by hand.
+   */
   const OUTPUT = ['.gradle', 'build', 'target', 'out', 'dist', 'node_modules', '__pycache__', '.venv'];
 
   for (const template of TEMPLATES) {
@@ -177,9 +189,11 @@ test('Python templates declare their dependencies and a test location', () => {
     assert.ok(has(framework, 'requirements-dev.txt'), `${framework}: no requirements-dev.txt`);
     assert.ok(has(framework, 'pyproject.toml'), `${framework}: no pyproject.toml`);
 
-    // The dev file must pull in the runtime one, or `pip install -r
-    // requirements-dev.txt` — which is what the CLI prints — installs a project
-    // that cannot import its own dependencies.
+    /*
+     * The dev file must pull in the runtime one, or `pip install -r
+     * requirements-dev.txt` — which is what the CLI prints — installs a project
+     * that cannot import its own dependencies.
+     */
     assert.match(
       read(framework, 'requirements-dev.txt'),
       /^-r requirements\.txt$/m,
@@ -192,14 +206,18 @@ test('Python templates declare their dependencies and a test location', () => {
 // ------------------------------------------------------------------- every one
 
 test('every template ships whatever its ecosystem needs to be run at all', () => {
-  // One statement of the rule, so a new template cannot arrive without an answer
-  // to "how do I run this".
+  /*
+   * One statement of the rule, so a new template cannot arrive without an answer
+   * to "how do I run this".
+   */
   const ENTRY_POINT = {
     npm: ['_package.json'],
     maven: ['mvnw', 'pom.xml'],
-    // gradlew is the entry point now: the wrapper ships in full (the Gradle test
-    // above enforces all four parts), so a clone runs ./gradlew with no Gradle
-    // installed — the same clone-and-run experience mvnw gives the Maven templates.
+    /*
+     * gradlew is the entry point now: the wrapper ships in full (the Gradle test
+     * above enforces all four parts), so a clone runs ./gradlew with no Gradle
+     * installed — the same clone-and-run experience mvnw gives the Maven templates.
+     */
     gradle: ['gradlew', 'build.gradle.kts', 'settings.gradle.kts'],
     python: ['requirements.txt'],
   };
@@ -223,9 +241,11 @@ test('every template ships whatever its ecosystem needs to be run at all', () =>
 });
 
 test('the npm tarball carries no build output', () => {
-  // package.json's `files` is an allowlist and does NOT honour .gitignore, so a
-  // .gradle cache sitting in a working copy would be published even though git
-  // ignores it. The published 1.0.1 is clean; this keeps it that way.
+  /*
+   * package.json's `files` is an allowlist and does NOT honour .gitignore, so a
+   * .gradle cache sitting in a working copy would be published even though git
+   * ignores it. The published 1.0.1 is clean; this keeps it that way.
+   */
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   const negations = (pkg.files ?? []).filter((entry) => entry.startsWith('!'));
 
@@ -235,16 +255,20 @@ test('the npm tarball carries no build output', () => {
   );
 });
 
-// Windows has no POSIX permission bits — Node reports a synthetic mode there, and
-// Windows users run mvnw.cmd rather than ./mvnw. These two assertions are about the
-// executable bit, so they only mean anything where one exists.
+/*
+ * Windows has no POSIX permission bits — Node reports a synthetic mode there, and
+ * Windows users run mvnw.cmd rather than ./mvnw. These two assertions are about the
+ * executable bit, so they only mean anything where one exists.
+ */
 const posixOnly = { skip: process.platform === 'win32' ? 'no executable bit on Windows' : false };
 
 test('an executable in a template is still executable after scaffolding', posixOnly, () => {
-  // writeFileSync creates 0644, so the render path dropped the bit while the
-  // binary path kept it — and `./mvnw` is the very first thing a Java user types.
-  // It failed with Permission denied, which reads as a broken scaffold rather than
-  // a missing chmod.
+  /*
+   * writeFileSync creates 0644, so the render path dropped the bit while the
+   * binary path kept it — and `./mvnw` is the very first thing a Java user types.
+   * It failed with Permission denied, which reads as a broken scaffold rather than
+   * a missing chmod.
+   */
   const target = fs.mkdtempSync(path.join(os.tmpdir(), 'mode-'));
   const source = fs.mkdtempSync(path.join(os.tmpdir(), 'tpl-'));
 
@@ -267,11 +291,13 @@ test('every Maven template scaffolds an executable wrapper', posixOnly, () => {
 });
 
 test('every Gradle template ships an executable gradlew', posixOnly, () => {
-  // Same failure as a non-executable mvnw, and easy to reintroduce: git preserves
-  // the bit, but a file recreated by an editor or a careless copy loses it, and
-  // then `./gradlew` on a fresh clone is "permission denied" before Gradle is even
-  // reached. copyTemplate carries the source mode across, so the template's own
-  // bit is what every scaffolded project inherits.
+  /*
+   * Same failure as a non-executable mvnw, and easy to reintroduce: git preserves
+   * the bit, but a file recreated by an editor or a careless copy loses it, and
+   * then `./gradlew` on a fresh clone is "permission denied" before Gradle is even
+   * reached. copyTemplate carries the source mode across, so the template's own
+   * bit is what every scaffolded project inherits.
+   */
   for (const framework of GRADLE) {
     const mode = fs.statSync(path.join(dirOf(framework), 'gradlew')).mode;
     assert.ok(mode & 0o111, `${framework}: gradlew is not executable in the template itself`);

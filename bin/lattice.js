@@ -26,6 +26,8 @@ import {
   findFreePort,
   hasDocker,
   install,
+  installMaven,
+  installPython,
   mergeDeps,
   detectToolchain,
   driverLoads,
@@ -46,10 +48,12 @@ import {
   findTemplate,
   frameworksFor,
   languagesFor,
+  nextSteps,
 } from '../src/registry.js';
 import { findGenerator, generatorChoices } from '../src/generators.js';
 import { beginGeneration } from '../src/transaction.js';
 import { verifyStructure, describeViolations } from '../src/verify.js';
+import { checkToolchain } from '../src/toolchain.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STACK_ROOT = path.join(ROOT, 'stacks');
@@ -233,10 +237,12 @@ async function resolveTemplate(flags) {
 /** The storage question, asked only for stacks that actually persist anything. */
 async function resolveStorage(template, flags) {
   if (!template.storage) {
-    // Accepting --database here and ignoring it would hand back a project wired
-    // to a different database than the one that was asked for, with nothing said.
-    // These stacks have their persistence fixed by the template (FastAPI ships
-    // SQLAlchemy, Spring ships JPA); only the storage-agnostic ones take one.
+    /*
+     * Accepting --database here and ignoring it would hand back a project wired
+     * to a different database than the one that was asked for, with nothing said.
+     * These stacks have their persistence fixed by the template (FastAPI ships
+     * SQLAlchemy, Spring ships JPA); only the storage-agnostic ones take one.
+     */
     if (typeof (flags.database ?? flags.db) === 'string') {
       throw new Error(
         `The ${template.framework} stack does not take a --database — its database is fixed by the template.\n` +
@@ -288,8 +294,10 @@ async function resolveStorage(template, flags) {
 async function resolveStyling(template, client, flags) {
   const flag = flags.styling;
 
-  // In a fullstack run the frontend arrives as `--client`, so the stack that
-  // takes the styling is the client, not the backend the name was given for.
+  /*
+   * In a fullstack run the frontend arrives as `--client`, so the stack that
+   * takes the styling is the client, not the backend the name was given for.
+   */
   const styled = template.styling ? template : client?.styling ? client : null;
 
   if (!styled) {
@@ -314,16 +322,18 @@ async function resolveStyling(template, client, flags) {
     return flag;
   }
 
-  // Unlike the database, styling has a defensible default, so a non-interactive
-  // run without the flag gets it rather than an error.
-  //
-  // The asymmetry is the point. There is no safe default database — picking one
-  // silently builds the project against storage nobody asked for, and finding out
-  // costs a rewrite. `plain` is exactly what these templates shipped before this
-  // choice existed, so a script that says nothing gets what it got yesterday, and
-  // changing its mind later is one file. Failing instead would have broken every
-  // existing `--stack react-vite` invocation — including this repository's own CI,
-  // which is how it was caught — and a new feature does not get to do that.
+  /*
+   * Unlike the database, styling has a defensible default, so a non-interactive
+   * run without the flag gets it rather than an error.
+   *
+   * The asymmetry is the point. There is no safe default database — picking one
+   * silently builds the project against storage nobody asked for, and finding out
+   * costs a rewrite. `plain` is exactly what these templates shipped before this
+   * choice existed, so a script that says nothing gets what it got yesterday, and
+   * changing its mind later is one file. Failing instead would have broken every
+   * existing `--stack react-vite` invocation — including this repository's own CI,
+   * which is how it was caught — and a new feature does not get to do that.
+   */
   if (!isInteractive()) return DEFAULT_STYLING;
 
   return select('Styling:', stylingChoices());
@@ -377,25 +387,31 @@ async function runExternalGenerator(projectName, args) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
-  // --verbose turns on the debug logs (src/logger.js reads this). Set before any
-  // other work so the machinery of this run is actually captured.
+  /*
+   * --verbose turns on the debug logs (src/logger.js reads this). Set before any
+   * other work so the machinery of this run is actually captured.
+   */
   if (args.flags.verbose) process.env.LATTICE_LOG_LEVEL = 'debug';
 
   if (args.flags.help) return printHelp();
   if (args.flags.version) return printVersion();
   if (args.flags.list) return printList();
 
-  // `lattice doctor [path]` — score a project instead of scaffolding one. A
-  // subcommand rather than a flag because it is a different verb with a different
-  // output, and treating "doctor" as a project name would scaffold a folder called
-  // doctor, which nobody wants.
+  /*
+   * `lattice doctor [path]` — score a project instead of scaffolding one. A
+   * subcommand rather than a flag because it is a different verb with a different
+   * output, and treating "doctor" as a project name would scaffold a folder called
+   * doctor, which nobody wants.
+   */
   if (args._[0] === 'doctor') {
     const target = args._[1] ?? '.';
     logger.debug(`doctor: inspecting ${path.resolve(target)}`);
     const report = inspect(target);
     console.log(renderReport(report));
-    // Non-zero on a failing grade only under --strict, so it can gate CI without
-    // breaking the common "just show me" run.
+    /*
+     * Non-zero on a failing grade only under --strict, so it can gate CI without
+     * breaking the common "just show me" run.
+     */
     if (args.flags.strict && report.overall < 60) process.exitCode = 1;
     return;
   }
@@ -406,9 +422,11 @@ async function main() {
   const nameError = validateName(projectName);
   if (nameError) throw new Error(nameError);
 
-  // `--generator <id>` delegates the base scaffold to a framework's real tool
-  // (create-vite, ng, cargo, …), then layers lattice's overlay on top. A different
-  // path entirely from the built-in templates: no storage, no stack picker.
+  /*
+   * `--generator <id>` delegates the base scaffold to a framework's real tool
+   * (create-vite, ng, cargo, …), then layers lattice's overlay on top. A different
+   * path entirely from the built-in templates: no storage, no stack picker.
+   */
   if (typeof args.flags.generator === 'string') {
     return runExternalGenerator(projectName, args);
   }
@@ -452,8 +470,10 @@ async function main() {
     );
   }
 
-  // Pick the database's host port before rendering anything, so the compose
-  // file and .env are written against a port that is actually free.
+  /*
+   * Pick the database's host port before rendering anything, so the compose
+   * file and .env are written against a port that is actually free.
+   */
   const spec = storage ? STORAGE[storage] : null;
   if (spec?.server) {
     answers.databasePort = await findFreePort(spec.defaultPort);
@@ -463,9 +483,11 @@ async function main() {
 
   // ------------------------------------------------------------- scaffold
 
-  // Everything below is written to a staging directory and only becomes the real
-  // project once it has all succeeded. See src/transaction.js — a failure partway
-  // used to leave a half-written tree that then blocked its own retry.
+  /*
+   * Everything below is written to a staging directory and only becomes the real
+   * project once it has all succeeded. See src/transaction.js — a failure partway
+   * used to leave a half-written tree that then blocked its own retry.
+   */
   const generation = beginGeneration(target);
   const staged = generation.path;
 
@@ -507,8 +529,10 @@ async function main() {
     }
 
     if (styling) {
-      // The frontend is at the root of its own scaffold, but under client/ in a
-      // fullstack one — the same tree either way, just rooted differently.
+      /*
+       * The frontend is at the root of its own scaffold, but under client/ in a
+       * fullstack one — the same tree either way, just rooted differently.
+       */
       const uiRoot = template.styling ? staged : path.join(staged, 'client');
       const spec = STYLING[styling];
 
@@ -517,10 +541,12 @@ async function main() {
       mergeDeps(uiRoot, spec.devDeps ?? {}, 'devDependencies');
     }
 
-    // The structural gate, deliberately the last thing before the commit. Checking
-    // the staged tree rather than the committed one is what lets a violation roll
-    // back completely instead of leaving a rejected project on disk — the reason
-    // this and the transaction were built in that order.
+    /*
+     * The structural gate, deliberately the last thing before the commit. Checking
+     * the staged tree rather than the committed one is what lets a violation roll
+     * back completely instead of leaving a rejected project on disk — the reason
+     * this and the transaction were built in that order.
+     */
     const structure = verifyStructure(staged, detectToolchain(staged));
     if (!structure.ok) {
       throw new Error(describeViolations(structure.violations));
@@ -562,6 +588,13 @@ async function main() {
   const wantsInstall = args.flags['no-install'] !== true;
   const pm = detectPackageManager();
 
+  /*
+   * Whether the project's dependencies really are in place. Read by the "Next
+   * steps" block below, which has a different answer for a project that is ready
+   * to run than for one that still needs installing.
+   */
+  let installed = false;
+
   if (wantsInstall && template.installer === 'npm') {
     const targets = [{ dir: target, label: projectName }];
     if (client) targets.push({ dir: path.join(target, 'client'), label: 'client' });
@@ -573,11 +606,13 @@ async function main() {
       if (result.ok) {
         console.log(`${c.green('✔')} Installed dependencies in ${label} ${c.gray(`(${pm})`)}      `);
 
-        // Exiting 0 is not the same as a working project. better-sqlite3 compiles
-        // a binding during install, and npm has been observed reporting success
-        // while skipping that step entirely — leaving a project that fails on its
-        // first command with "Could not locate the bindings file". Asking the
-        // project to load its own driver is the only check that cannot be fooled.
+        /*
+         * Exiting 0 is not the same as a working project. better-sqlite3 compiles
+         * a binding during install, and npm has been observed reporting success
+         * while skipping that step entirely — leaving a project that fails on its
+         * first command with "Could not locate the bindings file". Asking the
+         * project to load its own driver is the only check that cannot be fooled.
+         */
         const driver = dir === target ? Object.keys(depsFor(storage, fileFormat))[0] : null;
         const smoke = dir === target ? STORAGE[storage]?.smoke : null;
 
@@ -597,8 +632,56 @@ async function main() {
         console.log(c.gray(`    Run "${pm} install" in ${label} yourself once that is fixed.`));
       }
     }
+  } else if (wantsInstall && (template.installer === 'maven' || template.installer === 'python')) {
+    /*
+     * Maven and Python install too, but only onto a machine that can already run
+     * them. checkToolchain answers that — it looks for the runtime and compares
+     * it against the floor the template itself declares, and never installs a
+     * runtime. A missing or too-old JDK is reported with both versions and the
+     * project is left complete, which is what the printed steps already describe.
+     */
+    const check = checkToolchain(template.installer, target);
+
+    if (!check.ok) {
+      console.log(`${c.gray('·')} ${c.gray(`Skipped dependency install — ${check.reason}`)}`);
+      console.log(c.gray('    The project is complete; run the steps below once that is sorted.'));
+    } else if (template.installer === 'maven') {
+      process.stdout.write(`${c.gray('⋯')} Resolving dependencies and compiling (./mvnw)…\r`);
+      const result = installMaven(target, true);
+
+      if (result.ok) {
+        installed = true;
+        console.log(
+          `${c.green('✔')} Resolved dependencies in ${projectName} ${c.gray(`(./mvnw · ${check.using})`)}      `,
+        );
+      } else {
+        console.log(`${c.yellow('!')} Could not resolve dependencies          `);
+        console.log(c.gray(result.error.split('\n').map((l) => `    ${l}`).join('\n')));
+        console.log(c.gray(`    Run "./mvnw -DskipTests test-compile" in ${projectName} yourself.`));
+      }
+    } else {
+      process.stdout.write(`${c.gray('⋯')} Creating .venv and installing (pip)…\r`);
+      const result = installPython(target, check.command, true);
+
+      if (result.ok) {
+        installed = true;
+        const how = result.reused ? 'reused .venv' : 'created .venv';
+        console.log(
+          `${c.green('✔')} Installed dependencies in ${projectName} ${c.gray(`(${how} · ${check.using} · ${result.requirements})`)}      `,
+        );
+      } else {
+        console.log(`${c.yellow('!')} Could not install into .venv          `);
+        console.log(c.gray(result.error.split('\n').map((l) => `    ${l}`).join('\n')));
+        console.log(c.gray(`    Run the steps below in ${projectName} yourself.`));
+      }
+    }
   } else if (wantsInstall && template.installer) {
-    // Python/Maven/Gradle: report rather than guess at the user's toolchain.
+    /*
+     * Gradle/Android is deliberately still out. Its build needs the Android SDK
+     * and accepted licences, neither of which a scaffolder should be arranging,
+     * and a `./gradlew` that fails on a missing SDK is a worse first impression
+     * than one that was never run.
+     */
     console.log(
       `${c.gray('·')} ${c.gray(`Skipping auto-install — run the ${template.installer} steps below.`)}`,
     );
@@ -631,7 +714,12 @@ async function main() {
 
   console.log(`\n${c.bold('Next steps')}\n`);
   console.log(`  cd ${projectName}`);
-  for (const step of template.post ?? []) console.log(`  ${step}`);
+  /*
+   * nextSteps, not an inline choice: scripts/print-next-steps.js makes the same
+   * decision so CI can run what was printed, and two copies of the rule would be
+   * two copies that can disagree.
+   */
+  for (const step of nextSteps(template, installed)) console.log(`  ${step}`);
 
   if (client) {
     console.log(`\n  ${c.gray('# in a second terminal')}`);

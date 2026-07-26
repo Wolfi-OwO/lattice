@@ -29,8 +29,10 @@ export const updateProductSchema = Joi.object({
   name: Joi.string().min(1).max(200),
   description: Joi.string().allow('').max(2000),
   priceCents: Joi.number().integer().min(0),
-  // `stock` is deliberately absent: it moves through /stock, as a delta, so a
-  // concurrent sale cannot be overwritten by a stale absolute value.
+  /*
+   * `stock` is deliberately absent: it moves through /stock, as a delta, so a
+   * concurrent sale cannot be overwritten by a stale absolute value.
+   */
 }).min(1);
 
 export const adjustStockSchema = Joi.object({

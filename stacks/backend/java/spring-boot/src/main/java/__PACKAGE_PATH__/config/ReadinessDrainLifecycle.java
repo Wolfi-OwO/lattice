@@ -97,8 +97,10 @@ public class ReadinessDrainLifecycle implements SmartLifecycle {
             log.info("Draining for {} before the server stops accepting", grace);
             Thread.sleep(grace.toMillis());
         } catch (InterruptedException interrupted) {
-            // Someone wants us gone now. Honour that rather than finishing the nap:
-            // re-assert the flag so the shutdown that follows still sees it.
+            /*
+             * Someone wants us gone now. Honour that rather than finishing the nap:
+             * re-assert the flag so the shutdown that follows still sees it.
+             */
             Thread.currentThread().interrupt();
         }
     }

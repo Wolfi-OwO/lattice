@@ -52,22 +52,28 @@ export function createTable(model, dialect) {
     const parts = [dialect.types[spec.type](spec)];
 
     if (spec.type !== 'id') {
-      // A column carrying a default is never null — the default is what makes
-      // that true. Emitting one without NOT NULL leaves a gap an explicit NULL
-      // fits through, which puts a row in the table the model says cannot exist.
+      /*
+       * A column carrying a default is never null — the default is what makes
+       * that true. Emitting one without NOT NULL leaves a gap an explicit NULL
+       * fits through, which puts a row in the table the model says cannot exist.
+       */
       if (spec.required || spec.default !== undefined) parts.push('NOT NULL');
 
       if (spec.unique) {
         parts.push('UNIQUE');
-        // An identifier a human types is one a human will typo the case of.
-        // Where the dialect supports it, uniqueness compares case-insensitively
-        // so Ada@example.com cannot register beside ada@example.com.
+        /*
+         * An identifier a human types is one a human will typo the case of.
+         * Where the dialect supports it, uniqueness compares case-insensitively
+         * so Ada@example.com cannot register beside ada@example.com.
+         */
         if (dialect.caseInsensitiveUnique && spec.type === 'string') parts.push('COLLATE NOCASE');
       }
 
-      // MySQL rejects a DEFAULT on TEXT outright — "BLOB, TEXT, GEOMETRY or JSON
-      // column can't have a default value" — so a dialect gets to refuse one.
-      // The generated DDL is only useful if it is the DDL that dialect accepts.
+      /*
+       * MySQL rejects a DEFAULT on TEXT outright — "BLOB, TEXT, GEOMETRY or JSON
+       * column can't have a default value" — so a dialect gets to refuse one.
+       * The generated DDL is only useful if it is the DDL that dialect accepts.
+       */
       const allowed = dialect.supportsDefault ? dialect.supportsDefault(spec) : true;
       if (spec.default !== undefined && allowed) parts.push(`DEFAULT ${literal(spec)}`);
     }

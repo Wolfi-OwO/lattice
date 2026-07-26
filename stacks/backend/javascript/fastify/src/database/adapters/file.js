@@ -108,8 +108,10 @@ export async function createAdapter({ dir, format = 'json' }) {
         return result;
       });
 
-      // Keep the chain alive even if this mutation rejects, or every subsequent
-      // write would inherit the rejection.
+      /*
+       * Keep the chain alive even if this mutation rejects, or every subsequent
+       * write would inherit the rejection.
+       */
       queue = next.catch(() => {});
       return next;
     }
@@ -246,8 +248,10 @@ export async function createAdapter({ dir, format = 'json' }) {
   return {
     users,
     products,
-    // Both queues, so close() waits for every pending write rather than just the
-    // users one.
+    /*
+     * Both queues, so close() waits for every pending write rather than just the
+     * users one.
+     */
     close: async () => Promise.all([userStore.settled(), productStore.settled()]),
   };
 }

@@ -47,8 +47,10 @@ test('a rollback leaves the working directory exactly as it was', () => {
 });
 
 test('a failure partway through does not block the retry', () => {
-  // The whole point. Generate, fail, roll back, and the next attempt must see a
-  // directory it is willing to scaffold into — not one that needs --force.
+  /*
+   * The whole point. Generate, fail, roll back, and the next attempt must see a
+   * directory it is willing to scaffold into — not one that needs --force.
+   */
   const cwd = workspace();
   const target = path.join(cwd, 'app');
 
@@ -74,9 +76,11 @@ test('a failure partway through does not block the retry', () => {
 });
 
 test('committing into an existing directory keeps what was already there', () => {
-  // The --force path. It cannot be a rename, and it must never delete what it
-  // finds — a scaffolder that removes a directory it did not create is a bug
-  // report about lost work.
+  /*
+   * The --force path. It cannot be a rename, and it must never delete what it
+   * finds — a scaffolder that removes a directory it did not create is a bug
+   * report about lost work.
+   */
   const cwd = workspace();
   const target = path.join(cwd, 'app');
   fs.mkdirSync(target);
@@ -92,9 +96,11 @@ test('committing into an existing directory keeps what was already there', () =>
 });
 
 test('staging sits beside the target, so the rename cannot cross a filesystem', () => {
-  // rename() is only atomic within one device. A system temp directory is often a
-  // different mount, and the failure mode is EXDEV at commit time — after all the
-  // work is done.
+  /*
+   * rename() is only atomic within one device. A system temp directory is often a
+   * different mount, and the failure mode is EXDEV at commit time — after all the
+   * work is done.
+   */
   const cwd = workspace();
   const generation = beginGeneration(path.join(cwd, 'app'));
 

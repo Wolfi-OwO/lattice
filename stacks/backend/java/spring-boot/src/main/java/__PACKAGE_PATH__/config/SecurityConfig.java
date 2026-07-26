@@ -42,18 +42,22 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // The probes are moved off /actuator to /api/health in
-                        // application.yml, to match the contract every backend keeps.
-                        // A probe behind authentication is not a probe: the kubelet
-                        // sends no bearer token, reads the 401 as "not alive", and
-                        // restarts a process that was perfectly healthy.
+                        /*
+                         * The probes are moved off /actuator to /api/health in
+                         * application.yml, to match the contract every backend keeps.
+                         * A probe behind authentication is not a probe: the kubelet
+                         * sends no bearer token, reads the 401 as "not alive", and
+                         * restarts a process that was perfectly healthy.
+                         */
                         .requestMatchers("/api/health/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/**").permitAll()
-                        // Reading the catalogue is public; changing it is not. Only
-                        // GET is opened here — every other verb on /api/products
-                        // falls through to authenticated() below, and the controller
-                        // states the same rule again with @PreAuthorize.
+                        /*
+                         * Reading the catalogue is public; changing it is not. Only
+                         * GET is opened here — every other verb on /api/products
+                         * falls through to authenticated() below, and the controller
+                         * states the same rule again with @PreAuthorize.
+                         */
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                         .anyRequest().authenticated())
                 /*

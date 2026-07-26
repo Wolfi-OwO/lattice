@@ -12,12 +12,16 @@ export const FIELDS = {
   id: { type: 'id' },
   sku: { type: 'string', required: true, unique: true, uppercase: true, trim: true, maxLength: 64 },
   name: { type: 'string', required: true, trim: true, maxLength: 255 },
-  // No maxLength on purpose: a description is prose, and capping it at some
-  // round number is a limit nobody chose. Unbounded strings become TEXT.
+  /*
+   * No maxLength on purpose: a description is prose, and capping it at some
+   * round number is a limit nobody chose. Unbounded strings become TEXT.
+   */
   description: { type: 'string', default: '' },
-  // Integer cents, never a float. Binary floating point cannot hold 0.10
-  // exactly, and money that drifts by a cent is a bug nobody can reproduce.
-  // The unit is in the name so no caller has to guess which one it is.
+  /*
+   * Integer cents, never a float. Binary floating point cannot hold 0.10
+   * exactly, and money that drifts by a cent is a bug nobody can reproduce.
+   * The unit is in the name so no caller has to guess which one it is.
+   */
   priceCents: { type: 'integer', required: true, min: 0, column: 'price_cents' },
   stock: { type: 'integer', default: 0, min: 0 },
   createdAt: { type: 'timestamp', column: 'created_at' },

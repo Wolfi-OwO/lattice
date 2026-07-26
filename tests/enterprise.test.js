@@ -65,10 +65,12 @@ test('the overlay lands the enterprise skeleton with dotfiles restored', () => {
 });
 
 test('no dot-less staging name survives the overlay, anywhere in the tree', () => {
-  // Asserted as a rule over the whole output rather than name by name: the enumerated
-  // version above is what let `_vscode` ship as a literal `_vscode/` directory, because
-  // adding a file to overlays/ and forgetting its OVERLAY_RENAME entry breaks nothing
-  // that anyone listed. Anything staged as `_x` is by definition meant to land as `.x`.
+  /*
+   * Asserted as a rule over the whole output rather than name by name: the enumerated
+   * version above is what let `_vscode` ship as a literal `_vscode/` directory, because
+   * adding a file to overlays/ and forgetting its OVERLAY_RENAME entry breaks nothing
+   * that anyone listed. Anything staged as `_x` is by definition meant to land as `.x`.
+   */
   const target = projectWith('package.json');
   overlayEnterprise(OVERLAY, target, VARS);
 
@@ -96,8 +98,10 @@ test('placeholders are substituted, and GitHub Actions expressions are left alon
   assert.match(readme, /acme-corp\/acme-dashboard/, 'owner/repo fills the badge URLs');
   assert.ok(!readme.includes('{{'), 'no lattice placeholder left in the README');
 
-  // ${{ github.ref }} is GitHub Actions syntax, not a lattice placeholder — the
-  // render regex only matches {{word}}, so this must survive untouched.
+  /*
+   * ${{ github.ref }} is GitHub Actions syntax, not a lattice placeholder — the
+   * render regex only matches {{word}}, so this must survive untouched.
+   */
   const ci = fs.readFileSync(path.join(target, '.github/workflows/ci.yml'), 'utf8');
   assert.match(ci, /\$\{\{ github\.ref \}\}/, 'GitHub Actions expression preserved');
 
@@ -152,8 +156,10 @@ test('the directory table describes the tree, including what must not go where',
   assert.match(readme, /Layouts never depend on pages/i, 'the layout dependency rule is stated');
   assert.match(readme, /A page does not choose its frame/i, 'the page dependency rule is stated');
 
-  // Directories the overlay itself added must appear — the table is generated after
-  // the overlay, not before, precisely so this is true.
+  /*
+   * Directories the overlay itself added must appear — the table is generated after
+   * the overlay, not before, precisely so this is true.
+   */
   assert.match(readme, /\| `todo\/` \|/);
   assert.match(readme, /\| `docs\/` \|/);
 
@@ -163,11 +169,13 @@ test('the directory table describes the tree, including what must not go where',
 });
 
 test('database/ and src/database/ are described as the different things they are', () => {
-  // They share a word because CONVENTIONS.md rule 1 says storage is spelled
-  // "database" everywhere. They are not the same directory: one is the adapter
-  // code the app imports, the other is seed data it never imports. A table that
-  // described both identically is what makes someone merge them into one — which
-  // then ships demo JSON inside the built image.
+  /*
+   * They share a word because CONVENTIONS.md rule 1 says storage is spelled
+   * "database" everywhere. They are not the same directory: one is the adapter
+   * code the app imports, the other is seed data it never imports. A table that
+   * described both identically is what makes someone merge them into one — which
+   * then ships demo JSON inside the built image.
+   */
   const target = projectWith('package.json');
   fs.mkdirSync(path.join(target, 'src', 'database'), { recursive: true });
   fs.mkdirSync(path.join(target, 'database', 'data'), { recursive: true });
@@ -204,9 +212,11 @@ test('the quick start is the project’s own build tool, not always npm', () => 
 });
 
 test('every project gets the CI of its own build tool', () => {
-  // The defect: one npm-flavoured ci.yml went to every project, so `--enterprise` on
-  // a Go module produced a workflow whose first step is `npm ci` — a guaranteed red
-  // pipeline on the first push. Each marker must select its own toolchain layer.
+  /*
+   * The defect: one npm-flavoured ci.yml went to every project, so `--enterprise` on
+   * a Go module produced a workflow whose first step is `npm ci` — a guaranteed red
+   * pipeline on the first push. Each marker must select its own toolchain layer.
+   */
   const cases = [
     ['package.json', 'node', /npm ci/],
     ['go.mod', 'go', /go test/],
@@ -242,10 +252,12 @@ test('every project gets the CI of its own build tool', () => {
 });
 
 test('a project that also ships a package.json is not mistaken for a Node project', () => {
-  // Laravel ships a package.json for Vite; Rails ships one for jsbundling. Detecting
-  // either as Node hands it an `npm ci` pipeline — the original bug, wearing a
-  // different hat. The composer.json / Gemfile names the real owner, so those
-  // markers sit above node in the table and this is what says so out loud.
+  /*
+   * Laravel ships a package.json for Vite; Rails ships one for jsbundling. Detecting
+   * either as Node hands it an `npm ci` pipeline — the original bug, wearing a
+   * different hat. The composer.json / Gemfile names the real owner, so those
+   * markers sit above node in the table and this is what says so out loud.
+   */
   for (const [marker, expected] of [
     ['composer.json', 'php'],
     ['Gemfile', 'ruby'],
@@ -263,8 +275,10 @@ test('a project that also ships a package.json is not mistaken for a Node projec
 });
 
 test('an unrecognised project gets the universal layer but no CI', () => {
-  // Better than a workflow that cannot pass: the community-health files are true of
-  // any project, a build pipeline is not.
+  /*
+   * Better than a workflow that cannot pass: the community-health files are true of
+   * any project, a build pipeline is not.
+   */
   const target = emptyProject();
   const { files, toolchain } = overlayEnterprise(OVERLAY, target, VARS);
 
@@ -280,9 +294,11 @@ test('an unrecognised project gets the universal layer but no CI', () => {
 });
 
 test('every toolchain layer on disk is a complete, well-formed pair', () => {
-  // Adding a language is adding a directory here — this asserts the contract that
-  // directory has to meet, so a half-added toolchain fails the suite rather than
-  // silently shipping a project with dependabot config and no CI.
+  /*
+   * Adding a language is adding a directory here — this asserts the contract that
+   * directory has to meet, so a half-added toolchain fails the suite rather than
+   * silently shipping a project with dependabot config and no CI.
+   */
   const toolchainRoot = path.join(ROOT, 'overlays', 'toolchain');
   const toolchains = fs.readdirSync(toolchainRoot);
   assert.ok(toolchains.length >= 11, 'the toolchain layers are present');
@@ -301,8 +317,10 @@ test('every toolchain layer on disk is a complete, well-formed pair', () => {
 });
 
 test('the overlay ships in the npm tarball', () => {
-  // If overlays/ is missing from package.json "files", `--enterprise` throws
-  // "no such file" for everyone who installs lattice from the registry.
+  /*
+   * If overlays/ is missing from package.json "files", `--enterprise` throws
+   * "no such file" for everyone who installs lattice from the registry.
+   */
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   assert.ok(pkg.files.includes('overlays'), 'package.json "files" must include overlays/');
 });
