@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import react from '@vitejs/plugin-react';{{viteStyleImport}}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(){{viteStylePlugin}}],
   server: {
     port: {{clientPort}},
     // Proxying /api in dev means the browser only ever talks to one origin,

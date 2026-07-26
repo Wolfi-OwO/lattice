@@ -15,6 +15,18 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ### Added
 
+- **A styling choice for the React templates — `--styling plain|scss|bootstrap|tailwind`.**
+  The frontends shipped one hand-written stylesheet and no way to ask for anything
+  else, so wanting Tailwind meant installing it, wiring the build and rewriting the
+  components — most of the work scaffolding exists to save. Styling is now to a
+  frontend what storage is to a backend: the template carries every variant and the
+  scaffold keeps exactly one. What makes them interchangeable is a class-name
+  contract (`.app__header`, `.app__nav`, `.table`, `.pager`, `.muted`, `.error`) that
+  the components are written against and every variant implements, so the choice
+  changes the stylesheet and nothing else. Plain and SCSS compile to byte-identical
+  CSS; Bootstrap and Tailwind are themed to match rather than left at their defaults.
+  Only Tailwind touches `vite.config.js`, and Sass and Tailwind land in
+  `devDependencies` — they are compile-time tools, not runtime ones.
 - **A documentation site, at [wolfi-owo.github.io/lattice](https://wolfi-owo.github.io/lattice/).**
   `package.json` had pointed `homepage` at that URL for some time and nothing was
   served from it. Content lives in `documentation/`, one folder per section, and the

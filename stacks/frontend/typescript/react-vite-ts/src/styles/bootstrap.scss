@@ -1,0 +1,109 @@
+// Bootstrap 5 — themed through Bootstrap's own SCSS, not bolted on as a CSS file.
+//
+// Importing the source rather than the built stylesheet is what makes the
+// variables below available: $primary, $border-color and $spacer are Bootstrap's,
+// so this layer stays in step with the theme instead of hard-coding hexes that
+// drift the first time anyone customises it.
+//
+// The components are NOT written against Bootstrap's class names. They use the
+// same contract every variant implements — .app__header, .app__nav, .table,
+// .pager, .muted, .error — and this file maps that contract onto Bootstrap. Two
+// of them (.table, and a bare <button>) Bootstrap already styles, so they need
+// nothing here beyond what it gives them.
+//
+// Overriding a Bootstrap variable means setting it before this line, since its
+// defaults are `!default`:
+//
+//   $primary: #7c3aed;
+//   @use 'bootstrap/scss/bootstrap' as bs;
+
+@use 'sass:map';
+@use 'bootstrap/scss/bootstrap' as bs;
+
+body {
+  // Bootstrap's reboot already sets the font and colours; only the surface is
+  // ours, so the page is not stark white against its themed components.
+  background: var(--bs-body-bg);
+}
+
+.app__header {
+  display: flex;
+  align-items: center;
+  gap: bs.$spacer * 2;
+  padding: bs.$spacer bs.$spacer * 1.5;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.app__brand {
+  font-weight: 700;
+}
+
+.app__nav {
+  display: flex;
+  gap: bs.$spacer;
+
+  a {
+    color: var(--bs-secondary-color);
+    text-decoration: none;
+
+    &.active {
+      color: var(--bs-primary);
+      font-weight: 600;
+    }
+  }
+}
+
+.app__main {
+  // Bootstrap's .container is fixed-width per breakpoint; the layout wants one
+  // readable measure at every size, so this is a container in spirit only.
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: bs.$spacer * 2 bs.$spacer * 1.5;
+}
+
+.muted {
+  color: var(--bs-secondary-color);
+}
+
+.error {
+  color: var(--bs-danger);
+}
+
+// .table is Bootstrap's own class and is already styled by it. Only the borders
+// are pulled back in, because the components render a plain <table> without the
+// .table-bordered modifier.
+.table {
+  th,
+  td {
+    border-bottom: 1px solid var(--bs-border-color);
+  }
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: bs.$spacer;
+  margin-top: bs.$spacer * 1.5;
+}
+
+// A bare <button> gets none of .btn's styling, and the components deliberately
+// do not name Bootstrap classes. This gives it the same shape .btn-outline-*
+// would, built from the theme rather than copied out of it.
+button {
+  padding: bs.$btn-padding-y bs.$btn-padding-x;
+  border: bs.$btn-border-width solid var(--bs-border-color);
+  border-radius: bs.$btn-border-radius;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: var(--bs-primary);
+    color: var(--bs-primary);
+  }
+
+  &:disabled {
+    opacity: bs.$btn-disabled-opacity;
+    cursor: not-allowed;
+  }
+}

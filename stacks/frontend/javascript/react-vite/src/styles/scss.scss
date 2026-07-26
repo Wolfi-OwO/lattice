@@ -1,0 +1,126 @@
+// SCSS — the same look as plain.css, expressed with variables, nesting and maths.
+//
+// The class names below are the contract the components are written against
+// (.app__header, .app__nav, .table, .pager, .muted, .error). Every styling
+// variant implements exactly these, which is why swapping one for another needs
+// no change to a single component.
+//
+// Custom properties still carry the palette rather than Sass variables alone:
+// only a custom property can be re-declared inside a media query, which is what
+// makes dark mode one block instead of a duplicated stylesheet. Sass variables
+// then hold what CSS cannot compute — spacing steps, the breakpoint, the radius.
+
+$space: 0.5rem;
+$radius: 6px;
+$content-width: 60rem;
+$font-stack:
+  system-ui,
+  -apple-system,
+  'Segoe UI',
+  sans-serif;
+
+:root {
+  --bg: #ffffff;
+  --fg: #18181b;
+  --muted: #71717a;
+  --border: #e4e4e7;
+  --accent: #2563eb;
+  --error: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0b0f;
+    --fg: #fafafa;
+    --muted: #a1a1aa;
+    --border: #27272a;
+    --accent: #60a5fa;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.6 $font-stack;
+}
+
+.app {
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $space * 4;
+    padding: $space * 2 $space * 3;
+    border-bottom: 1px solid var(--border);
+  }
+
+  &__brand {
+    font-weight: 700;
+  }
+
+  &__nav {
+    display: flex;
+    gap: $space * 2;
+
+    a {
+      color: var(--muted);
+      text-decoration: none;
+
+      &.active {
+        color: var(--accent);
+        font-weight: 600;
+      }
+    }
+  }
+
+  &__main {
+    max-width: $content-width;
+    margin: 0 auto;
+    padding: $space * 4 $space * 3;
+  }
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--error);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: $space * 1.2 $space;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: $space * 2;
+  margin-top: $space * 3;
+}
+
+button {
+  padding: $space * 0.8 $space * 1.8;
+  border: 1px solid var(--border);
+  border-radius: $radius;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}

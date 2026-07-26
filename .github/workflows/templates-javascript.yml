@@ -78,6 +78,65 @@ jobs:
             echo "::endgroup::"
           done < ../checks.txt
 
+  # The styling variants. tests/styling.test.js checks everything that can be
+  # checked by reading files — that one stylesheet survives, that it is the one
+  # main.jsx imports, that the deps land in the right field. What it cannot check
+  # is whether the stylesheet *compiles*, and that is where these variants
+  # actually differ: Bootstrap's `@use 'bootstrap/scss/bootstrap'` resolves
+  # through node_modules, and Tailwind's `@apply` only works if the Vite plugin
+  # was wired in. Both fail at build time or not at all.
+  #
+  # `plain` is left out because the job above already builds both frontends with
+  # it — it is the default, so every react-vite run is a plain-CSS run.
+  #
+  # The build alone is not quite enough: Tailwind emits a stylesheet whether or
+  # not it matched anything, so a scaffold that silently produced no rules would
+  # still go green. The compiled CSS is grepped for the contract to close that.
+  styling:
+    name: ${{ matrix.stack }} · ${{ matrix.styling }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [react-vite, react-vite-ts]
+        styling: [scss, bootstrap, tailwind]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - run: node bin/lattice.js demo --stack ${{ matrix.stack }} --styling ${{ matrix.styling }}
+
+      - name: Run every check this template declares
+        working-directory: demo
+        run: |
+          set -euo pipefail
+          while IFS= read -r c; do
+            [ -z "$c" ] && continue
+            echo "::group::$c"
+            eval "$c" || { echo "::error::${{ matrix.stack }} + ${{ matrix.styling }}: $c failed"; exit 1; }
+            echo "::endgroup::"
+          done < <(node ../scripts/template-checks.js --stack ${{ matrix.stack }})
+
+      - name: The compiled CSS actually implements the contract
+        working-directory: demo
+        run: |
+          set -euo pipefail
+          css=$(find dist -name '*.css' -print -quit)
+          [ -n "$css" ] || { echo "::error::${{ matrix.styling }} produced no stylesheet at all"; exit 1; }
+          echo "compiled $(wc -c < "$css") bytes of CSS"
+
+          # The same class names the components are written against. A variant
+          # that builds but emits none of them leaves the app unstyled, which is
+          # exactly the failure a green build would otherwise hide.
+          for class in app__header app__brand app__nav app__main table pager muted error; do
+            grep -q "[.]$class" "$css" || {
+              echo "::error::${{ matrix.styling }}: compiled CSS has no .$class rule"
+              exit 1
+            }
+          done
+
   # The fullstack composition — a backend at the root with a frontend in client/ —
   # had no coverage at all. It is the shape the README leads with, it is the only
   # path that writes two projects and installs both, and nothing verified it. It

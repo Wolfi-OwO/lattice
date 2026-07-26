@@ -1,0 +1,98 @@
+/*
+ * Tailwind CSS v4 — utilities mapped onto the class-name contract with @apply.
+ *
+ * v4 needs no tailwind.config.js and no PostCSS config: the Vite plugin is the
+ * whole integration, and the theme lives here in CSS. That is why choosing this
+ * variant adds no configuration files to the project.
+ *
+ * WHY THE COMPONENTS DO NOT CARRY UTILITY CLASSES
+ * Writing `className="flex items-center gap-8"` in the markup is the usual way,
+ * and it is the reason a Tailwind project cannot be re-skinned without editing
+ * every component. The templates keep one contract — .app__header, .app__nav,
+ * .table, .pager, .muted, .error — so the same components render under plain CSS,
+ * SCSS, Bootstrap or this file. @apply is what lets Tailwind implement it.
+ *
+ * If you would rather write utilities inline, nothing stops you: delete a rule
+ * here and put its utilities on the element instead. The contract is a starting
+ * point, not a cage — but it is the reason the four variants are interchangeable.
+ */
+
+@import 'tailwindcss';
+
+/*
+ * The palette, declared as theme variables so `text-accent` and friends work in
+ * markup too, not only in the @apply rules below.
+ */
+@theme {
+  --color-accent: #2563eb;
+  --color-error: #dc2626;
+}
+
+@layer base {
+  body {
+    @apply m-0 bg-white text-zinc-900 antialiased;
+    @apply dark:bg-zinc-950 dark:text-zinc-50;
+    font:
+      16px/1.6 system-ui,
+      -apple-system,
+      'Segoe UI',
+      sans-serif;
+  }
+}
+
+@layer components {
+  .app__header {
+    @apply flex items-center gap-8 border-b border-zinc-200 px-6 py-4;
+    @apply dark:border-zinc-800;
+  }
+
+  .app__brand {
+    @apply font-bold;
+  }
+
+  .app__nav {
+    @apply flex gap-4;
+  }
+
+  .app__nav a {
+    @apply text-zinc-500 no-underline dark:text-zinc-400;
+  }
+
+  .app__nav a.active {
+    @apply font-semibold text-blue-600 dark:text-blue-400;
+  }
+
+  .app__main {
+    @apply mx-auto max-w-5xl px-6 py-8;
+  }
+
+  .muted {
+    @apply text-zinc-500 dark:text-zinc-400;
+  }
+
+  .error {
+    @apply text-red-600 dark:text-red-400;
+  }
+
+  .table {
+    @apply w-full border-collapse;
+  }
+
+  .table th,
+  .table td {
+    @apply border-b border-zinc-200 px-2 py-2.5 text-left dark:border-zinc-800;
+  }
+
+  .pager {
+    @apply mt-6 flex items-center gap-4;
+  }
+
+  button {
+    @apply cursor-pointer rounded-md border border-zinc-200 bg-transparent px-4 py-1.5;
+    @apply dark:border-zinc-800;
+  }
+
+  button:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+}

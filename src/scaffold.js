@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { STORAGE } from './storage.js';
+import { STYLING, DEFAULT_STYLING, viteBits } from './styling.js';
 
 /**
  * Files renamed on the way out.
@@ -134,9 +135,11 @@ export function buildVars(answers) {
     storage = 'memory',
     fileFormat = 'json',
     databasePort = null,
+    styling = DEFAULT_STYLING,
   } = answers;
 
   const spec = STORAGE[storage] ?? STORAGE.memory;
+  const style = STYLING[styling] ?? STYLING[DEFAULT_STYLING];
 
   const safeName = projectName
     .toLowerCase()
@@ -181,5 +184,14 @@ export function buildVars(answers) {
     databaseNeedsUrl: String(Boolean(spec.needsUrl)),
     databasePort: databasePort ?? spec.defaultPort ?? '',
     fileFormat,
+
+    // Styling. `stylesEntry` is what main.jsx imports, so it has to be the name
+    // the file ends up with (styles.css or styles.scss) rather than the variant's
+    // name in the template. The two vite slots are empty for every variant that
+    // needs no plugin, which is all of them but Tailwind.
+    styling,
+    stylesEntry: style.entry,
+    stylingLabel: style.label,
+    ...viteBits(styling),
   };
 }

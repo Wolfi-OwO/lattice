@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -112,6 +113,31 @@ test('mirrored copies are gitignored', () => {
   const ignored = read('.gitignore');
   assert.match(ignored, /^\/documentation\/project\/$/m);
   assert.match(ignored, /^\/site\/$/m);
+});
+
+test('no mirrored copy is tracked by git', () => {
+  // Being in .gitignore is not the same as being untracked, and the difference
+  // has already cost once: the styling branch was cut before that ignore rule
+  // existed, so a `git add -A` on it swept all twelve generated files onto main.
+  // Nothing complained — an ignore rule has no effect on a file already staged.
+  //
+  // So this asks git what it is actually tracking rather than what it was told
+  // to ignore.
+  const { status, stdout } = spawnSync('git', ['ls-files', 'documentation/project'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+
+  // Not a git checkout — an npm tarball, say. Nothing to check.
+  if (status !== 0) return;
+
+  const tracked = stdout.split('\n').filter(Boolean);
+  assert.deepEqual(
+    tracked,
+    [],
+    `documentation/project/ is build output, but git is tracking:\n  ${tracked.join('\n  ')}\n` +
+      'Run: git rm -r --cached documentation/project',
+  );
 });
 
 test('the site never mirrors the README', () => {

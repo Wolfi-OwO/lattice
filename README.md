@@ -20,10 +20,6 @@ A zero-dependency scaffolder whose output boots on the first command — no `npm
 ![Runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-brightgreen)
 ![Repo views](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Wolfi-OwO/Wolfi-OwO/main/traffic/badges/lattice.json)
 
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-[![Open issues](https://img.shields.io/github/issues/Wolfi-OwO/lattice)](https://github.com/Wolfi-OwO/lattice/issues)
-[![Contributors](https://img.shields.io/github/contributors/Wolfi-OwO/lattice)](https://github.com/Wolfi-OwO/lattice/graphs/contributors)
-
 ![Node](https://img.shields.io/badge/Node-%E2%89%A520-339933?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-000000?logo=express&logoColor=white)
 ![Fastify](https://img.shields.io/badge/Fastify-000000?logo=fastify&logoColor=white)
@@ -32,6 +28,10 @@ A zero-dependency scaffolder whose output boots on the first command — no `npm
 ![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black)
 ![Vite](https://img.shields.io/badge/Vite-646cff?logo=vite&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin_+_Compose-7F52FF?logo=kotlin&logoColor=white)
+
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Open issues](https://img.shields.io/github/issues/Wolfi-OwO/lattice)](https://github.com/Wolfi-OwO/lattice/issues)
+[![Contributors](https://img.shields.io/github/contributors/Wolfi-OwO/lattice)](https://github.com/Wolfi-OwO/lattice/graphs/contributors)
 
 ### 📖 [Read the documentation](https://wolfi-owo.github.io/lattice/)
 
