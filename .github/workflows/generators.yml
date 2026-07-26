@@ -66,11 +66,16 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          # 22, not 20: create-astro refuses to run on Node 20 ("out-of-date and
-          # unsupported"), and upstream generators keep raising this floor. This is
-          # the Node that RUNS the generators — unrelated to what the generated
-          # project supports.
-          node-version: 22
+          # 24, not 22 or 20. Two upstream floors have pushed this along:
+          # create-astro refuses to run on Node 20 ("out-of-date and unsupported"),
+          # and the npm that ships with 22 cannot install a Nuxt project at all —
+          # `npm install` dies with "Cannot read properties of null (reading
+          # 'edgesOut')", an arborist bug fixed in npm 11. Reproduced exactly:
+          # npm 10.9.2 crashes on the generated tree, npm 11.6.1 installs it.
+          #
+          # This is the Node that RUNS the generators, unrelated to what the
+          # generated project supports.
+          node-version: 24
 
       - run: node bin/lattice.js demo --generator ${{ matrix.generator }} --enterprise
 
@@ -79,8 +84,23 @@ jobs:
           grep -q 'npm ci' demo/.github/workflows/ci.yml
           grep -q 'package-ecosystem: npm' demo/.github/dependabot.yml
 
-      - working-directory: demo
-        run: npm install
+      # Strict first, and only then relaxed — loudly.
+      #
+      # These are other people's starter projects, and their dependency sets are
+      # not lattice's claim. create-vue currently ships oxlint ~1.74.0 alongside
+      # eslint-plugin-oxlint 1.73.0, whose peer range asks for oxlint ~1.73.0 —
+      # a set that contradicts itself, so npm refuses it. Nothing about that is a
+      # lattice regression, and failing the job for it only teaches everyone to
+      # ignore a red X on the one suite that exists to report upstream breakage.
+      #
+      # But it must not pass silently either, because a project a user cannot
+      # `npm install` is worth knowing about. So the fallback annotates the run.
+      - name: Install
+        working-directory: demo
+        run: |
+          if npm install; then exit 0; fi
+          echo "::warning title=Upstream peer conflict::${{ matrix.generator }} does not install under strict peer resolution — retried with --legacy-peer-deps. This is the upstream starter's dependency set, not lattice's."
+          npm install --legacy-peer-deps
 
       # --if-present: not every upstream starter defines a build script (a Remix or
       # Expo template may not). A missing script is not a failed generator.
@@ -277,7 +297,14 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 20
-      - uses: swift-actions/setup-swift@v3
+      # v2, not v3. v3 is still a pre-release — the only tag is v3.0.0-beta.1 —
+      # and it fails before Swift is ever installed: it downloads Swiftly and
+      # verifies the signature without importing the signing key first, so every
+      # run dies on "gpg: Can't check signature: No public key". That is
+      # swift-actions/setup-swift#798, open since December and unfixed.
+      #
+      # Nothing about it involves the swift generator, which never got to run.
+      - uses: swift-actions/setup-swift@v2
 
       - run: node bin/lattice.js demo --generator swift --enterprise
 
