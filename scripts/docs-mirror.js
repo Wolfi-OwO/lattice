@@ -74,16 +74,20 @@ function architectureDecisions() {
     .map((name) => {
       const from = `docs/adr/${name}`;
 
-      // The index has to be called index.md for MkDocs to treat it as the
-      // section's landing page rather than a page called "README" inside it.
+      /*
+       * The index has to be called index.md for MkDocs to treat it as the
+       * section's landing page rather than a page called "README" inside it.
+       */
       if (name === 'README.md') {
         return { from, to: 'adr/index.md', title: 'Architecture decisions' };
       }
 
-      // "0001-zero-dependency-core.md" -> "ADR-0001 — Zero dependency core".
-      // Read off the filename rather than the heading: an ADR's H1 already
-      // carries its number, so taking the title from it would print the number
-      // twice in the navigation.
+      /*
+       * "0001-zero-dependency-core.md" -> "ADR-0001 — Zero dependency core".
+       * Read off the filename rather than the heading: an ADR's H1 already
+       * carries its number, so taking the title from it would print the number
+       * twice in the navigation.
+       */
       const [, number, slug] = name.match(/^(\d+)-(.+)\.md$/) ?? [];
       if (!number) return { from, to: `adr/${name}`, title: name.replace(/\.md$/, '') };
 
@@ -115,16 +119,20 @@ export function mirrorTable() {
  */
 function rewriteLinks(markdown, entry, byFrom) {
   const fromDir = path.posix.dirname(entry.from);
-  // Relative to documentation/, matching the values in `byFrom` — not relative
-  // to documentation/project/, or every rewritten link gains a `project/` that
-  // resolves one level too deep.
+  /*
+   * Relative to documentation/, matching the values in `byFrom` — not relative
+   * to documentation/project/, or every rewritten link gains a `project/` that
+   * resolves one level too deep.
+   */
   const toDir = path.posix.dirname(`${INTO}/${entry.to}`);
 
   return markdown.replace(/\]\(([^)\s]+?\.md)(#[^)\s]*)?\)/g, (whole, target, anchor = '') => {
     if (/^(https?:|#|\/)/.test(target)) return whole;
 
-    // path.posix keeps the separator a forward slash on Windows, where
-    // path.join would otherwise write a backslash into a markdown link.
+    /*
+     * path.posix keeps the separator a forward slash on Windows, where
+     * path.join would otherwise write a backslash into a markdown link.
+     */
     const resolved = path.posix.normalize(path.posix.join(fromDir, target));
     const destination = byFrom.get(resolved);
     if (!destination) return whole;
@@ -142,8 +150,10 @@ function header(entry) {
 
   return [
     '---',
-    // Quoted because several titles contain an em dash and a colon would end
-    // the scalar early. Single quotes with doubling is the YAML-safe escape.
+    /*
+     * Quoted because several titles contain an em dash and a colon would end
+     * the scalar early. Single quotes with doubling is the YAML-safe escape.
+     */
     `title: '${entry.title.replace(/'/g, "''")}'`,
     `edit_url: ${edit}`,
     '---',
@@ -154,8 +164,10 @@ function header(entry) {
     '    on every build, so edit the source rather than this copy — the pencil above',
     '    already points there.',
     '',
-    // Blank line before the mirrored content, or the source's own H1 gets
-    // swallowed into the admonition's indented block.
+    /*
+     * Blank line before the mirrored content, or the source's own H1 gets
+     * swallowed into the admonition's indented block.
+     */
     '',
   ].join('\n');
 }
@@ -165,9 +177,11 @@ function main() {
   const byFrom = new Map(table.map((entry) => [entry.from, `${INTO}/${entry.to}`]));
   const outDir = path.join(DOCS, INTO);
 
-  // Rebuilt from nothing each time: a file dropped from the table should leave
-  // no orphan behind, and an orphan is indistinguishable from a real page once
-  // the navigation is generated from the directory tree.
+  /*
+   * Rebuilt from nothing each time: a file dropped from the table should leave
+   * no orphan behind, and an orphan is indistinguishable from a real page once
+   * the navigation is generated from the directory tree.
+   */
   fs.rmSync(outDir, { recursive: true, force: true });
 
   for (const entry of table) {
@@ -178,9 +192,11 @@ function main() {
     fs.writeFileSync(destination, header(entry) + rewriteLinks(markdown, entry, byFrom), 'utf8');
   }
 
-  // Ordering for the generated section. Without this the navigation is
-  // alphabetical, which would open the "About the project" section on the
-  // changelog — the one page nobody arrives wanting to read first.
+  /*
+   * Ordering for the generated section. Without this the navigation is
+   * alphabetical, which would open the "About the project" section on the
+   * changelog — the one page nobody arrives wanting to read first.
+   */
   fs.writeFileSync(
     path.join(outDir, '.nav.yml'),
     ['title: About the project', 'nav:', ...ROOT_DOCS.map((d) => `  - ${d.to}`), '  - adr', ''].join(
@@ -189,8 +205,10 @@ function main() {
     'utf8',
   );
 
-  // And a title for the ADR sub-section, which would otherwise be named after
-  // its directory and appear in the sidebar as "Adr".
+  /*
+   * And a title for the ADR sub-section, which would otherwise be named after
+   * its directory and appear in the sidebar as "Adr".
+   */
   const adrs = table.filter((entry) => entry.to.startsWith('adr/'));
   if (adrs.length) {
     fs.writeFileSync(
@@ -212,8 +230,10 @@ function main() {
   );
 }
 
-// Only when run as a script. tests/docs.test.js imports the table above to check
-// it against the workflow's path filter, and importing must not write files.
+/*
+ * Only when run as a script. tests/docs.test.js imports the table above to check
+ * it against the workflow's path filter, and importing must not write files.
+ */
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.meta.filename)) {
   main();
 }

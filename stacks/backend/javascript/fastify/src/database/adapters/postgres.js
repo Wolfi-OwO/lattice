@@ -109,20 +109,24 @@ async function ensureDatabase(url) {
   await client.connect();
 
   try {
-    // Identifiers cannot be bound as parameters; the name comes from our own
-    // connection string, and doubling any quote closes the injection path.
+    /*
+     * Identifiers cannot be bound as parameters; the name comes from our own
+     * connection string, and doubling any quote closes the injection path.
+     */
     await client.query(`CREATE DATABASE "${name.replace(/"/g, '""')}"`);
   } catch (error) {
-    // Postgres has no CREATE DATABASE IF NOT EXISTS, and the obvious stand-in —
-    // SELECT from pg_database, then create if absent — is a check-then-act race.
-    // node:test runs test *files* in parallel processes, so both of them looked,
-    // both saw nothing, and both created: the loser died on the unique index over
-    // pg_database.datname and took the whole suite with it.
-    //
-    // Trying and forgiving is the only form of this that is actually atomic, since
-    // the uniqueness is enforced by the index rather than by our check. Postgres
-    // reports the loser as 42P04, or as a raw 23505 on that index when two CREATEs
-    // collide inside the same instant — the second is the one that showed up in CI.
+    /*
+     * Postgres has no CREATE DATABASE IF NOT EXISTS, and the obvious stand-in —
+     * SELECT from pg_database, then create if absent — is a check-then-act race.
+     * node:test runs test *files* in parallel processes, so both of them looked,
+     * both saw nothing, and both created: the loser died on the unique index over
+     * pg_database.datname and took the whole suite with it.
+     *
+     * Trying and forgiving is the only form of this that is actually atomic, since
+     * the uniqueness is enforced by the index rather than by our check. Postgres
+     * reports the loser as 42P04, or as a raw 23505 on that index when two CREATEs
+     * collide inside the same instant — the second is the one that showed up in CI.
+     */
     if (error.code !== '42P04' && error.code !== '23505') throw error;
   } finally {
     await client.end();
@@ -153,8 +157,10 @@ export async function createAdapter({ url, autoCreate = false }) {
 
   const users = {
     async list({ page, limit, q }) {
-      // ILIKE keeps the search in the database; the `%` wrapping is a bound
-      // parameter, never string-concatenated into the SQL.
+      /*
+       * ILIKE keeps the search in the database; the `%` wrapping is a bound
+       * parameter, never string-concatenated into the SQL.
+       */
       const where = q ? 'WHERE name ILIKE $1 OR email ILIKE $1' : '';
       const params = q ? [`%${q}%`] : [];
 

@@ -80,10 +80,12 @@ export const updateProductSchema = {
   body: {
     type: 'object',
     minProperties: 1,
-    // `stock` is deliberately absent, and additionalProperties:false is what
-    // makes that a rejection rather than a silent drop: it moves through
-    // /stock as a delta, so a concurrent sale cannot be overwritten by a
-    // stale absolute value.
+    /*
+     * `stock` is deliberately absent, and additionalProperties:false is what
+     * makes that a rejection rather than a silent drop: it moves through
+     * /stock as a delta, so a concurrent sale cannot be overwritten by a
+     * stale absolute value.
+     */
     additionalProperties: false,
     properties: {
       sku: { type: 'string', pattern: SKU_PATTERN },
@@ -106,9 +108,11 @@ export const adjustStockSchema = {
     required: ['delta'],
     additionalProperties: false,
     properties: {
-      // A zero delta is a no-op the caller almost certainly did not mean, so it
-      // is rejected rather than quietly accepted. ajv has no "not this value",
-      // so it is expressed as the two ranges that exclude it.
+      /*
+       * A zero delta is a no-op the caller almost certainly did not mean, so it
+       * is rejected rather than quietly accepted. ajv has no "not this value",
+       * so it is expressed as the two ranges that exclude it.
+       */
       delta: {
         type: 'integer',
         anyOf: [{ maximum: -1 }, { minimum: 1 }],

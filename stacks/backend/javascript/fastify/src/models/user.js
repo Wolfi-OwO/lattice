@@ -24,9 +24,11 @@ export const NATURAL_KEY = 'email';
 
 export const FIELDS = {
   id: { type: 'id' },
-  // maxLength is what makes a VARCHAR possible: MySQL cannot index a TEXT column
-  // without a prefix length, so a unique field needs a bound or the UNIQUE
-  // constraint fails outright. Fields with no bound become TEXT.
+  /*
+   * maxLength is what makes a VARCHAR possible: MySQL cannot index a TEXT column
+   * without a prefix length, so a unique field needs a bound or the UNIQUE
+   * constraint fails outright. Fields with no bound become TEXT.
+   */
   email: {
     type: 'string',
     required: true,
@@ -36,8 +38,10 @@ export const FIELDS = {
     maxLength: 255,
   },
   name: { type: 'string', required: true, trim: true, maxLength: 255 },
-  // `select: false` in Mongo, and never in toPublicUser anywhere else. A hash is
-  // not a secret the way a password is, but it is a thing to attack offline.
+  /*
+   * `select: false` in Mongo, and never in toPublicUser anywhere else. A hash is
+   * not a secret the way a password is, but it is a thing to attack offline.
+   */
   passwordHash: {
     type: 'string',
     required: true,

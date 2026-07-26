@@ -70,9 +70,11 @@ test('every template in the registry exists on disk', () => {
 });
 
 test('every template directory on disk is in the registry', () => {
-  // A template nobody can select is dead code that still has to be maintained,
-  // and it is the failure mode of a catalogue kept by hand: the folder lands,
-  // the registry entry does not, and the work is invisible.
+  /*
+   * A template nobody can select is dead code that still has to be maintained,
+   * and it is the failure mode of a catalogue kept by hand: the folder lands,
+   * the registry entry does not, and the work is invisible.
+   */
   const registered = new Set(TEMPLATES.map((t) => t.dir));
 
   for (const category of fs.readdirSync(STACKS)) {
@@ -136,23 +138,27 @@ test('every template ships a README', () => {
 });
 
 test('no template ships a real dotfile, a lockfile, a wrapper or build output', () => {
-  // npm rewrites a packaged `.gitignore` to `.npmignore`, so a template's
-  // gitignore has to travel as `_gitignore` and be renamed on the way out. The
-  // rest are things that must be generated, not committed: a lockfile pins a
-  // template to versions that rot, and a wrapper used to mean a binary.
+  /*
+   * npm rewrites a packaged `.gitignore` to `.npmignore`, so a template's
+   * gitignore has to travel as `_gitignore` and be renamed on the way out. The
+   * rest are things that must be generated, not committed: a lockfile pins a
+   * template to versions that rot, and a wrapper used to mean a binary.
+   */
   const FORBIDDEN = [
     '.gitignore',
     'package-lock.json',
     'yarn.lock',
     'pnpm-lock.yaml',
     'Cargo.lock',
-    // No wrapper scripts here — mvnw, gradlew and their variants are all legitimate
-    // now. The rule was never "no wrappers", it was "no binaries", and the two are
-    // handled differently: Maven ships a script-only distribution (mvnw resolves
-    // Maven itself, no jar), while Gradle has no such form, so android-compose
-    // commits exactly one gradle-wrapper.jar under a documented STRUCTURE.md
-    // exception. That jar is guarded separately, by checksum, in the test below —
-    // this list is only about scripts and generated files.
+    /*
+     * No wrapper scripts here — mvnw, gradlew and their variants are all legitimate
+     * now. The rule was never "no wrappers", it was "no binaries", and the two are
+     * handled differently: Maven ships a script-only distribution (mvnw resolves
+     * Maven itself, no jar), while Gradle has no such form, so android-compose
+     * commits exactly one gradle-wrapper.jar under a documented STRUCTURE.md
+     * exception. That jar is guarded separately, by checksum, in the test below —
+     * this list is only about scripts and generated files.
+     */
   ];
   const FORBIDDEN_DIRS = ['node_modules', 'target', 'build', 'dist', '.gradle', 'bin', 'obj', '.venv'];
 
@@ -167,8 +173,10 @@ test('no template ships a real dotfile, a lockfile, a wrapper or build output', 
       );
 
       const segments = relative.split(path.sep);
-      // `bin/` is legitimate in a CLI template (bin/cli.js) but is .NET build
-      // output elsewhere, so it only counts as output when it holds no source.
+      /*
+       * `bin/` is legitimate in a CLI template (bin/cli.js) but is .NET build
+       * output elsewhere, so it only counts as output when it holds no source.
+       */
       for (const bad of FORBIDDEN_DIRS) {
         if (bad === 'bin' && template.category === 'cli') continue;
         assert.ok(
@@ -181,12 +189,14 @@ test('no template ships a real dotfile, a lockfile, a wrapper or build output', 
 });
 
 test('the storage layer is spelled "database" everywhere — never "db"', () => {
-  // CONVENTIONS.md rule 1. The single most common way a codebase drifts is that
-  // one person writes `db` and everyone after them copies it, so this is checked
-  // mechanically rather than left to a reviewer's patience.
-  //
-  // Exempt: environment variables (DATABASE_URL is conventional), and any
-  // third-party API whose own vocabulary uses the short form.
+  /*
+   * CONVENTIONS.md rule 1. The single most common way a codebase drifts is that
+   * one person writes `db` and everyone after them copies it, so this is checked
+   * mechanically rather than left to a reviewer's patience.
+   *
+   * Exempt: environment variables (DATABASE_URL is conventional), and any
+   * third-party API whose own vocabulary uses the short form.
+   */
   const OFFENDER = /(^|[^A-Za-z0-9_./-])db([^A-Za-z0-9_-]|$)/;
 
   const failures = [];
@@ -203,11 +213,13 @@ test('the storage layer is spelled "database" everywhere — never "db"', () => 
 
       const text = fs.readFileSync(file, 'utf8');
       text.split('\n').forEach((line, index) => {
-        // Spring registers its DataSource health contributor under the fixed id
-        // `db`, and the Actuator readiness group has to name it to include it. That
-        // is framework vocabulary, exactly like `req`/`res` in an Express signature
-        // — the same exemption rule 1 already carves out. Scoped to the health-group
-        // `include:` line so it cannot cover a stray `db` anywhere else.
+        /*
+         * Spring registers its DataSource health contributor under the fixed id
+         * `db`, and the Actuator readiness group has to name it to include it. That
+         * is framework vocabulary, exactly like `req`/`res` in an Express signature
+         * — the same exemption rule 1 already carves out. Scoped to the health-group
+         * `include:` line so it cannot cover a stray `db` anywhere else.
+         */
         if (/^\s*include:\s*readinessState,\s*db\s*$/.test(line)) return;
 
         // A URL like mongodb://… and an env var like DATABASE_URL are fine.
@@ -223,16 +235,18 @@ test('the storage layer is spelled "database" everywhere — never "db"', () => 
 });
 
 test('the scaffolder itself obeys rule 1 — it is not exempt from its own conventions', () => {
-  // The test above walks stacks/ only, and that gap is not hypothetical: the
-  // storage rename landed in the templates and never reached the code that
-  // generates them. What shipped was a CLI that printed `docker compose up -d db`
-  // (the service is named `database` — the command errors out) and pointed at
-  // `src/db/`, a directory that no longer exists. Both were user-facing, and both
-  // sailed through a green suite, because the only thing checking rule 1 declined
-  // to look here.
-  //
-  // Matches a path segment (`src/db/`) and a file extension (`.db`) too, which the
-  // stacks/ regex deliberately does not — those are exactly the forms that rotted.
+  /*
+   * The test above walks stacks/ only, and that gap is not hypothetical: the
+   * storage rename landed in the templates and never reached the code that
+   * generates them. What shipped was a CLI that printed `docker compose up -d db`
+   * (the service is named `database` — the command errors out) and pointed at
+   * `src/db/`, a directory that no longer exists. Both were user-facing, and both
+   * sailed through a green suite, because the only thing checking rule 1 declined
+   * to look here.
+   *
+   * Matches a path segment (`src/db/`) and a file extension (`.db`) too, which the
+   * stacks/ regex deliberately does not — those are exactly the forms that rotted.
+   */
   const OFFENDER = /(^|[^A-Za-z0-9_-])db([^A-Za-z0-9_-]|$)/;
 
   // Vocabulary that is not ours to rename.

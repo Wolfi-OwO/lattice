@@ -75,9 +75,11 @@ test('the first release links to its tag; the next one links to a compare range'
 });
 
 test('a release with nothing under [Unreleased] is refused', () => {
-  // This is the whole reason --check runs *before* npm publish. If it ran after,
-  // the tarball would be on a registry that never forgets, and the file recording
-  // what was in it would be the thing that failed.
+  /*
+   * This is the whole reason --check runs *before* npm publish. If it ran after,
+   * the tarball would be on a registry that never forgets, and the file recording
+   * what was in it would be the thing that failed.
+   */
   const released = cut(CHANGELOG, { version: '1.0.0', date: '2026-07-14', repository: REPOSITORY }).text;
 
   assert.throws(
@@ -101,25 +103,31 @@ test('the repository URL is browsable, not the git+…​.git form npm stores', 
 });
 
 test('the real CHANGELOG.md parses and has an [Unreleased] heading to write into', () => {
-  // Not "has entries" — right after a release it is legitimately empty. The
-  // invariant that always holds is that the heading is there for the next change.
+  /*
+   * Not "has entries" — right after a release it is legitimately empty. The
+   * invariant that always holds is that the heading is there for the next change.
+   */
   const text = fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8');
   assert.doesNotThrow(() => parseChangelog(text));
 });
 
 test('notesFor reads back a section that has already been cut', () => {
-  // The prepare-then-release split means the notes are written in a reviewed pull
-  // request and read at publish time, rather than both happening in one unattended
-  // step. This is the read half, and it is what fills the Release page.
+  /*
+   * The prepare-then-release split means the notes are written in a reviewed pull
+   * request and read at publish time, rather than both happening in one unattended
+   * step. This is the read half, and it is what fills the Release page.
+   */
   const cutResult = cut(CHANGELOG, { version: '2.1.0', date: '2026-07-18', repository: REPOSITORY });
 
   assert.equal(notesFor(cutResult.text, '2.1.0'), cutResult.notes);
 });
 
 test('notesFor refuses a version the changelog has no section for', () => {
-  // This is the signal that the release pull request was never merged — the exact
-  // mistake the two-step flow makes possible, so it must fail loudly rather than
-  // publish with an empty Release body.
+  /*
+   * This is the signal that the release pull request was never merged — the exact
+   * mistake the two-step flow makes possible, so it must fail loudly rather than
+   * publish with an empty Release body.
+   */
   assert.throws(
     () => notesFor(CHANGELOG, '9.9.9'),
     /has no "## \[9\.9\.9\]" section/,
@@ -128,11 +136,13 @@ test('notesFor refuses a version the changelog has no section for', () => {
 });
 
 test('a version below the registry\'s latest is published under an explicit tag', () => {
-  // npm refuses to apply `latest` implicitly to a version lower than one already
-  // published, which is exactly where this package sits: 0.0.1 restarting beneath
-  // an orphaned 1.0.0 that only npm support can remove. Getting this wrong means
-  // either a refused publish, or `latest` left pointing at pre-restart code — and
-  // the second is worse, because it is silent.
+  /*
+   * npm refuses to apply `latest` implicitly to a version lower than one already
+   * published, which is exactly where this package sits: 0.0.1 restarting beneath
+   * an orphaned 1.0.0 that only npm support can remove. Getting this wrong means
+   * either a refused publish, or `latest` left pointing at pre-restart code — and
+   * the second is worse, because it is silent.
+   */
   assert.equal(tagFor('0.0.1', '1.0.0'), 'previous');
   assert.equal(tagFor('1.2.3', '1.10.0'), 'previous', 'compared numerically, not as strings');
 

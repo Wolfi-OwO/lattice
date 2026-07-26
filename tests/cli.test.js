@@ -41,8 +41,10 @@ function runCli(args, cwd) {
 test('a switch does not swallow the project name', () => {
   const args = parseArgs(['--force', 'myapp', '--stack', 'express']);
 
-  // The bug: --force consumed "myapp" as its value, so the project got built
-  // under the prompt's default name instead.
+  /*
+   * The bug: --force consumed "myapp" as its value, so the project got built
+   * under the prompt's default name instead.
+   */
   assert.equal(args.flags.force, true);
   assert.deepEqual(args._, ['myapp']);
   assert.equal(args.flags.stack, 'express');
@@ -68,13 +70,15 @@ test('--key=value is accepted', () => {
 // -------------------------------------------------------------------- install
 
 test('capturing a big install does not kill it', () => {
-  // execFileSync's default maxBuffer is 1 MB, and blowing it does not truncate
-  // the output — it kills the child with ENOBUFS. A native build (better-sqlite3
-  // runs node-gyp) prints past 1 MB, so the install died half-written and the
-  // scaffolded project was missing packages its own tests needed.
-  // The fake package manager is node itself. `install` runs the manager with
-  // ['install'] and cwd set to the target, so `node install` executes the file
-  // below — a shell script would have made this test Linux-only.
+  /*
+   * execFileSync's default maxBuffer is 1 MB, and blowing it does not truncate
+   * the output — it kills the child with ENOBUFS. A native build (better-sqlite3
+   * runs node-gyp) prints past 1 MB, so the install died half-written and the
+   * scaffolded project was missing packages its own tests needed.
+   * The fake package manager is node itself. `install` runs the manager with
+   * ['install'] and cwd set to the target, so `node install` executes the file
+   * below — a shell script would have made this test Linux-only.
+   */
   const dir = tempDir();
   fs.writeFileSync(
     path.join(dir, 'install'),
@@ -100,10 +104,12 @@ test('a failing install is reported, not thrown', () => {
 // ------------------------------------------------------- non-interactive runs
 
 test('a scripted run with two text prompts finishes instead of hanging', () => {
-  // A readline interface created on an already-ended stdin never emits `line`
-  // and never emits `close`. The first prompt after EOF fell back to its default
-  // and the second hung forever, so `--stack spring-boot` (which needs both a
-  // package and a port) hung in CI rather than completing.
+  /*
+   * A readline interface created on an already-ended stdin never emits `line`
+   * and never emits `close`. The first prompt after EOF fell back to its default
+   * and the second hung forever, so `--stack spring-boot` (which needs both a
+   * package and a port) hung in CI rather than completing.
+   */
   const cwd = tempDir();
   const result = runCli(
     ['svc', '--stack', 'spring-boot', '--no-install', '--no-db-start'],
@@ -128,8 +134,10 @@ test('a scripted run keeps the name it was given', () => {
 });
 
 test('an unanswerable choice fails loudly rather than picking the first option', () => {
-  // No --db, no TTY. Silently taking option 1 would hand back a MongoDB project
-  // because Mongo happens to sort first.
+  /*
+   * No --db, no TTY. Silently taking option 1 would hand back a MongoDB project
+   * because Mongo happens to sort first.
+   */
   const cwd = tempDir();
   const result = runCli(['api', '--stack', 'express', '--no-install', '--no-db-start'], cwd);
 

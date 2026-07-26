@@ -91,9 +91,11 @@ class ProductControllerTest {
     @Test
     @WithMockUser
     void storesTheSkuUppercased() throws Exception {
-        // Product.normaliseSku runs in @PrePersist, so this holds regardless of
-        // what the caller sent — and it is what makes the unique constraint
-        // case-insensitive without relying on a collation.
+        /*
+         * Product.normaliseSku runs in @PrePersist, so this holds regardless of
+         * what the caller sent — and it is what makes the unique constraint
+         * case-insensitive without relying on a collation.
+         */
         mockMvc.perform(post("/api/products")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(widget("widget-1"))))
@@ -115,8 +117,10 @@ class ProductControllerTest {
     @Test
     @WithMockUser
     void rejectsAMissingPrice() throws Exception {
-        // priceCents is a boxed Long precisely so this is a 400 and not a free
-        // product: a primitive would have bound the absent field to 0.
+        /*
+         * priceCents is a boxed Long precisely so this is a 400 and not a free
+         * product: a primitive would have bound the absent field to 0.
+         */
         mockMvc.perform(post("/api/products")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
@@ -199,8 +203,10 @@ class ProductControllerTest {
     @Test
     @WithMockUser
     void allowsAProductToKeepItsOwnSku() throws Exception {
-        // The conflict check excludes the row being edited; without that, a PATCH
-        // carrying the unchanged SKU would conflict with itself.
+        /*
+         * The conflict check excludes the row being edited; without that, a PATCH
+         * carrying the unchanged SKU would conflict with itself.
+         */
         UUID id = create(widget("WIDGET-1"));
 
         mockMvc.perform(patch("/api/products/" + id)
@@ -212,10 +218,12 @@ class ProductControllerTest {
     @Test
     @WithMockUser
     void ignoresStockSentToPatch() throws Exception {
-        // `stock` is not a field on UpdateProductRequest, so it cannot be set this
-        // way. Jackson is not configured to fail on unknown properties, so the
-        // request succeeds and the value is simply not applied — what matters is
-        // that stock did NOT change.
+        /*
+         * `stock` is not a field on UpdateProductRequest, so it cannot be set this
+         * way. Jackson is not configured to fail on unknown properties, so the
+         * request succeeds and the value is simply not applied — what matters is
+         * that stock did NOT change.
+         */
         UUID id = create(new CreateProductRequest("WIDGET-1", "Widget", "", 100L, 5));
 
         mockMvc.perform(patch("/api/products/" + id)

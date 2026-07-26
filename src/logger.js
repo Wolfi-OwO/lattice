@@ -43,8 +43,10 @@ function line(level, message) {
 function emit(level, value) {
   if (LEVELS[level] > LEVELS[currentLevel()]) return;
 
-  // An Error logs its message and, at debug level, its stack — the services print
-  // `${message} - ${stack}`; this keeps that shape.
+  /*
+   * An Error logs its message and, at debug level, its stack — the services print
+   * `${message} - ${stack}`; this keeps that shape.
+   */
   const message =
     value instanceof Error
       ? currentLevel() === 'debug' && value.stack

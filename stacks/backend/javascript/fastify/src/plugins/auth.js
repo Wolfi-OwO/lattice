@@ -21,8 +21,10 @@ export async function requireAuth(request) {
   try {
     request.user = jwt.verify(token, config.jwt.secret);
   } catch {
-    // Never echo the library's reason back to the caller: "jwt expired" versus
-    // "invalid signature" tells an attacker which half of the guess was right.
+    /*
+     * Never echo the library's reason back to the caller: "jwt expired" versus
+     * "invalid signature" tells an attacker which half of the guess was right.
+     */
     throw ApiError.unauthorized('Invalid or expired token');
   }
 }

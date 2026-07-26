@@ -112,22 +112,26 @@ async function ensureDatabase(url) {
   await client.connect();
 
   try {
-    // Identifiers cannot be bound as parameters; the name comes from our own
-    // connection string, and doubling any quote closes the injection path.
+    /*
+     * Identifiers cannot be bound as parameters; the name comes from our own
+     * connection string, and doubling any quote closes the injection path.
+     */
     await client.query(`CREATE DATABASE "${name.replace(/"/g, '""')}"`);
   } catch (error) {
-    // Postgres has no CREATE DATABASE IF NOT EXISTS, and the obvious stand-in —
-    // SELECT from pg_database, then create if absent — is a check-then-act race:
-    // two runners can both look, both see nothing, and both create. Trying and
-    // forgiving is the only form of this that is actually atomic, since the
-    // uniqueness is enforced by the index over pg_database.datname rather than by
-    // our check. The loser is reported as 42P04, or as a raw 23505 on that index
-    // when the two CREATEs collide inside the same instant.
-    //
-    // Mocha runs this suite's files sequentially in one process, so the race is
-    // not reachable from here today — but the seam is shared with Fastify, whose
-    // node:test runner uses a process per file, and there it failed in CI. The
-    // adapter, not the test runner, is what has to be right.
+    /*
+     * Postgres has no CREATE DATABASE IF NOT EXISTS, and the obvious stand-in —
+     * SELECT from pg_database, then create if absent — is a check-then-act race:
+     * two runners can both look, both see nothing, and both create. Trying and
+     * forgiving is the only form of this that is actually atomic, since the
+     * uniqueness is enforced by the index over pg_database.datname rather than by
+     * our check. The loser is reported as 42P04, or as a raw 23505 on that index
+     * when the two CREATEs collide inside the same instant.
+     *
+     * Mocha runs this suite's files sequentially in one process, so the race is
+     * not reachable from here today — but the seam is shared with Fastify, whose
+     * node:test runner uses a process per file, and there it failed in CI. The
+     * adapter, not the test runner, is what has to be right.
+     */
     if (error.code !== '42P04' && error.code !== '23505') throw error;
   } finally {
     await client.end();
@@ -158,8 +162,10 @@ export async function createAdapter({ url, autoCreate = false }) {
 
   const users = {
     async list({ page, limit, q }) {
-      // ILIKE keeps the search in the database; the `%` wrapping is a bound
-      // parameter, never string-concatenated into the SQL.
+      /*
+       * ILIKE keeps the search in the database; the `%` wrapping is a bound
+       * parameter, never string-concatenated into the SQL.
+       */
       const where = q ? 'WHERE name ILIKE $1 OR email ILIKE $1' : '';
       const params = q ? [`%${q}%`] : [];
 

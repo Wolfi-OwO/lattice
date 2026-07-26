@@ -49,8 +49,10 @@ async function seedProducts(rows, { reset }) {
   let updated = 0;
 
   for (const row of rows) {
-    // Matched on SKU, the natural key the API already enforces as unique — so a
-    // second run adjusts price and stock rather than failing on a duplicate.
+    /*
+     * Matched on SKU, the natural key the API already enforces as unique — so a
+     * second run adjusts price and stock rather than failing on a duplicate.
+     */
     const existing = await database.products.findBySku(row.sku);
 
     if (existing) {
@@ -83,8 +85,10 @@ async function seedUsers(rows, { reset }) {
       continue;
     }
 
-    // Hashed here, the same way the API hashes it, so a demo account can
-    // actually log in. The plaintext in the JSON never reaches the database.
+    /*
+     * Hashed here, the same way the API hashes it, so a demo account can
+     * actually log in. The plaintext in the JSON never reaches the database.
+     */
     await database.users.create({
       email,
       name,

@@ -32,8 +32,10 @@ test('a storage with no dependencies needs no smoke check', () => {
 });
 
 test('every storage that installs a driver declares how to prove it works', () => {
-  // Without this, adding a storage silently opts out of the check that exists
-  // because a driver installed-but-unusable is what shipped broken.
+  /*
+   * Without this, adding a storage silently opts out of the check that exists
+   * because a driver installed-but-unusable is what shipped broken.
+   */
   for (const [id, spec] of Object.entries(STORAGE)) {
     const drivers = Object.keys(spec.deps ?? {});
     if (drivers.length === 0) continue;
@@ -44,9 +46,11 @@ test('every storage that installs a driver declares how to prove it works', () =
 });
 
 test('the sqlite check constructs a database rather than merely importing', () => {
-  // The regression this pins. `require('better-sqlite3')` succeeds even when the
-  // native binding is missing, so an import-only check reports a broken project
-  // as healthy — which is exactly what happened.
+  /*
+   * The regression this pins. `require('better-sqlite3')` succeeds even when the
+   * native binding is missing, so an import-only check reports a broken project
+   * as healthy — which is exactly what happened.
+   */
   assert.match(
     STORAGE.sqlite.smoke,
     /new .*better-sqlite3.*\(':memory:'\)/,
@@ -64,7 +68,9 @@ test('a missing driver is reported as not loading', () => {
 });
 
 test('a driver that is present and working reports as loading', () => {
-  // Uses a module guaranteed to resolve anywhere, so the positive case is tested
-  // without depending on a native build in the test environment.
+  /*
+   * Uses a module guaranteed to resolve anywhere, so the positive case is tested
+   * without depending on a native build in the test environment.
+   */
   assert.equal(driverLoads(workspace(), "require('node:path')"), true);
 });

@@ -9,8 +9,10 @@ export default defineConfig({
   },
   server: {
     port: {{clientPort}},
-    // Proxying /api in dev means one origin in the browser: no CORS, and no
-    // absolute API URL baked into the source.
+    /*
+     * Proxying /api in dev means one origin in the browser: no CORS, and no
+     * absolute API URL baked into the source.
+     */
     proxy: {
       '/api': {
         target: 'http://localhost:{{port}}',

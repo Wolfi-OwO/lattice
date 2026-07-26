@@ -96,8 +96,10 @@ function enableWriteAheadLogging(sqlite, attempts = 20) {
       return;
     } catch (error) {
       if (error.code !== 'SQLITE_BUSY') throw error;
-      // Someone else holds the exclusive lock — almost certainly to set WAL, which
-      // means the next read of journal_mode will find it already done.
+      /*
+       * Someone else holds the exclusive lock — almost certainly to set WAL, which
+       * means the next read of journal_mode will find it already done.
+       */
       sleepSync(25);
     }
   }
@@ -112,10 +114,12 @@ export async function createAdapter({ url }) {
 
   const sqlite = new Database(file);
 
-  // FIRST, before any statement that writes. Without it SQLite does not wait for a
-  // held lock — it fails immediately with SQLITE_BUSY — and one other process
-  // touching the same file is enough. It covers the schema creation below, and
-  // every write the app makes afterwards.
+  /*
+   * FIRST, before any statement that writes. Without it SQLite does not wait for a
+   * held lock — it fails immediately with SQLITE_BUSY — and one other process
+   * touching the same file is enough. It covers the schema creation below, and
+   * every write the app makes afterwards.
+   */
   sqlite.pragma('busy_timeout = 5000');
 
   enableWriteAheadLogging(sqlite);

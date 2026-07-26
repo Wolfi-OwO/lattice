@@ -21,15 +21,19 @@ const DIALECT = {
     enum: (spec) => `VARCHAR(${spec.maxLength ?? 32})`,
     integer: () => 'INT',
   },
-  // updated_at maintains itself. created_at must not, or an edit would rewrite
-  // when the row was created.
+  /*
+   * updated_at maintains itself. created_at must not, or an edit would rewrite
+   * when the row was created.
+   */
   timestamp: (field) =>
     field === 'updatedAt'
       ? 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
       : 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP',
   tableSuffix: ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
-  // An unbounded string is TEXT here, and MySQL refuses a DEFAULT on TEXT.
-  // The column stays NOT NULL; the adapter supplies the value on insert.
+  /*
+   * An unbounded string is TEXT here, and MySQL refuses a DEFAULT on TEXT.
+   * The column stays NOT NULL; the adapter supplies the value on insert.
+   */
   supportsDefault: (spec) => !(spec.type === 'string' && !spec.maxLength),
 };
 
@@ -88,22 +92,26 @@ export async function createAdapter({ url, autoCreate = false }) {
 
   const pool = mysql.createPool(url);
 
-  // Same trap as the postgres adapter: a pooled connection dropped by the server
-  // surfaces as an `error` event, and an unhandled one kills the process — right
-  // when readiness should instead be reporting a degraded database.
+  /*
+   * Same trap as the postgres adapter: a pooled connection dropped by the server
+   * surfaces as an `error` event, and an unhandled one kills the process — right
+   * when readiness should instead be reporting a degraded database.
+   */
   pool.on('error', (error) => {
     logger.error(`mysql pool error: ${error.message}`);
   });
 
-  // One statement per call. MySQL rejects multiple statements in a single query
-  // unless the connection opts into `multipleStatements`, and opting in widens the
-  // SQL-injection surface for every query the pool ever runs — a steep price for a
-  // convenience needed exactly once at startup. Postgres and SQLite accept the
-  // whole script, which is why this only bites here.
-  //
-  // createTables hands them over already separate, so unlike the previous version
-  // there is no script to split on ';' — and no chance of splitting on one that
-  // lives inside a string literal.
+  /*
+   * One statement per call. MySQL rejects multiple statements in a single query
+   * unless the connection opts into `multipleStatements`, and opting in widens the
+   * SQL-injection surface for every query the pool ever runs — a steep price for a
+   * convenience needed exactly once at startup. Postgres and SQLite accept the
+   * whole script, which is why this only bites here.
+   *
+   * createTables hands them over already separate, so unlike the previous version
+   * there is no script to split on ';' — and no chance of splitting on one that
+   * lives inside a string literal.
+   */
   for (const statement of SCHEMA) {
     await pool.query(statement);
   }

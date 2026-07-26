@@ -6,8 +6,10 @@ export function notFound(req, _res, next) {
   next(ApiError.notFound(`Route ${req.method} ${req.originalUrl} does not exist`));
 }
 
-// Express identifies error middleware by arity — `next` must stay in the
-// signature even though it is unused.
+/*
+ * Express identifies error middleware by arity — `next` must stay in the
+ * signature even though it is unused.
+ */
 export function errorHandler(error, _req, res, _next) {
   const isKnown = error instanceof ApiError;
   const status = isKnown ? error.status : 500;

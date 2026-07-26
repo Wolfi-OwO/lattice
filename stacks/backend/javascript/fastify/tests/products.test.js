@@ -42,8 +42,10 @@ test('requires authentication to create', async () => {
 });
 
 test('rejects a float price', async () => {
-  // The whole reason money is stored as integer cents. ajv rejects it before a
-  // handler runs; if this ever passes, prices have started drifting downstream.
+  /*
+   * The whole reason money is stored as integer cents. ajv rejects it before a
+   * handler runs; if this ever passes, prices have started drifting downstream.
+   */
   const response = await post('/api/products', { ...WIDGET, priceCents: 19.99 });
   assert.equal(response.statusCode, 400);
 });
@@ -65,10 +67,12 @@ test('refuses a duplicate sku', async () => {
 });
 
 test('treats sku case-insensitively when refusing a duplicate', async () => {
-  // The adapters uppercase on write, so `widget-1` and `WIDGET-1` are one
-  // product. Postgres would refuse the second on a UNIQUE index regardless;
-  // memory and file refuse it only because of that uppercasing, and nothing
-  // else checks the difference.
+  /*
+   * The adapters uppercase on write, so `widget-1` and `WIDGET-1` are one
+   * product. Postgres would refuse the second on a UNIQUE index regardless;
+   * memory and file refuse it only because of that uppercasing, and nothing
+   * else checks the difference.
+   */
   await createWidget();
   const response = await post('/api/products', { ...WIDGET, sku: 'widget-1' });
   assert.equal(response.statusCode, 409);
@@ -145,8 +149,10 @@ test('refuses a sku already taken by another product', async () => {
 });
 
 test('allows a product to keep its own sku', async () => {
-  // The conflict check excludes the row being edited; without that exclusion any
-  // PATCH carrying the unchanged sku would 409 against itself.
+  /*
+   * The conflict check excludes the row being edited; without that exclusion any
+   * PATCH carrying the unchanged sku would 409 against itself.
+   */
   const { id, sku } = await createWidget();
 
   const response = await app.inject({
@@ -159,9 +165,11 @@ test('allows a product to keep its own sku', async () => {
 });
 
 test('will not set stock directly', async () => {
-  // Stock moves through /stock as a delta. additionalProperties:false is what
-  // makes this a 400 rather than a silent drop — a caller who thinks they set
-  // stock and did not is worse off than one who is told no.
+  /*
+   * Stock moves through /stock as a delta. additionalProperties:false is what
+   * makes this a 400 rather than a silent drop — a caller who thinks they set
+   * stock and did not is worse off than one who is told no.
+   */
   const { id } = await createWidget({ stock: 5 });
 
   const response = await app.inject({

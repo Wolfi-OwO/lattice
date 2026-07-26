@@ -24,8 +24,10 @@ test('creates a user and never returns the password hash', async () => {
   assert.equal(response.statusCode, 201);
   assert.equal(body.email, ADA.email);
 
-  // The response schema has no passwordHash property, so Fastify drops it on the
-  // way out even if a bug were to put it there. This asserts that seam holds.
+  /*
+   * The response schema has no passwordHash property, so Fastify drops it on the
+   * way out even if a bug were to put it there. This asserts that seam holds.
+   */
   assert.equal(body.passwordHash, undefined);
   assert.equal(body.password, undefined);
 });

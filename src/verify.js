@@ -48,11 +48,15 @@ const ROOT_CONFIG = new RegExp(
 const RULES = {
   maven: {
     sources: ['.java'],
-    // Maven resolves these by convention. Anything outside is not on the compiler's
-    // source path, so it is not compiled and not packaged.
+    /*
+     * Maven resolves these by convention. Anything outside is not on the compiler's
+     * source path, so it is not compiled and not packaged.
+     */
     allowed: [/^src\/main\/java\//, /^src\/test\/java\//],
-    // The demo-data loader is run standalone through a Spring profile, never
-    // compiled into the application. CONVENTIONS.md rule 5 puts it here on purpose.
+    /*
+     * The demo-data loader is run standalone through a Spring profile, never
+     * compiled into the application. CONVENTIONS.md rule 5 puts it here on purpose.
+     */
     exempt: [/^database\//],
     why: 'Maven only compiles sources under src/main/java and src/test/java — a class outside them silently does not exist at runtime',
   },
@@ -77,9 +81,11 @@ const RULES = {
       /^database\//,
       /^scripts\//,
       /^notebooks\//,
-      // Migration tools own their own directory and load it themselves rather
-      // than importing it as part of the package: alembic/env.py and
-      // alembic/versions/* are exactly where Alembic requires them.
+      /*
+       * Migration tools own their own directory and load it themselves rather
+       * than importing it as part of the package: alembic/env.py and
+       * alembic/versions/* are exactly where Alembic requires them.
+       */
       /^alembic\//,
       /^migrations\//,
     ],
@@ -113,8 +119,10 @@ function walk(target) {
  */
 export function verifyStructure(target, toolchain) {
   const rules = RULES[toolchain];
-  // An unrecognised toolchain has no rules to apply, and inventing some would be
-  // guessing at a layout nobody declared. Silence is the honest answer.
+  /*
+   * An unrecognised toolchain has no rules to apply, and inventing some would be
+   * guessing at a layout nobody declared. Silence is the honest answer.
+   */
   if (!rules) return { ok: true, violations: [] };
 
   const violations = [];
@@ -131,8 +139,10 @@ export function verifyStructure(target, toolchain) {
     violations.push({ file, why: rules.why });
   }
 
-  // A test compiled into the shipped artifact carries its test-only dependencies
-  // with it. Maven and Gradle both separate these by directory for that reason.
+  /*
+   * A test compiled into the shipped artifact carries its test-only dependencies
+   * with it. Maven and Gradle both separate these by directory for that reason.
+   */
   if (toolchain === 'maven' || toolchain === 'gradle') {
     for (const file of walk(target)) {
       if (/(^|\/)src\/main\//.test(`/${file}`) && /(Test|Tests|Spec)\.(java|kt)$/.test(file)) {

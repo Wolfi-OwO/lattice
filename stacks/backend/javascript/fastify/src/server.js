@@ -9,11 +9,13 @@ await connectDatabase();
 
 const app = await createApp();
 
-// `ready()` finishes registering plugins and routes, so Fastify's request handler
-// is on app.server by the time terminus goes looking for it — terminus works by
-// removing the server's existing 'request' listener and putting its own in front,
-// delegating anything that is not a health check. Decorating a server whose
-// handler is not attached yet would quietly give you a probe that answers nothing.
+/*
+ * `ready()` finishes registering plugins and routes, so Fastify's request handler
+ * is on app.server by the time terminus goes looking for it — terminus works by
+ * removing the server's existing 'request' listener and putting its own in front,
+ * delegating anything that is not a health check. Decorating a server whose
+ * handler is not attached yet would quietly give you a probe that answers nothing.
+ */
 await app.ready();
 
 /**
@@ -49,10 +51,12 @@ createTerminus(app.server, {
       return { storage: 'up' };
     },
 
-    // `verbatim` is intentionally left off. Terminus merges a check's result into
-    // a *shared* response object, so with verbatim the fields from one probe leak
-    // into every later response. The default { status, info, details } shape does
-    // not have that problem.
+    /*
+     * `verbatim` is intentionally left off. Terminus merges a check's result into
+     * a *shared* response object, so with verbatim the fields from one probe leak
+     * into every later response. The default { status, info, details } shape does
+     * not have that problem.
+     */
     __unsafeExposeStackTraces: !config.isProduction,
   },
 

@@ -11,9 +11,11 @@ describe('GET /api/health/liveness', () => {
     assert.equal(res.body.status, 'ok');
     assert.equal(typeof res.body.uptime, 'number');
 
-    // Liveness must say nothing about the database. If it did, a slow database
-    // would read as a dead process and the orchestrator would restart a server
-    // that was fine — turning a blip into a restart loop.
+    /*
+     * Liveness must say nothing about the database. If it did, a slow database
+     * would read as a dead process and the orchestrator would restart a server
+     * that was fine — turning a blip into a restart loop.
+     */
     assert.equal(res.body.storage, undefined);
   });
 });

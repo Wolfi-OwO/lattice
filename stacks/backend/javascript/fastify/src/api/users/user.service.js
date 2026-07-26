@@ -42,8 +42,10 @@ export async function createUser({ email, name, password, role }) {
 }
 
 export async function updateUser(id, patch) {
-  // Check the uniqueness invariant before writing: not every adapter has a
-  // unique index to fall back on (the file and memory ones do not).
+  /*
+   * Check the uniqueness invariant before writing: not every adapter has a
+   * unique index to fall back on (the file and memory ones do not).
+   */
   if (patch.email) {
     const existing = await database.users.findByEmail(patch.email);
     if (existing && existing.id !== id) {

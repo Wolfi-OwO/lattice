@@ -37,10 +37,12 @@ createTerminus(server, {
       return { storage: 'up' };
     },
 
-    // `verbatim` is intentionally left off. Terminus merges a check's result
-    // into a *shared* response object, so with verbatim the fields from one
-    // probe leak into every later response. The default { status, info, details }
-    // shape does not have that problem.
+    /*
+     * `verbatim` is intentionally left off. Terminus merges a check's result
+     * into a *shared* response object, so with verbatim the fields from one
+     * probe leak into every later response. The default { status, info, details }
+     * shape does not have that problem.
+     */
     __unsafeExposeStackTraces: !config.isProduction,
   },
 

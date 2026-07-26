@@ -15,32 +15,38 @@ import { ApiError } from './utils/ApiError.js';
  */
 export async function createApp() {
   const app = Fastify({
-    // Fastify logs through pino; the rest of the project logs through winston.
-    // Two loggers means two formats in one stream, so Fastify's is turned off
-    // and request logging is one hook below.
+    /*
+     * Fastify logs through pino; the rest of the project logs through winston.
+     * Two loggers means two formats in one stream, so Fastify's is turned off
+     * and request logging is one hook below.
+     */
     logger: false,
     trustProxy: true,
     bodyLimit: 1_048_576,
 
-    // Fastify defaults ajv to `removeAdditional: true`, which turns
-    // `additionalProperties: false` into "quietly delete them" rather than
-    // "refuse them". That is the wrong half of the choice for an API: a client
-    // that PATCHes a field we do not accept gets 200 and believes it was
-    // applied. The products template makes that concrete — `stock` is excluded
-    // from PATCH on purpose, and under the default a caller setting it is told
-    // the write succeeded while the value is dropped on the floor.
-    //
-    // Rejecting instead makes a typo'd or unsupported field a 400 that names it.
+    /*
+     * Fastify defaults ajv to `removeAdditional: true`, which turns
+     * `additionalProperties: false` into "quietly delete them" rather than
+     * "refuse them". That is the wrong half of the choice for an API: a client
+     * that PATCHes a field we do not accept gets 200 and believes it was
+     * applied. The products template makes that concrete — `stock` is excluded
+     * from PATCH on purpose, and under the default a caller setting it is told
+     * the write succeeded while the value is dropped on the floor.
+     *
+     * Rejecting instead makes a typo'd or unsupported field a 400 that names it.
+     */
     ajv: { customOptions: { removeAdditional: false } },
   });
 
-  // These two go FIRST, before any route is registered, and the order is not
-  // cosmetic. `await app.register(...)` boots that plugin immediately, and a
-  // plugin is an encapsulated child context that inherits whatever error handler
-  // its parent had *at the moment it was created*. Register the routes first and
-  // they capture Fastify's default handler — so validation failures come back in
-  // Fastify's shape (`{ statusCode, code, error, message }`) while thrown errors
-  // come back in ours, and the API quietly has two error envelopes.
+  /*
+   * These two go FIRST, before any route is registered, and the order is not
+   * cosmetic. `await app.register(...)` boots that plugin immediately, and a
+   * plugin is an encapsulated child context that inherits whatever error handler
+   * its parent had *at the moment it was created*. Register the routes first and
+   * they capture Fastify's default handler — so validation failures come back in
+   * Fastify's shape (`{ statusCode, code, error, message }`) while thrown errors
+   * come back in ours, and the API quietly has two error envelopes.
+   */
   app.setErrorHandler(errorHandler);
   app.setNotFoundHandler((request) => {
     throw ApiError.notFound(`Route ${request.method} ${request.url} does not exist`);

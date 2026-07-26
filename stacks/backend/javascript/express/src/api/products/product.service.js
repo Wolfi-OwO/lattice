@@ -38,8 +38,10 @@ export async function createProduct({ sku, name, description, priceCents, stock 
 }
 
 export async function updateProduct(id, patch) {
-  // Checked before writing, for the same reason as users: the file and memory
-  // adapters have no unique index to fall back on.
+  /*
+   * Checked before writing, for the same reason as users: the file and memory
+   * adapters have no unique index to fall back on.
+   */
   if (patch.sku) {
     const existing = await database.products.findBySku(patch.sku);
     if (existing && existing.id !== id) {

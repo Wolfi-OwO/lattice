@@ -85,11 +85,13 @@ test('scaffolding spring-boot expands the package into real directories', () => 
 });
 
 test('copyTemplate skips build output and dependency directories', () => {
-  // A synthetic template, so the test does not depend on any real one being dirty.
-  // Build output lands in template dirs whenever someone runs a build from a git
-  // clone; copying it out once produced a project whose stray target/classes broke
-  // spring-boot:repackage. The published package is protected by the files
-  // allowlist, but a clone is not, so the copy itself has to refuse these.
+  /*
+   * A synthetic template, so the test does not depend on any real one being dirty.
+   * Build output lands in template dirs whenever someone runs a build from a git
+   * clone; copying it out once produced a project whose stray target/classes broke
+   * spring-boot:repackage. The published package is protected by the files
+   * allowlist, but a clone is not, so the copy itself has to refuse these.
+   */
   const source = tempDir();
   fs.writeFileSync(path.join(source, 'keep.txt'), 'real file');
 

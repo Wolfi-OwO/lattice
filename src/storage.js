@@ -34,13 +34,17 @@ export const STORAGE = {
     hint: 'Document store · mongoose — what most of your projects already use',
     adapter: 'mongo',
     needsUrl: true,
-    // v9 requires Node >= 20.19, which every supported runtime here satisfies. The
-    // adapter uses only Schema/connect/model/isValidObjectId, stable across the 8->9
-    // boundary — and the mongodb job scaffolds and tests against a real container,
-    // so this is verified rather than assumed.
+    /*
+     * v9 requires Node >= 20.19, which every supported runtime here satisfies. The
+     * adapter uses only Schema/connect/model/isValidObjectId, stable across the 8->9
+     * boundary — and the mongodb job scaffolds and tests against a real container,
+     * so this is verified rather than assumed.
+     */
     deps: { mongoose: '^9.7.4' },
-    // Pure JavaScript — importing it is the whole check. No connection is opened;
-    // this asks whether the package is usable, not whether a server is running.
+    /*
+     * Pure JavaScript — importing it is the whole check. No connection is opened;
+     * this asks whether the package is usable, not whether a server is running.
+     */
     smoke: "require('mongoose')",
     durable: true,
     server: true,
@@ -134,15 +138,19 @@ export const STORAGE = {
     hint: 'Relational, zero-config · a single file on disk, no server',
     adapter: 'sqlite',
     needsUrl: true,
-    // v12, not v11: v11 ships no prebuilt binary for Node 24's ABI, so `npm install`
-    // falls back to a node-gyp source build and fails on any machine without a C++
-    // toolchain. CI runs Node 20 and never saw it; anyone on current Node hit it
-    // immediately. v12 declares support through Node 26.
+    /*
+     * v12, not v11: v11 ships no prebuilt binary for Node 24's ABI, so `npm install`
+     * falls back to a node-gyp source build and fails on any machine without a C++
+     * toolchain. CI runs Node 20 and never saw it; anyone on current Node hit it
+     * immediately. v12 declares support through Node 26.
+     */
     deps: { 'better-sqlite3': '^12.11.1' },
-    // Requiring better-sqlite3 proves nothing: the native binding is loaded when a
-    // Database is constructed, not at import. A scaffold whose binding was never
-    // built imports cleanly and then dies on the first query, which is exactly how
-    // this shipped broken. Opening an in-memory database exercises the binding.
+    /*
+     * Requiring better-sqlite3 proves nothing: the native binding is loaded when a
+     * Database is constructed, not at import. A scaffold whose binding was never
+     * built imports cleanly and then dies on the first query, which is exactly how
+     * this shipped broken. Opening an in-memory database exercises the binding.
+     */
     smoke: "new (require('better-sqlite3'))(':memory:').close()",
     durable: true,
     server: false,

@@ -66,8 +66,10 @@ function renderPathSegment(segment, vars) {
   out = out.replace(/__(\w+)__/g, (match, key) =>
     Object.hasOwn(vars, key) ? String(vars[key]) : match,
   );
-  // A path variable may expand to a nested path (at/htlvillach/foo) — that is
-  // intentional and handled by mkdir -p semantics below.
+  /*
+   * A path variable may expand to a nested path (at/htlvillach/foo) — that is
+   * intentional and handled by mkdir -p semantics below.
+   */
   return out;
 }
 
@@ -104,11 +106,13 @@ export function copyTemplate(from, to, vars) {
         fs.writeFileSync(destPath, render(content, vars), 'utf8');
       }
 
-      // Carry the source file's permissions over. writeFileSync creates 0644, so
-      // without this an executable in a template arrives unexecutable — and the
-      // first thing the user types is `./mvnw`, which then fails with Permission
-      // denied. copyFileSync happens to preserve mode; the render path does not,
-      // so the two disagreed depending on whether a file was binary.
+      /*
+       * Carry the source file's permissions over. writeFileSync creates 0644, so
+       * without this an executable in a template arrives unexecutable — and the
+       * first thing the user types is `./mvnw`, which then fails with Permission
+       * denied. copyFileSync happens to preserve mode; the render path does not,
+       * so the two disagreed depending on whether a file was binary.
+       */
       fs.chmodSync(destPath, fs.statSync(srcPath).mode);
 
       written.push(path.relative(to, destPath));
@@ -153,9 +157,11 @@ export function buildVars(answers) {
     .map((part) => part[0].toUpperCase() + part.slice(1))
     .join('');
 
-  // my-cool-app -> my_cool_app. Dart, Rust and Python all reject a dash in an
-  // identifier: a Flutter package name, a Cargo crate's lib target and a Python
-  // module are all snake_case or nothing.
+  /*
+   * my-cool-app -> my_cool_app. Dart, Rust and Python all reject a dash in an
+   * identifier: a Flutter package name, a Cargo crate's lib target and a Python
+   * module are all snake_case or nothing.
+   */
   const snakeName = safeName.replace(/-/g, '_');
 
   return {
@@ -163,9 +169,11 @@ export function buildVars(answers) {
     projectTitle: projectName,
     pascalName,
     snakeName,
-    // Enterprise overlay. `owner` fills the badge/URL slots in the community-health
-    // files; it defaults to a placeholder the user replaces rather than to any real
-    // account, because lattice ships to everyone. `version` seeds version.txt.
+    /*
+     * Enterprise overlay. `owner` fills the badge/URL slots in the community-health
+     * files; it defaults to a placeholder the user replaces rather than to any real
+     * account, because lattice ships to everyone. `version` seeds version.txt.
+     */
     owner: answers.owner ?? 'your-org',
     version: answers.version ?? '0.1.0',
     // Java/Kotlin only
@@ -176,8 +184,10 @@ export function buildVars(answers) {
     clientPort: String(Number(port) + 2000),
     year: String(new Date().getFullYear()),
 
-    // Storage. `databaseNeedsUrl` is interpolated into config/index.js as a literal
-    // `true`/`false`, so the file and memory adapters never demand a DATABASE_URL.
+    /*
+     * Storage. `databaseNeedsUrl` is interpolated into config/index.js as a literal
+     * `true`/`false`, so the file and memory adapters never demand a DATABASE_URL.
+     */
     storage,
     databaseAdapter: spec.adapter,
     databaseLabel: spec.label,
@@ -185,10 +195,12 @@ export function buildVars(answers) {
     databasePort: databasePort ?? spec.defaultPort ?? '',
     fileFormat,
 
-    // Styling. `stylesEntry` is what main.jsx imports, so it has to be the name
-    // the file ends up with (styles.css or styles.scss) rather than the variant's
-    // name in the template. The two vite slots are empty for every variant that
-    // needs no plugin, which is all of them but Tailwind.
+    /*
+     * Styling. `stylesEntry` is what main.jsx imports, so it has to be the name
+     * the file ends up with (styles.css or styles.scss) rather than the variant's
+     * name in the template. The two vite slots are empty for every variant that
+     * needs no plugin, which is all of them but Tailwind.
+     */
     styling,
     stylesEntry: style.entry,
     stylingLabel: style.label,
