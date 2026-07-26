@@ -1,0 +1,18 @@
+# Top-level order. Without this the sections would be alphabetical, which opens
+# the site on "Guides" and puts "Getting started" third.
+#
+# Every entry is a glob. The trailing "*" is what makes new folders appear on
+# their own: anything not named above is picked up here, in alphabetical order,
+# so adding a section is adding a directory. Name it above only when you care
+# where it lands.
+#
+# "*" is also what places the generated `project/` section, which is not in the
+# repository — see scripts/docs-mirror.js.
+nav:
+  - index.md
+  - getting-started
+  - stacks
+  - guides
+  - reference
+  - editing-these-docs.md
+  - '*'

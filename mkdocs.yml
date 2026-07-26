@@ -1,0 +1,142 @@
+# The documentation site — https://wolfi-owo.github.io/lattice/
+#
+# Content lives in documentation/, one folder per section, and the navigation is
+# generated from that folder tree rather than listed here. Adding a page is
+# adding a markdown file; adding a section is adding a directory. A `.nav.yml`
+# inside a folder overrides the order or the title when alphabetical is wrong,
+# which is the only thing that ever needs saying twice.
+#
+# documentation/project/ is not in the repository. It is mirrored from the root
+# markdown files by scripts/docs-mirror.js immediately before this builds — see
+# that file for why those documents stay where they are.
+#
+#   npm run docs:serve     mirror, then serve with live reload on :8000
+#   npm run docs:build     mirror, then build into site/
+#
+# Both need MkDocs, which is not an npm dependency and never will be:
+#
+#   pip install -r mkdocs-requirements.txt
+
+site_name: lattice
+site_description: >-
+  Pick a stack, pick a database, get a project that already runs. A
+  zero-dependency scaffolder whose output boots on the first command.
+site_url: https://wolfi-owo.github.io/lattice/
+site_author: Wolfi
+
+repo_url: https://github.com/Wolfi-OwO/lattice
+repo_name: Wolfi-OwO/lattice
+edit_uri: edit/main/documentation/
+
+docs_dir: documentation
+site_dir: site
+
+copyright: MIT licensed. Built from the repository it documents.
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    # Navigation that keeps a long reference page usable.
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - toc.follow
+    # Search that works offline, because the site is static files on Pages.
+    - search.suggest
+    - search.highlight
+    - search.share
+    # The pencil and the "view source" eye. This is the whole "editable"
+    # half of the site: the pencil opens the file in GitHub's editor, where
+    # a change can be committed straight to a branch and turned into a PR.
+    - content.action.edit
+    - content.action.view
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+  palette:
+    # Follows the reader's system setting first, and lets them override it.
+    - media: '(prefers-color-scheme)'
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: '(prefers-color-scheme: light)'
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: '(prefers-color-scheme: dark)'
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+# Lets a mirrored page point its "edit" pencil at the real file rather than at
+# the generated copy. See the module docstring.
+hooks:
+  - scripts/mkdocs_hooks.py
+
+plugins:
+  - search
+  # Generates the navigation from the directory tree, and reads a `.nav.yml`
+  # where the order matters. Without it MkDocs sorts alphabetically, which puts
+  # "Getting started" after "Stacks".
+  - awesome-nav
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Link to this section
+  - pymdownx.details
+  # Lets `:material-console:` render as an icon, which is what the card grid on
+  # the home page is built from.
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Wolfi-OwO/lattice
+      name: lattice on GitHub
+    - icon: fontawesome/brands/npm
+      link: https://www.npmjs.com/package/create-lattice
+      name: create-lattice on npm
+
+# A link that resolves on GitHub but not on the site is a broken page, and the
+# mirrored files are full of repository-relative links. Warnings are failures
+# here so that lands in CI rather than in front of a reader.
+strict: true
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn

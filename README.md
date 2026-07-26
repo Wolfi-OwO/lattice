@@ -11,6 +11,8 @@ A zero-dependency scaffolder whose output boots on the first command — no `npm
 [![Templates · Java](https://github.com/Wolfi-OwO/lattice/actions/workflows/templates-java.yml/badge.svg)](https://github.com/Wolfi-OwO/lattice/actions/workflows/templates-java.yml)
 [![Templates · Python](https://github.com/Wolfi-OwO/lattice/actions/workflows/templates-python.yml/badge.svg)](https://github.com/Wolfi-OwO/lattice/actions/workflows/templates-python.yml)
 
+[![Documentation](https://github.com/Wolfi-OwO/lattice/actions/workflows/docs.yml/badge.svg)](https://wolfi-owo.github.io/lattice/)
+
 [![npm](https://img.shields.io/npm/v/create-lattice?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/create-lattice)
 [![npm downloads](https://img.shields.io/npm/dm/create-lattice?color=cb3837&label=downloads)](https://www.npmjs.com/package/create-lattice)
 [![Release](https://img.shields.io/github/v/release/Wolfi-OwO/lattice?label=release&color=blue)](https://github.com/Wolfi-OwO/lattice/releases/latest)
@@ -30,6 +32,8 @@ A zero-dependency scaffolder whose output boots on the first command — no `npm
 ![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black)
 ![Vite](https://img.shields.io/badge/Vite-646cff?logo=vite&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin_+_Compose-7F52FF?logo=kotlin&logoColor=white)
+
+### 📖 [Read the documentation](https://wolfi-owo.github.io/lattice/)
 
 </div>
 

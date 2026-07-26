@@ -13,6 +13,29 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
 
+### Added
+
+- **A documentation site, at [wolfi-owo.github.io/lattice](https://wolfi-owo.github.io/lattice/).**
+  `package.json` had pointed `homepage` at that URL for some time and nothing was
+  served from it. Content lives in `documentation/`, one folder per section, and the
+  navigation is generated from the folder tree rather than listed in a config — so
+  adding a page is adding a markdown file and adding a section is adding a directory.
+  Every page carries an edit link that opens it in GitHub's editor, which makes a
+  typo fix a two-minute pull request instead of a clone.
+
+  The long-form documents stay at the repository root where they are actually read —
+  in a diff, in a pull request, in an editor — and the site borrows them at build
+  time (`scripts/docs-mirror.js`). Their links are rewritten to resolve on the site
+  and their edit links point back at the real file rather than at the generated copy.
+
+  MkDocs is not an npm dependency and will not become one: ADR-0001 covers dev
+  dependencies too, and a docs toolchain in `package.json` would be that rule broken
+  with a different label on it. It is pinned in `mkdocs-requirements.txt` and
+  installed only inside the CI job. `tests/docs.test.js` checks the wiring — that the
+  workflow rebuilds for every file the site mirrors, that no navigation entry names a
+  page that does not exist, that a pull request builds but never deploys — none of
+  which needs MkDocs installed to run.
+
 ## [1.3.0] - 2026-07-24
 
 ### Added
