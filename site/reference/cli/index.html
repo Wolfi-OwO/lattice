@@ -1012,6 +1012,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#but-a-flag-with-a-safe-default-is-not-demanded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        …but a flag with a safe default is not demanded
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#a-missing-answer-is-not-guessed" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1558,6 +1569,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#but-a-flag-with-a-safe-default-is-not-demanded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        …but a flag with a safe default is not demanded
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#a-missing-answer-is-not-guessed" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1671,6 +1693,11 @@ see <a href="../../getting-started/non-interactive/">Non-interactive use</a>.</p
 <td>Only with <code>--database file</code>. Default <code>json</code>.</td>
 </tr>
 <tr>
+<td><code>--styling &lt;id&gt;</code></td>
+<td><code>plain</code> <code>scss</code> <code>bootstrap</code> <code>tailwind</code></td>
+<td>Frontend stacks only. Default <code>plain</code>.</td>
+</tr>
+<tr>
 <td><code>--client &lt;id&gt;</code></td>
 <td><code>react-vite</code> <code>react-vite-ts</code></td>
 <td>Makes it <a href="../../stacks/fullstack/">fullstack</a>: frontend into <code>client/</code>.</td>
@@ -1742,17 +1769,28 @@ silently different project. This one exits non-zero.</p>
 <div class="language-console highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="gp">$ </span>lattice<span class="w"> </span>my-api<span class="w"> </span>--stack<span class="w"> </span>expres
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="go">✖ Unknown stack &quot;expres&quot;. Run with --list to see the options.</span>
 </span></code></pre></div>
+<h3 id="but-a-flag-with-a-safe-default-is-not-demanded">…but a flag with a safe default is not demanded<a class="headerlink" href="#but-a-flag-with-a-safe-default-is-not-demanded" title="Link to this section">&para;</a></h3>
+<p><code>--styling</code> is the exception, and deliberately so. A missing <code>--database</code> is an
+error because there is no safe default: picking one silently builds the project
+against storage nobody asked for, and finding out costs a rewrite. <code>plain</code> is
+exactly what the frontend templates shipped before the choice existed, so a
+script that says nothing gets what it got before:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="gp">$ </span>lattice<span class="w"> </span>shop<span class="w"> </span>--stack<span class="w"> </span>react-vite<span class="w"> </span>&lt;<span class="w"> </span>/dev/null
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="go">✔ Scaffolded shop</span>
+</span></code></pre></div>
+<p>A <em>misspelled</em> <code>--styling</code> is still an error. Defaulting when a flag is absent is
+not defaulting when it is wrong.</p>
 <h3 id="a-missing-answer-is-not-guessed">A missing answer is not guessed<a class="headerlink" href="#a-missing-answer-is-not-guessed" title="Link to this section">&para;</a></h3>
 <p>In a non-interactive environment — a script, a CI job, anything without a TTY —
 a flag you left out is an error rather than a hang or a default:</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="gp">$ </span>lattice<span class="w"> </span>my-api<span class="w"> </span>--stack<span class="w"> </span>express<span class="w"> </span>&lt;<span class="w"> </span>/dev/null
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="go">✖ &quot;Database:&quot; needs an answer, but stdin is not interactive.</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="go">  Pass it as a flag. Options: mongodb, postgres, mysql, sqlite, file, memory</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="gp">$ </span><span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="go">1</span>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gp">$ </span>lattice<span class="w"> </span>my-api<span class="w"> </span>--stack<span class="w"> </span>express<span class="w"> </span>&lt;<span class="w"> </span>/dev/null
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="go">✖ &quot;Database:&quot; needs an answer, but stdin is not interactive.</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="go">  Pass it as a flag. Options: mongodb, postgres, mysql, sqlite, file, memory</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="gp">$ </span><span class="nb">echo</span><span class="w"> </span><span class="nv">$?</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="go">1</span>
 </span></code></pre></div>
 <h2 id="lattice-doctor"><code>lattice doctor</code><a class="headerlink" href="#lattice-doctor" title="Link to this section">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>lattice<span class="w"> </span>doctor<span class="w"> </span><span class="o">[</span>path<span class="o">]</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>lattice<span class="w"> </span>doctor<span class="w"> </span><span class="o">[</span>path<span class="o">]</span>
 </span></code></pre></div>
 <p>Scores an existing project against the conventions rather than scaffolding a new
 one. A subcommand rather than a flag because it is a different verb with a
@@ -1762,26 +1800,29 @@ a folder called <code>doctor</code>, which nobody wants.</p>
 are caught by the structural gate during scaffolding, which rejects rather than
 warns. Everything that is merely worth knowing lives here.</p>
 <h2 id="examples">Examples<a class="headerlink" href="#examples" title="Link to this section">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># A REST API on Postgres, container started, dependencies installed</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>lattice<span class="w"> </span>my-api<span class="w"> </span>--stack<span class="w"> </span>express<span class="w"> </span>--database<span class="w"> </span>postgres
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># The same thing with no Docker and nothing to install</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>lattice<span class="w"> </span>my-api<span class="w"> </span>--stack<span class="w"> </span>express<span class="w"> </span>--database<span class="w"> </span>sqlite<span class="w"> </span>--no-install
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># Persist to newline-delimited JSON instead of running a database</span>
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>lattice<span class="w"> </span>notes<span class="w"> </span>--stack<span class="w"> </span>express<span class="w"> </span>--database<span class="w"> </span>file<span class="w"> </span>--format<span class="w"> </span>ndjson
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
-</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1"># Fullstack: Express at the root, typed React in client/, both installed</span>
-</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>lattice<span class="w"> </span>shop<span class="w"> </span>--stack<span class="w"> </span>express<span class="w"> </span>--database<span class="w"> </span>sqlite<span class="w"> </span>--client<span class="w"> </span>react-vite-ts
-</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
-</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="c1"># Spring Boot on port 8080 with your own package name</span>
-</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>lattice<span class="w"> </span>orders<span class="w"> </span>--stack<span class="w"> </span>spring-boot<span class="w"> </span>--port<span class="w"> </span><span class="m">8080</span><span class="w"> </span>--package<span class="w"> </span>com.example.orders
-</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
-</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="c1"># Delegate to the real tool, then add the overlay</span>
-</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>lattice<span class="w"> </span>web<span class="w"> </span>--generator<span class="w"> </span>sveltekit<span class="w"> </span>--enterprise<span class="w"> </span>--owner<span class="w"> </span>my-org
-</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>
-</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="c1"># Throwaway project for a CI job</span>
-</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>lattice<span class="w"> </span>demo<span class="w"> </span>--stack<span class="w"> </span>fastify<span class="w"> </span>--database<span class="w"> </span>memory<span class="w"> </span>--no-database-start
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># A REST API on Postgres, container started, dependencies installed</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>lattice<span class="w"> </span>my-api<span class="w"> </span>--stack<span class="w"> </span>express<span class="w"> </span>--database<span class="w"> </span>postgres
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># The same thing with no Docker and nothing to install</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>lattice<span class="w"> </span>my-api<span class="w"> </span>--stack<span class="w"> </span>express<span class="w"> </span>--database<span class="w"> </span>sqlite<span class="w"> </span>--no-install
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># A React app styled with Tailwind, mapped onto the same class contract</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>lattice<span class="w"> </span>shop<span class="w"> </span>--stack<span class="w"> </span>react-vite<span class="w"> </span>--styling<span class="w"> </span>tailwind
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1"># Persist to newline-delimited JSON instead of running a database</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>lattice<span class="w"> </span>notes<span class="w"> </span>--stack<span class="w"> </span>express<span class="w"> </span>--database<span class="w"> </span>file<span class="w"> </span>--format<span class="w"> </span>ndjson
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="c1"># Fullstack: Express at the root, typed React in client/, both installed</span>
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>lattice<span class="w"> </span>shop<span class="w"> </span>--stack<span class="w"> </span>express<span class="w"> </span>--database<span class="w"> </span>sqlite<span class="w"> </span>--client<span class="w"> </span>react-vite-ts
+</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>
+</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="c1"># Spring Boot on port 8080 with your own package name</span>
+</span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>lattice<span class="w"> </span>orders<span class="w"> </span>--stack<span class="w"> </span>spring-boot<span class="w"> </span>--port<span class="w"> </span><span class="m">8080</span><span class="w"> </span>--package<span class="w"> </span>com.example.orders
+</span><span id="__span-6-18"><a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>
+</span><span id="__span-6-19"><a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="c1"># Delegate to the real tool, then add the overlay</span>
+</span><span id="__span-6-20"><a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>lattice<span class="w"> </span>web<span class="w"> </span>--generator<span class="w"> </span>sveltekit<span class="w"> </span>--enterprise<span class="w"> </span>--owner<span class="w"> </span>my-org
+</span><span id="__span-6-21"><a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>
+</span><span id="__span-6-22"><a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="c1"># Throwaway project for a CI job</span>
+</span><span id="__span-6-23"><a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>lattice<span class="w"> </span>demo<span class="w"> </span>--stack<span class="w"> </span>fastify<span class="w"> </span>--database<span class="w"> </span>memory<span class="w"> </span>--no-database-start
 </span></code></pre></div>
 <h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Link to this section">&para;</a></h2>
 <table>

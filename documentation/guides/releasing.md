@@ -102,11 +102,12 @@ projects and run their suites.
 | --- | --- |
 | `unit.yml` | The CLI's own suite, on Node 20/22/24 × Linux/macOS/Windows. |
 | `storages.yml` | `express` **and** `fastify`, each scaffolded against **all six databases**, installed, and the generated suite run — with Postgres, MySQL and Mongo as real containers the CLI starts itself. Twelve jobs. |
-| `templates-javascript.yml` | Both React frontends, `node-cli`, and the fullstack composition — each run through **every check its own `package.json` declares**. |
+| `templates-javascript.yml` | Both React frontends, `node-cli`, and the fullstack composition — each run through **every check its own `package.json` declares** — plus each styling variant scaffolded, built, and its compiled CSS checked for the class contract. |
 | `templates-python.yml` | `fastapi` and `ml-project` install and pass pytest. |
 | `templates-java.yml` | `spring-boot` runs `mvn test`; `javafx` packages; the Android template builds a debug APK on a runner with no Gradle installed. |
 | `generators.yml` | All **28** `--generator` delegations, scaffolded with `--enterprise`, installed and built — and each asserted to have received the CI of its own build tool. |
 | `template-drift.yml` | That the templates have not drifted apart from the conventions they claim to share. |
+| `docs.yml` | This site builds with no broken links. A pull request builds it; only `main` deploys it. |
 
 `generators.yml` is the one exception to "every push and pull request". It calls
 other people's CLIs over the network, so an upstream outage would turn the repo

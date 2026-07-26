@@ -15,6 +15,7 @@ see [Non-interactive use](../getting-started/non-interactive.md).
 | `--stack <id>` | see `--list` | Which template. |
 | `--database <id>` | `mongodb` `postgres` `mysql` `sqlite` `file` `memory` | Only for stacks that persist — `express` and `fastify`. |
 | `--format <fmt>` | `json` `ndjson` `yaml` | Only with `--database file`. Default `json`. |
+| `--styling <id>` | `plain` `scss` `bootstrap` `tailwind` | Frontend stacks only. Default `plain`. |
 | `--client <id>` | `react-vite` `react-vite-ts` | Makes it [fullstack](../stacks/fullstack.md): frontend into `client/`. |
 | `--package <pkg>` | e.g. `com.example.api` | Java/Kotlin base package. Default `at.htlvillach.<name>`. |
 | `--port <n>` | default `3000` | Backend port. The client, if any, takes this plus 2000. |
@@ -44,6 +45,22 @@ The same holds for values:
 $ lattice my-api --stack expres
 ✖ Unknown stack "expres". Run with --list to see the options.
 ```
+
+### …but a flag with a safe default is not demanded
+
+`--styling` is the exception, and deliberately so. A missing `--database` is an
+error because there is no safe default: picking one silently builds the project
+against storage nobody asked for, and finding out costs a rewrite. `plain` is
+exactly what the frontend templates shipped before the choice existed, so a
+script that says nothing gets what it got before:
+
+```console
+$ lattice shop --stack react-vite < /dev/null
+✔ Scaffolded shop
+```
+
+A *misspelled* `--styling` is still an error. Defaulting when a flag is absent is
+not defaulting when it is wrong.
 
 ### A missing answer is not guessed
 
@@ -81,6 +98,9 @@ lattice my-api --stack express --database postgres
 
 # The same thing with no Docker and nothing to install
 lattice my-api --stack express --database sqlite --no-install
+
+# A React app styled with Tailwind, mapped onto the same class contract
+lattice shop --stack react-vite --styling tailwind
 
 # Persist to newline-delimited JSON instead of running a database
 lattice notes --stack express --database file --format ndjson
