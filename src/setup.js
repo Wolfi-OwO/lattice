@@ -265,8 +265,131 @@ export function install(target, packageManager, capture) {
     });
     return { ok: true };
   } catch (error) {
-    // A failed install is recoverable — the project is still on disk and the
-    // user can run the install themselves — so report it, never throw.
+    /*
+     * A failed install is recoverable — the project is still on disk and the
+     * user can run the install themselves — so report it, never throw.
+     */
+    const detail = [error.stdout, error.stderr].filter(Boolean).join('\n').trim();
+    return { ok: false, error: detail.split('\n').slice(-4).join('\n') || error.message };
+  }
+}
+
+/**
+ * Fetch a Maven project's dependencies, using the wrapper the template ships.
+ *
+ * `./mvnw` rather than `mvn`, so a globally installed Maven is neither required
+ * nor used — the wrapper downloads the exact Maven the project asks for. Only a
+ * JDK has to be present, and checkToolchain has already established that it is.
+ *
+ * `test-compile` and not `dependency:go-offline`, which is the goal built for
+ * exactly this and cannot be relied on to do it. go-offline resolves through the
+ * dependency plugin's own path, and against an already-populated `~/.m2` that
+ * path throws:
+ *
+ *   java.nio.file.AccessDeniedException: ~/.m2/repository/org/checkerframework/…
+ *
+ * Reproduced both ways rather than assumed: with a clean `-Dmaven.repo.local`
+ * it succeeds, and against a real developer's existing repository it fails —
+ * which is the machine every user is actually on. `test-compile` goes through
+ * Maven's ordinary resolution and works in both.
+ *
+ * It also earns the extra few seconds. Resolving downloads the dependencies;
+ * compiling proves they are the right ones and that the project builds, so
+ * `./mvnw spring-boot:run` is warm and already known to work. `-DskipTests`
+ * keeps it to that — running the suite is the user's call, not a scaffolder's.
+ */
+export function installMaven(target, capture) {
+  const wrapper = process.platform === 'win32' ? 'mvnw.cmd' : './mvnw';
+
+  if (!fs.existsSync(path.join(target, process.platform === 'win32' ? 'mvnw.cmd' : 'mvnw'))) {
+    return { ok: false, error: 'the project has no Maven wrapper' };
+  }
+
+  try {
+    execFileSync(wrapper, ['-B', '-q', '-DskipTests', 'test-compile'], {
+      cwd: target,
+      stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
+      encoding: 'utf8',
+      maxBuffer: NO_OUTPUT_CAP,
+      timeout: 15 * 60 * 1000,
+    });
+    return { ok: true };
+  } catch (error) {
+    const detail = [error.stdout, error.stderr].filter(Boolean).join('\n').trim();
+    return { ok: false, error: detail.split('\n').slice(-4).join('\n') || error.message };
+  }
+}
+
+/** Where a virtual environment keeps its executables, which differs on Windows. */
+function venvBin(target, name) {
+  return process.platform === 'win32'
+    ? path.join(target, '.venv', 'Scripts', `${name}.exe`)
+    : path.join(target, '.venv', 'bin', name);
+}
+
+/**
+ * Create the project's virtual environment and install into it.
+ *
+ * This used to be refused on the grounds that Python has no one obvious package
+ * manager — pip, pipx, poetry, uv and conda are all normal, and guessing wrong
+ * puts packages somewhere nobody wanted. That reasoning was about the *machine*,
+ * and it is still right about the machine. It was never right about `.venv`.
+ *
+ * A virtual environment inside the project directory is not a guess about
+ * anyone's toolchain. It is a directory in the project, made with the standard
+ * library's own `venv` module, deleted by deleting the project. Nothing outside
+ * the project is touched, which is precisely why this one is safe to do and
+ * `pip install --user` would not be.
+ *
+ * An existing `.venv` is reused rather than rebuilt. Someone who has already set
+ * one up — with uv, with a different interpreter, with extra packages in it — has
+ * expressed a preference, and blowing it away to assert ours would be the exact
+ * overreach this function is otherwise avoiding.
+ */
+export function installPython(target, python, capture) {
+  const stdio = capture ? ['ignore', 'pipe', 'pipe'] : 'inherit';
+  const reused = fs.existsSync(path.join(target, '.venv'));
+
+  /*
+   * requirements-dev.txt is the one to want: it installs the runtime
+   * requirements plus the test tooling, so `pytest` works without a second step.
+   */
+  const requirements = ['requirements-dev.txt', 'requirements.txt'].find((name) =>
+    fs.existsSync(path.join(target, name)),
+  );
+  if (!requirements) return { ok: false, error: 'the project has no requirements file' };
+
+  try {
+    if (!reused) {
+      execFileSync(python, ['-m', 'venv', '.venv'], {
+        cwd: target,
+        stdio,
+        encoding: 'utf8',
+        maxBuffer: NO_OUTPUT_CAP,
+        timeout: 5 * 60 * 1000,
+      });
+    }
+
+    const pip = venvBin(target, 'pip');
+    if (!fs.existsSync(pip)) {
+      return {
+        ok: false,
+        error: reused
+          ? 'the existing .venv has no pip — remove it and run the steps below'
+          : 'python -m venv produced no pip (is the venv module installed?)',
+      };
+    }
+
+    execFileSync(pip, ['install', '-r', requirements], {
+      cwd: target,
+      stdio,
+      encoding: 'utf8',
+      maxBuffer: NO_OUTPUT_CAP,
+      timeout: 20 * 60 * 1000,
+    });
+
+    return { ok: true, reused, requirements };
+  } catch (error) {
     const detail = [error.stdout, error.stderr].filter(Boolean).join('\n').trim();
     return { ok: false, error: detail.split('\n').slice(-4).join('\n') || error.message };
   }
@@ -386,10 +509,12 @@ const TOOLCHAIN_MARKERS = [
   ['go', (names) => names.includes('go.mod')],
   ['swift', (names) => names.includes('Package.swift')],
   ['dart', (names) => names.includes('pubspec.yaml')],
-  // These two sit above node deliberately. A Laravel app ships a package.json for
-  // Vite, and a Rails app ships one for jsbundling — both would be detected as Node
-  // projects and handed an `npm ci` pipeline, which is the original bug wearing a
-  // different hat. The composer.json / Gemfile is the one that names the real owner.
+  /*
+   * These two sit above node deliberately. A Laravel app ships a package.json for
+   * Vite, and a Rails app ships one for jsbundling — both would be detected as Node
+   * projects and handed an `npm ci` pipeline, which is the original bug wearing a
+   * different hat. The composer.json / Gemfile is the one that names the real owner.
+   */
   ['php', (names) => names.includes('composer.json')],
   ['ruby', (names) => names.includes('Gemfile')],
   ['python', (names) => ['pyproject.toml', 'requirements.txt', 'setup.py'].some((n) => names.includes(n))],
@@ -424,14 +549,18 @@ export function detectToolchain(target) {
 export function overlayEnterprise(sourceDir, target, vars) {
   const written = [];
 
-  // README.md is composed, not copied, so it is held back from the walk entirely and
-  // written at the end — the directory table it contains has to describe the tree
-  // *after* the overlay has added docs/, todo/ and organizational/, not before.
+  /*
+   * README.md is composed, not copied, so it is held back from the walk entirely and
+   * written at the end — the directory table it contains has to describe the tree
+   * *after* the overlay has added docs/, todo/ and organizational/, not before.
+   */
   const HELD_BACK = new Set(['README.md']);
 
-  // The toolchain is read before anything is written, so the marker it keys off is
-  // the project's own (package.json, go.mod, pom.xml…) and never a file the overlay
-  // has just added.
+  /*
+   * The toolchain is read before anything is written, so the marker it keys off is
+   * the project's own (package.json, go.mod, pom.xml…) and never a file the overlay
+   * has just added.
+   */
   const toolchain = detectToolchain(target);
 
   const walk = (dir, relParts) => {
@@ -463,16 +592,20 @@ export function overlayEnterprise(sourceDir, target, vars) {
 
   walk(sourceDir, []);
 
-  // Layer two. `sourceDir` is overlays/enterprise, so its sibling holds the
-  // toolchain layers; deriving the path keeps the caller passing one directory.
+  /*
+   * Layer two. `sourceDir` is overlays/enterprise, so its sibling holds the
+   * toolchain layers; deriving the path keeps the caller passing one directory.
+   */
   if (toolchain) {
     const toolchainDir = path.join(path.dirname(sourceDir), 'toolchain', toolchain);
     if (fs.existsSync(toolchainDir)) walk(toolchainDir, []);
   }
 
-  // The README, last, with the tree it describes now complete. The template's own
-  // README is kept below the header rather than overwritten — it is the only place
-  // that documents this project's actual layout and the rules that hold it together.
+  /*
+   * The README, last, with the tree it describes now complete. The template's own
+   * README is kept below the header rather than overwritten — it is the only place
+   * that documents this project's actual layout and the rules that hold it together.
+   */
   const readmePath = path.join(target, 'README.md');
   const existing = fs.existsSync(readmePath) ? fs.readFileSync(readmePath, 'utf8') : '';
   const header = render(fs.readFileSync(path.join(sourceDir, 'README.md'), 'utf8'), {

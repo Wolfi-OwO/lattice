@@ -15,6 +15,23 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ### Added
 
+- **Maven and Python projects install themselves too.** Only the npm stacks ever did.
+  A scaffolded `spring-boot` or `fastapi` printed its install commands and left the
+  user to run them, which meant the promise the whole tool is built on — *the project
+  you land in boots* — held for JavaScript and was a to-do list everywhere else.
+  `./mvnw -DskipTests test-compile` and a project-local `.venv` now run at scaffold
+  time, so `./mvnw spring-boot:run` and `uvicorn app.main:app --reload` work
+  immediately. Verified end to end: a scaffolded FastAPI project's own suite passes
+  from its venv without a single manual step.
+- **A runtime check that reads the project rather than a constant.** lattice installs
+  *dependencies*; it does not install runtimes, and `src/toolchain.js` is what lets it
+  tell the difference. It detects the installed JDK or Python, compares it against the
+  floor the template itself declares — `<java.version>` in the pom, `requires-python`
+  in the pyproject — and if the runtime is missing or too old it says so, naming both
+  versions, and leaves the project complete. Downloading a JDK would change the
+  machine rather than the directory, and would need a system package manager lattice
+  would have to guess at.
+
 - **A styling choice for the React templates — `--styling plain|scss|bootstrap|tailwind`.**
   The frontends shipped one hand-written stylesheet and no way to ask for anything
   else, so wanting Tailwind meant installing it, wiring the build and rewriting the
@@ -47,6 +64,23 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
   workflow rebuilds for every file the site mirrors, that no navigation entry names a
   page that does not exist, that a pull request builds but never deploys — none of
   which needs MkDocs installed to run.
+
+### Changed
+
+- **Python installs into `.venv`, and an existing one is reused.** The old refusal
+  reasoned that Python has no one obvious package manager — pip, pipx, poetry, uv and
+  conda are all normal — and that is still right about the *machine*. It was never
+  right about `.venv`: a virtual environment inside the project is a directory in the
+  project, made with the standard library's own `venv`, deleted by deleting the
+  project. A `.venv` that is already there is reused rather than rebuilt.
+- **The next steps now describe the project that exists.** A template can declare two
+  sequences and `nextSteps()` picks between them, so a project whose venv lattice just
+  built is not told to build one. Both the CLI and `scripts/print-next-steps.js` call
+  that one function — CI runs exactly what the user is shown, and a second copy of the
+  rule could not have been kept honest.
+- **Android is deliberately still not auto-installed.** Its build needs the Android SDK
+  and accepted licences, and a `./gradlew` that fails on a missing SDK is a worse first
+  impression than one that was never run.
 
 ## [1.3.0] - 2026-07-24
 

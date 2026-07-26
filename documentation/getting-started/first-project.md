@@ -65,8 +65,21 @@ Three things, all of which are normally left to you:
 
 ### ✔ Installed dependencies
 
-With the project's own package manager — `npm`, `maven`, `pip` — not with a
-hardcoded one.
+With the project's own package manager — `npm`, `./mvnw`, `pip` into a project
+`.venv` — not with a hardcoded one.
+
+This step **installs dependencies and never a runtime**. Before it runs, lattice
+checks that the JDK or Python the project declares is present and new enough,
+reading the floor out of the project's own `pom.xml` or `pyproject.toml`. If it
+is not, nothing is attempted and the reason names both versions:
+
+```
+· Skipped dependency install — Java 11.0.22 is installed, but this project
+  needs 17 or newer.
+```
+
+Downloading a JDK would change the machine rather than the directory, and would
+need a system package manager lattice would have to guess at.
 
 This step is stricter than it looks. `--database sqlite` used to produce a project
 that died on its first command with `Could not locate the bindings file`:

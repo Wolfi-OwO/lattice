@@ -85,8 +85,10 @@ export const TEMPLATES = [
     dir: 'backend/javascript/fastify',
     hint: 'Schema-first REST API, JSON Schema validation, JWT, node:test',
     vars: ['port'],
-    // Fastify reuses Express's storage seam verbatim — same six adapters, same
-    // repository interface — so it takes the same --database choice.
+    /*
+     * Fastify reuses Express's storage seam verbatim — same six adapters, same
+     * repository interface — so it takes the same --database choice.
+     */
     storage: true,
     installer: 'npm',
     env: (v) => ({
@@ -120,15 +122,22 @@ export const TEMPLATES = [
     hint: 'Async REST API, Pydantic settings, pytest',
     vars: ['port'],
     installer: 'python',
-    // The venv is created here, not assumed. lattice does not auto-install for
-    // Python — it deliberately refuses to guess at someone's toolchain — so a step
-    // that activates a .venv nobody made sends the user straight into
-    // "no such file or directory". These match the template's README line for line.
+    /*
+     * Two sets, because there are two situations and printing one for the other
+     * is how a "next step" becomes a lie.
+     *
+     * `post` assumes nothing: it creates the venv rather than activating one
+     * nobody made, which is what a reader without a usable Python 3.12 needs.
+     * `postInstalled` is printed only when lattice really did build the venv and
+     * install into it — telling someone to re-run an install that already
+     * finished is the same wasted minute as not installing at all.
+     */
     post: [
       'python -m venv .venv && source .venv/bin/activate',
       'pip install -r requirements-dev.txt',
       'uvicorn app.main:app --reload',
     ],
+    postInstalled: ['source .venv/bin/activate', 'uvicorn app.main:app --reload'],
   },
 
   // --------------------------------------------------------------- frontend
@@ -140,8 +149,10 @@ export const TEMPLATES = [
     frameworkLabel: 'React 19 + Vite',
     dir: 'frontend/javascript/react-vite',
     hint: 'react-router, feature folders, API client, .env proxy',
-    // `styling` is to a frontend what `storage` is to a backend: the template
-    // ships every variant and the scaffold keeps one. See src/styling.js.
+    /*
+     * `styling` is to a frontend what `storage` is to a backend: the template
+     * ships every variant and the scaffold keeps one. See src/styling.js.
+     */
     styling: true,
     installer: 'npm',
     post: ['npm run dev'],
@@ -214,6 +225,7 @@ export const TEMPLATES = [
       'pip install -r requirements-dev.txt',
       'jupyter lab',
     ],
+    postInstalled: ['source .venv/bin/activate', 'jupyter lab'],
   },
 ];
 
@@ -243,4 +255,19 @@ export function frameworksFor(category, language) {
 
 export function findTemplate(framework) {
   return TEMPLATES.find((t) => t.framework === framework);
+}
+
+/**
+ * The steps to print after scaffolding.
+ *
+ * A template may describe the same project two ways — `postInstalled` for one
+ * whose dependencies are in place, `post` for one that still needs them — and
+ * choosing between them is a decision two callers have to agree on: the CLI,
+ * which prints them, and scripts/print-next-steps.js, which exists so CI can run
+ * exactly what was printed. Two copies of this rule would be two copies that can
+ * disagree, and the disagreement would be invisible: CI would go green running a
+ * sequence no user is ever shown.
+ */
+export function nextSteps(template, installed) {
+  return (installed && template.postInstalled) || template.post || [];
 }
