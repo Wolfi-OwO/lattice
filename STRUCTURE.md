@@ -238,7 +238,9 @@ Everything here was actually run, not just written:
 
 - `express` — scaffolded, installed and tested against **all six storages**
   (MongoDB, PostgreSQL, MySQL, SQLite, files as JSON/NDJSON/YAML, in-memory):
-  32 Mocha tests green (users and products) in all eight combinations, with the
+  32 Mocha tests green (users and products) in all eight combinations — five
+  databases plus the file adapter's three formats, which is why the count here is
+  eight where CI's matrix is twelve (two backends against six databases) — with the
   Postgres, MySQL and Mongo runs hitting real containers that the CLI started
   itself. The server was booted and the CRUD surface exercised over HTTP (create,
   paginate, validation errors, 401 guard).

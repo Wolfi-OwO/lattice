@@ -87,7 +87,8 @@ each other's rows.
 
 Every option implements the same six-method repository, so the routes, the
 controllers, the services and **the test suite are identical** whichever you
-pick. All eight combinations are verified green.
+pick. All twelve combinations — two backends against six databases — are verified
+green on every push.
 
 ## Where the database lives
 
@@ -108,6 +109,33 @@ adapter file, and no service or controller changes.
 
 Adding a seventh database is one entry in `src/storage.js` plus one adapter file.
 
+## Choosing a look
+
+The React stacks take `--styling`, and it works the same way the database does:
+the template ships every variant and the scaffold keeps exactly one.
+
+```bash
+lattice shop --stack react-vite    --styling tailwind
+lattice shop --stack react-vite-ts --styling bootstrap
+```
+
+| | Adds | Touches `vite.config.js` |
+| --- | --- | --- |
+| `plain` (default) | nothing | no |
+| `scss` | `sass` (dev) | no |
+| `bootstrap` | `bootstrap`, `sass` (dev) | no |
+| `tailwind` | `tailwindcss`, `@tailwindcss/vite` (dev) | yes |
+
+What makes the four interchangeable is a class-name contract — `.app__header`,
+`.app__nav`, `.table`, `.pager`, `.muted`, `.error`. The components are written
+against those names and never against a framework's, so choosing Bootstrap
+changes the stylesheet and nothing else. Plain and SCSS compile to byte-identical
+CSS; Bootstrap and Tailwind are themed to match rather than left at their
+defaults.
+
+Sass and Tailwind land in `devDependencies`. They are compile-time tools and have
+no business in a production install.
+
 ## Commands
 
 ```bash
@@ -116,6 +144,7 @@ lattice [name] [options]
   --stack <id>          see --list
   --database <id>       mongodb | postgres | mysql | sqlite | file | memory
   --format <fmt>        json | ndjson | yaml    (only with --database file)
+  --styling <id>        plain | scss | bootstrap | tailwind   (frontend stacks)
   --client <id>         frontend for a fullstack project, placed in client/
   --port <n>            backend port (default 3000)
   --generator <id>      scaffold with a framework's own tool instead of a stack
@@ -156,7 +185,7 @@ and not verified by lattice.
 
 | Language | Built-in stack | Generator |
 | --- | --- | --- |
-| JavaScript / TypeScript | `express`, `fastify`, `node-cli`, `react-vite`, `react-vite-ts` | Vite ×9, Next, Nuxt, SvelteKit, Astro, Remix, Vue, Expo |
+| JavaScript / TypeScript | `express`, `fastify`, `node-cli`, `react-vite`, `react-vite-ts` | Vite ×8, Next ×2, Vue, Nuxt, SvelteKit, Astro, React Router, Expo, Angular |
 | Java | `spring-boot`, `javafx` | — |
 | Kotlin / Android | `android-compose` | — |
 | Python | `fastapi`, `ml-project` | — |
@@ -219,7 +248,7 @@ which would kill the graceful shutdown mid-drain.
 A scaffolded app also survives its database going away: it reports `storage:
 down`, keeps running, and recovers on its own when the database comes back.
 
-## Two things it does that most scaffolders don't
+## Three things it does that most scaffolders don't
 
 **It picks a free port.** If something already listens on 27017, the Mongo
 container is published on 27018 and `.env` is written to match. A scaffolder
@@ -229,6 +258,15 @@ your new project to a database that was already running there.
 **It waits for the database to be healthy**, not merely started. `docker compose
 up -d` returns while Postgres is still initialising, so the next command you run
 dies on a refused connection and it looks like the scaffold is broken.
+
+**It installs dependencies, never runtimes.** npm, `./mvnw` and a project-local
+`.venv` all run at scaffold time, so a Spring Boot or FastAPI project boots on
+its first command too — not just the JavaScript ones. But lattice will not
+download a JDK or a Python for you: that changes the machine rather than the
+directory, and needs a system package manager it would have to guess at. Instead
+it checks what is installed against the floor the project itself declares
+(`<java.version>` in the pom, `requires-python` in the pyproject) and, if it is
+missing or too old, says so with both versions and leaves the project complete.
 
 ## Layout
 
@@ -258,10 +296,12 @@ scaffolder — a scaffolder cannot be tested by testing the scaffolder — they
 | ------------------------- | --------------------------------------------------------------- |
 | `unit.yml`                | The CLI's own suite, on Node 20/22/24 × Linux/macOS/Windows.     |
 | `storages.yml`            | `express` **and** `fastify`, each scaffolded against **all six databases**, installed, and the generated suite run — with Postgres, MySQL and Mongo as real containers the CLI starts itself. Twelve jobs. |
-| `templates-javascript.yml`| `react-vite`, `react-vite-ts` build; `node-cli` tests pass.      |
+| `templates-javascript.yml`| Every JS/TS template, plus the fullstack composition, run through **every check its own `package.json` declares** — lint, build, typecheck, formatting. The four styling variants are each scaffolded and built, and their compiled CSS checked for the class contract. |
 | `templates-python.yml`    | `fastapi` and `ml-project` install and pass pytest.              |
-| `templates-java.yml`      | `spring-boot` runs `mvn test`; `javafx` packages.                |
-| `generators.yml`          | All **24** `--generator` delegations, scaffolded with `--enterprise`, installed and built — and each asserted to have received the CI of its own build tool. |
+| `templates-java.yml`      | `spring-boot` runs `mvn test`; `javafx` packages; `android-compose` builds a debug APK on a runner with no Gradle installed. |
+| `generators.yml`          | All **28** `--generator` delegations, scaffolded with `--enterprise`, installed and built — and each asserted to have received the CI of its own build tool. |
+| `template-drift.yml`      | That the templates have not drifted from the conventions they claim to share. |
+| `docs.yml`                | The documentation site builds with no broken links, and deploys to Pages from `main` only. |
 
 `release.yml` reuses `unit.yml` rather than restating the matrix, so the suite
 that guards a publish is the same suite that guards a pull request — by

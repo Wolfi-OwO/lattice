@@ -1736,8 +1736,17 @@ than refuses.</p>
 <li><strong>A <code>docker-compose.yml</code> is written</strong> for the database you chose, and only for it.</li>
 </ul>
 <h3 id="installed-dependencies">✔ Installed dependencies<a class="headerlink" href="#installed-dependencies" title="Link to this section">&para;</a></h3>
-<p>With the project's own package manager — <code>npm</code>, <code>maven</code>, <code>pip</code> — not with a
-hardcoded one.</p>
+<p>With the project's own package manager — <code>npm</code>, <code>./mvnw</code>, <code>pip</code> into a project
+<code>.venv</code> — not with a hardcoded one.</p>
+<p>This step <strong>installs dependencies and never a runtime</strong>. Before it runs, lattice
+checks that the JDK or Python the project declares is present and new enough,
+reading the floor out of the project's own <code>pom.xml</code> or <code>pyproject.toml</code>. If it
+is not, nothing is attempted and the reason names both versions:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>· Skipped dependency install — Java 11.0.22 is installed, but this project
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  needs 17 or newer.
+</span></code></pre></div>
+<p>Downloading a JDK would change the machine rather than the directory, and would
+need a system package manager lattice would have to guess at.</p>
 <p>This step is stricter than it looks. <code>--database sqlite</code> used to produce a project
 that died on its first command with <code>Could not locate the bindings file</code>:
 better-sqlite3 compiles a native binding during install, npm silently skipped that
@@ -1757,11 +1766,11 @@ until it passes.</p>
 <p>Skip the whole step with <code>--no-database-start</code>, which still writes the compose
 file and the <code>.env</code>.</p>
 <h2 id="now-run-it">Now run it<a class="headerlink" href="#now-run-it" title="Link to this section">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">cd</span><span class="w"> </span>my-api
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>npm<span class="w"> </span>run<span class="w"> </span>dev
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">cd</span><span class="w"> </span>my-api
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>npm<span class="w"> </span>run<span class="w"> </span>dev
 </span></code></pre></div>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>curl<span class="w"> </span>localhost:3000/api/health/readiness
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>npm<span class="w"> </span><span class="nb">test</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>curl<span class="w"> </span>localhost:3000/api/health/readiness
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>npm<span class="w"> </span><span class="nb">test</span>
 </span></code></pre></div>
 <p>The suite passes on a project you have not touched. That matters more than it
 sounds: it means the tests are testing the template rather than describing it,
@@ -1769,18 +1778,18 @@ and <a href="../../guides/releasing/#what-ci-actually-proves">CI runs exactly th
 scaffolding real projects and running their suites — because a scaffolder cannot
 be tested by testing the scaffolder.</p>
 <h2 id="what-you-got">What you got<a class="headerlink" href="#what-you-got" title="Link to this section">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>src/
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  api/users/          routes → controller → service     (never touches a driver)
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  api/products/       the second domain, proving the first was not a special case
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  config/             environment, parsed and validated once at boot
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  database/
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    index.js          the seam: database.users, connectDatabase(), ping()
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    serialize.js      toPublicUser — the reason passwordHash cannot leak
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    adapters/
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>      postgres.js     ← exactly one of these survives scaffolding
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  middleware/         auth, error envelope, request logging
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  models/             one flat file per domain, storage-neutral
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>tests/
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>src/
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  api/users/          routes → controller → service     (never touches a driver)
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  api/products/       the second domain, proving the first was not a special case
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>  config/             environment, parsed and validated once at boot
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>  database/
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    index.js          the seam: database.users, connectDatabase(), ping()
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    serialize.js      toPublicUser — the reason passwordHash cannot leak
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    adapters/
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>      postgres.js     ← exactly one of these survives scaffolding
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>  middleware/         auth, error envelope, request logging
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>  models/             one flat file per domain, storage-neutral
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>tests/
 </span></code></pre></div>
 <p>Everything above <code>src/database/</code> talks to <code>database.users</code> and imports no driver,
 which is enforceable by grep: no <code>mongoose</code> / <code>pg</code> / <code>mysql2</code> import exists

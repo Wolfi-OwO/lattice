@@ -1590,14 +1590,19 @@ the tool people actually run is whichever version they installed once.</p>
 <td>Only to <em>start</em> the container. Skip with <code>--no-database-start</code>.</td>
 </tr>
 <tr>
-<td><strong>Java 21 + Maven</strong></td>
+<td><strong>Java ≥ 17</strong></td>
 <td><code>spring-boot</code>, <code>javafx</code></td>
-<td>The templates ship a Maven wrapper, so <code>./mvnw</code> works without Maven installed.</td>
+<td>Maven itself is <em>not</em> needed — the templates ship a wrapper, so <code>./mvnw</code> fetches it.</td>
 </tr>
 <tr>
-<td><strong>Python ≥ 3.10</strong></td>
+<td><strong>Python ≥ 3.12</strong></td>
 <td><code>fastapi</code>, <code>ml-project</code></td>
-<td>lattice does not create the venv for you — see below.</td>
+<td>Used to build a <code>.venv</code> inside the project.</td>
+</tr>
+<tr>
+<td><strong>Android SDK</strong></td>
+<td><code>android-compose</code></td>
+<td>The one stack not auto-installed — see below.</td>
 </tr>
 <tr>
 <td><strong>The framework's own CLI</strong></td>
@@ -1608,17 +1613,31 @@ the tool people actually run is whichever version they installed once.</p>
 </table>
 <p>Nothing on that list is needed for a stack you are not using. Scaffolding
 <code>node-cli</code> needs Node and nothing else.</p>
+<p>Those two version floors are not lattice's opinion — they are read out of the
+project it is about to create, from <code>&lt;java.version&gt;</code> in the <code>pom.xml</code> and
+<code>requires-python</code> in the <code>pyproject.toml</code>. If a template raises its floor, the
+check raises with it.</p>
 <div class="admonition note">
-<p class="admonition-title">Python projects are not auto-installed</p>
-<p>Every other stack has one obvious package manager, so lattice runs it.
-Python does not: <code>pip</code>, <code>pipx</code>, <code>poetry</code>, <code>uv</code>, <code>conda</code> and a bare venv are
-all normal, and guessing wrong leaves packages somewhere you did not want
-them. So the Python templates print the three commands instead of running
-them, and the commands they print create the venv rather than assuming one:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements-dev.txt
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>uvicorn<span class="w"> </span>app.main:app<span class="w"> </span>--reload
+<p class="admonition-title">lattice installs dependencies, never runtimes</p>
+<p>If the JDK or Python a project needs is already there and new enough, lattice
+installs that project's dependencies and it runs on the first command. If it
+is missing or too old, lattice says so — naming both the version found and
+the version needed — and leaves the project complete:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>· Skipped dependency install — Java 11.0.22 is installed, but this project
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  needs 17 or newer.
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  The project is complete; run the steps below once that is sorted.
 </span></code></pre></div>
+<p>It will not download a JDK or a Python for you. That changes the machine
+rather than the directory, and it needs a system package manager lattice
+would have to guess at — where guessing wrong leaves a second Python nobody
+wanted.</p>
+<p>Python goes into a <strong><code>.venv</code> inside the project</strong>, built with the standard
+library's own <code>venv</code> module. Nothing outside the project is touched, which is
+exactly why this is safe to do and <code>pip install --user</code> would not be. An
+existing <code>.venv</code> is <strong>reused, not rebuilt</strong>: someone who already made one with
+<code>uv</code> or a different interpreter has expressed a preference.</p>
+<p>Android is the one stack still left alone. Its build needs the Android SDK
+and accepted licences, and arranging those is not a scaffolder's business.</p>
 </div>
 <h2 id="installing-it-globally-anyway">Installing it globally anyway<a class="headerlink" href="#installing-it-globally-anyway" title="Link to this section">&para;</a></h2>
 <p>If you scaffold often enough that the download is annoying:</p>

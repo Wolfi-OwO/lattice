@@ -635,6 +635,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#choosing-a-look" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing a look
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#layout" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1513,6 +1524,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#choosing-a-look" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing a look
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#layout" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1608,7 +1630,7 @@
 <tr>
 <td><code>react-vite</code></td>
 <td>JavaScript</td>
-<td>React + Vite — react-router, an API client, a dev proxy</td>
+<td>React 19 + Vite — react-router, an API client, a dev proxy</td>
 </tr>
 <tr>
 <td><code>react-vite-ts</code></td>
@@ -1624,26 +1646,84 @@
 same router — the TypeScript one adds types and changes nothing else. That is
 what makes "should this be TypeScript" a decision you make at scaffold time
 rather than one you have to live with.</p>
+<h2 id="choosing-a-look">Choosing a look<a class="headerlink" href="#choosing-a-look" title="Link to this section">&para;</a></h2>
+<p><code>--styling</code> is to a frontend what <a href="../../guides/choosing-a-database/"><code>--database</code></a>
+is to a backend: the template ships every variant and the scaffold keeps exactly
+one.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>lattice<span class="w"> </span>shop<span class="w"> </span>--stack<span class="w"> </span>react-vite<span class="w">    </span>--styling<span class="w"> </span>tailwind
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>lattice<span class="w"> </span>shop<span class="w"> </span>--stack<span class="w"> </span>react-vite-ts<span class="w"> </span>--styling<span class="w"> </span>bootstrap
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Adds</th>
+<th>Touches <code>vite.config.js</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>plain</code> (default)</td>
+<td>nothing</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>scss</code></td>
+<td><code>sass</code> (dev)</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>bootstrap</code></td>
+<td><code>bootstrap</code>, <code>sass</code> (dev)</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>tailwind</code></td>
+<td><code>tailwindcss</code>, <code>@tailwindcss/vite</code> (dev)</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table>
+<p>What makes the four interchangeable is a <strong>class-name contract</strong>:</p>
+<p><code>.app__header</code> · <code>.app__brand</code> · <code>.app__nav</code> · <code>.app__main</code> · <code>.table</code> ·
+<code>.pager</code> · <code>.muted</code> · <code>.error</code></p>
+<p>The components are written against those names and never against a framework's,
+so choosing Bootstrap changes the stylesheet and nothing else. Plain and SCSS
+compile to byte-identical CSS; Bootstrap and Tailwind are themed to match the
+others rather than left at their defaults.</p>
+<p>The variants you did not choose are <strong>deleted</strong>, not left unimported — a stray
+<code>bootstrap.scss</code> stops compiling the moment anyone imports it, because Bootstrap
+is only installed if it was chosen. What ships is one <code>src/styles.css</code> (or
+<code>styles.scss</code>), so the project reads as though it had only ever had one look.</p>
+<p>Sass and Tailwind land in <code>devDependencies</code>. They are compile-time tools, and a
+CSS compiler has no business in a production install.</p>
+<div class="admonition note">
+<p class="admonition-title">Only Tailwind touches the build</p>
+<p>The other three leave <code>vite.config.js</code> reading exactly as though the feature
+did not exist. That is worth more than it sounds: a scaffolder that adds
+machinery for a choice you did not make is a scaffolder whose output you have
+to read before you can trust.</p>
+</div>
 <h2 id="layout">Layout<a class="headerlink" href="#layout" title="Link to this section">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>src/
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  lib/api.js          the single place that knows how to talk to the backend
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  hooks/useUsers.js   data fetching, one hook per resource
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  pages/              one component per route
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  layouts/            RootLayout — the shell every page renders inside
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  components/         the pieces used by more than one page
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  router.jsx          react-router configuration
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  main.jsx
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>src/
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  lib/api.js          the single place that knows how to talk to the backend
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  hooks/useUsers.js   data fetching, one hook per resource
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  pages/              one component per route
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  layouts/            RootLayout — the shell every page renders inside
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  components/         the pieces used by more than one page
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>  router.jsx          react-router configuration
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  main.jsx
 </span></code></pre></div>
 <h2 id="talking-to-a-backend">Talking to a backend<a class="headerlink" href="#talking-to-a-backend" title="Link to this section">&para;</a></h2>
 <p><code>src/lib/api.js</code> is the only file that knows where the API lives, and the only
 one that calls <code>fetch</code>. It understands the backends'
 <a href="../backend/#the-error-envelope">shared error envelope</a> and turns it into a thrown
 <code>ApiError</code> carrying the status, the message and the validation details:</p>
-<div class="language-js highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">try</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="k">await</span><span class="w"> </span><span class="nx">api</span><span class="p">.</span><span class="nx">post</span><span class="p">(</span><span class="s1">&#39;/users&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">email</span><span class="p">,</span><span class="w"> </span><span class="nx">password</span><span class="w"> </span><span class="p">});</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="nx">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="c1">// error.status, error.message, error.details — from the envelope</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p">}</span>
+<div class="language-js highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">try</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="k">await</span><span class="w"> </span><span class="nx">api</span><span class="p">.</span><span class="nx">post</span><span class="p">(</span><span class="s1">&#39;/users&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">email</span><span class="p">,</span><span class="w"> </span><span class="nx">password</span><span class="w"> </span><span class="p">});</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="nx">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="c1">// error.status, error.message, error.details — from the envelope</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">}</span>
 </span></code></pre></div>
 <p>That is the part that is easy to skip and expensive to skip. <code>fetch</code> does not
 reject on a <code>4xx</code>, so a component that awaits a bare <code>fetch</code> treats a rejected
@@ -1652,9 +1732,9 @@ function that checks.</p>
 <h3 id="no-cors-no-hardcoded-url">No CORS, no hardcoded URL<a class="headerlink" href="#no-cors-no-hardcoded-url" title="Link to this section">&para;</a></h3>
 <p>In development, Vite proxies <code>/api</code> to the backend, so the browser only ever
 talks to one origin:</p>
-<div class="language-js highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">proxy</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="s1">&#39;/api&#39;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">target</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;http://localhost:3000&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">changeOrigin</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">},</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="p">}</span>
+<div class="language-js highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nx">proxy</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="s1">&#39;/api&#39;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">target</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;http://localhost:3000&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">changeOrigin</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">},</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="p">}</span>
 </span></code></pre></div>
 <p>The base URL stays relative, so nothing absolute is compiled into the bundle. For
 production, where the API may live on another origin, <code>VITE_API_URL</code> overrides
@@ -1669,7 +1749,10 @@ from the generated project's own <code>package.json</code>, so a script added to
 is picked up automatically instead of being written down in two places and
 drifting.</p>
 <p>In practice that is <code>lint</code>, <code>build</code> and <code>prettier --check</code> for both, plus
-<code>typecheck</code> for the TypeScript one. All of those had existed in the templates
+<code>typecheck</code> for the TypeScript one. Each styling variant is scaffolded and built
+separately on top of that, and its <strong>compiled</strong> CSS grepped for the class
+contract — a Tailwind run that matched nothing would still produce a stylesheet
+and still go green otherwise. All of those had existed in the templates
 long before anything ran them: the workflow used to run <code>npm run build</code> for
 <code>react-vite</code> and nothing else, the TypeScript template's <code>typecheck</code> had never
 run at all, and the first <code>prettier --check</code> against a scaffolded project found

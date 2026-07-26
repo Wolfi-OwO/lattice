@@ -1691,7 +1691,7 @@ projects and run their suites.</p>
 </tr>
 <tr>
 <td><code>templates-javascript.yml</code></td>
-<td>Both React frontends, <code>node-cli</code>, and the fullstack composition — each run through <strong>every check its own <code>package.json</code> declares</strong>.</td>
+<td>Both React frontends, <code>node-cli</code>, and the fullstack composition — each run through <strong>every check its own <code>package.json</code> declares</strong> — plus each styling variant scaffolded, built, and its compiled CSS checked for the class contract.</td>
 </tr>
 <tr>
 <td><code>templates-python.yml</code></td>
@@ -1708,6 +1708,10 @@ projects and run their suites.</p>
 <tr>
 <td><code>template-drift.yml</code></td>
 <td>That the templates have not drifted apart from the conventions they claim to share.</td>
+</tr>
+<tr>
+<td><code>docs.yml</code></td>
+<td>This site builds with no broken links. A pull request builds it; only <code>main</code> deploys it.</td>
 </tr>
 </tbody>
 </table>
