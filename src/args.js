@@ -34,6 +34,7 @@ export const VALUE_FLAGS = new Set([
   'database',
   'db', // alias for --database
   'format',
+  'styling', // frontend look: plain | scss | bootstrap | tailwind
   'client',
   'package',
   'port',

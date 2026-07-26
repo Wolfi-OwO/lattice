@@ -29,6 +29,15 @@ export class PromptCancelled extends Error {
 const isTTY = () => process.stdin.isTTY && process.stdout.isTTY;
 
 /**
+ * Whether a question can be asked at all.
+ *
+ * Exported so a caller with a defensible default can use it instead of the
+ * prompt — see resolveStyling in bin/lattice.js. Most choices have no such
+ * default and must fail loudly instead; that is what `unanswerable` below is for.
+ */
+export const isInteractive = () => Boolean(isTTY());
+
+/**
  * Latched once stdin reaches EOF with a question still unanswered.
  *
  * This is not bookkeeping — it is the fix for a hang. A readline interface

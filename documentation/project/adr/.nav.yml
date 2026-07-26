@@ -1,0 +1,6 @@
+title: Architecture decisions
+nav:
+  - index.md
+  - 0001-zero-dependency-core.md
+  - 0002-not-an-enterprise-layered-app.md
+  - 0003-external-generators-are-opt-in.md

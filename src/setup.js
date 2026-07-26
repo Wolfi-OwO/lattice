@@ -67,6 +67,46 @@ export function pruneAdapters(target, keep) {
   return removed;
 }
 
+// ------------------------------------------------------------------ styling
+
+/**
+ * The frontend equivalent of pruneAdapters: the template ships src/styles/ with
+ * one file per look, and the project keeps exactly one — promoted out of that
+ * directory to the name main.jsx imports, after which the directory is gone.
+ *
+ * Promoting rather than leaving it in place is what keeps the generated project
+ * honest. A project that still had a `styles/` folder with three unused files in
+ * it would invite the reader to wonder which one is live, and a stray
+ * `bootstrap.scss` would fail to compile the moment anyone imported it, because
+ * Bootstrap is not installed unless it was chosen.
+ *
+ * @param {string} target  project root
+ * @param {string} source  basename to keep, e.g. 'tailwind.css'
+ * @param {string} entry   what to call it, e.g. 'styles.css'
+ * @returns {string[]}     basenames removed
+ */
+export function pruneStyles(target, source, entry) {
+  const dir = path.join(target, 'src', 'styles');
+  if (!fs.existsSync(dir)) return [];
+
+  const kept = path.join(dir, source);
+  if (!fs.existsSync(kept)) {
+    throw new Error(`Styling variant "${source}" is missing from the template.`);
+  }
+
+  const removed = [];
+  for (const file of fs.readdirSync(dir)) {
+    if (file === source) continue;
+    fs.rmSync(path.join(dir, file));
+    removed.push(file);
+  }
+
+  fs.renameSync(kept, path.join(target, 'src', entry));
+  fs.rmdirSync(dir);
+
+  return removed;
+}
+
 // ------------------------------------------------------------ package.json
 
 /** Merge dependencies into an existing package.json, keeping keys sorted. */
