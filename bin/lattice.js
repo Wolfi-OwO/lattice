@@ -20,6 +20,7 @@ import { logger } from '../src/logger.js';
 import { inspect, renderReport } from '../src/doctor.js';
 import { buildVars, copyTemplate, isEmptyDir } from '../src/scaffold.js';
 import { STORAGE, storageChoices, depsFor } from '../src/storage.js';
+import { STYLING, stylingChoices } from '../src/styling.js';
 import {
   detectPackageManager,
   findFreePort,
@@ -31,6 +32,7 @@ import {
   repairDriver,
   overlayEnterprise,
   pruneAdapters,
+  pruneStyles,
   runGenerator,
   startDatabase,
   writeCompose,
@@ -107,6 +109,7 @@ function printHelp() {
     --stack <id>      stack id (see --list)
     --database <id>   ${Object.keys(STORAGE).join(' | ')}
     --format <fmt>    json | ndjson | yaml   ${c.gray('(only with --database file)')}
+    --styling <id>    ${Object.keys(STYLING).join(' | ')}   ${c.gray('(frontend stacks)')}
     --client <id>     frontend for a fullstack project, placed in client/
     --package <pkg>   Java/Kotlin base package (default at.htlvillach.<name>)
     --port <n>        backend port (default 3000)
@@ -275,6 +278,45 @@ async function resolveStorage(template, flags) {
   return { storage, fileFormat };
 }
 
+/**
+ * The styling question, asked only for stacks that render anything.
+ *
+ * Same shape as resolveStorage, and refuses for the same reason: accepting
+ * `--styling tailwind` on a Spring Boot project and ignoring it would hand back
+ * something other than what was asked for, with nothing said.
+ */
+async function resolveStyling(template, client, flags) {
+  const flag = flags.styling;
+
+  // In a fullstack run the frontend arrives as `--client`, so the stack that
+  // takes the styling is the client, not the backend the name was given for.
+  const styled = template.styling ? template : client?.styling ? client : null;
+
+  if (!styled) {
+    if (typeof flag === 'string') {
+      throw new Error(
+        `The ${template.framework} stack does not take a --styling — it renders no UI of its own.\n` +
+          `  Styling is a choice on: ${TEMPLATES.filter((t) => t.styling)
+            .map((t) => t.framework)
+            .join(', ')}` +
+          (client ? '' : `\n  For a backend, pair it with --client react-vite.`),
+      );
+    }
+    return null;
+  }
+
+  if (typeof flag === 'string') {
+    if (!STYLING[flag]) {
+      throw new Error(
+        `Unknown styling "${flag}". Expected one of: ${Object.keys(STYLING).join(', ')}`,
+      );
+    }
+    return flag;
+  }
+
+  return select('Styling:', stylingChoices());
+}
+
 // --------------------------------------------------------------------- main
 
 /**
@@ -361,10 +403,12 @@ async function main() {
 
   const { template, client } = await resolveTemplate(args.flags);
   const { storage, fileFormat } = await resolveStorage(template, args.flags);
+  const styling = await resolveStyling(template, client, args.flags);
 
   // Extra vars — only ask for what this stack actually declares.
   const needs = new Set([...(template.vars ?? []), ...(client?.vars ?? [])]);
   const answers = { projectName, storage: storage ?? 'memory', fileFormat: fileFormat ?? 'json' };
+  if (styling) answers.styling = styling;
   if (typeof args.flags.owner === 'string') answers.owner = args.flags.owner;
 
   if (needs.has('javaPackage')) {
@@ -448,6 +492,17 @@ async function main() {
       });
 
       writeCompose(staged, { storage, vars });
+    }
+
+    if (styling) {
+      // The frontend is at the root of its own scaffold, but under client/ in a
+      // fullstack one — the same tree either way, just rooted differently.
+      const uiRoot = template.styling ? staged : path.join(staged, 'client');
+      const spec = STYLING[styling];
+
+      pruneStyles(uiRoot, spec.source, spec.entry);
+      mergeDeps(uiRoot, spec.deps ?? {});
+      mergeDeps(uiRoot, spec.devDeps ?? {}, 'devDependencies');
     }
 
     // The structural gate, deliberately the last thing before the commit. Checking
