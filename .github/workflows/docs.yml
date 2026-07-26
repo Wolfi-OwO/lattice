@@ -1,0 +1,115 @@
+name: Documentation
+
+# Builds documentation/ into a site and publishes it to GitHub Pages:
+#   https://wolfi-owo.github.io/lattice/
+#
+# The build runs on pull requests too, and only the deploy is gated to main. A
+# docs site that is built for the first time *after* merge is a site whose broken
+# links are found by readers — and `strict: true` in mkdocs.yml turns a link to a
+# page that does not exist into a failed build, which is only useful if the build
+# happens while the change can still be fixed.
+#
+# The path filter covers the root markdown files as well as documentation/,
+# because scripts/docs-mirror.js pulls those in at build time — a change to
+# CONVENTIONS.md changes a published page.
+#
+# The list appears twice because GitHub Actions does not support YAML anchors.
+# tests/docs.test.js asserts that the two copies are identical and that between
+# them they cover everything the mirror script reads, so neither the duplication
+# nor the coupling to that script can rot quietly.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - documentation/**
+      - mkdocs.yml
+      - mkdocs-requirements.txt
+      - scripts/docs-mirror.js
+      - scripts/mkdocs_hooks.py
+      - .github/workflows/docs.yml
+      # Mirrored at build time — see scripts/docs-mirror.js.
+      - docs/adr/**
+      - ARCHITECTURE.md
+      - CONVENTIONS.md
+      - STRUCTURE.md
+      - CONTRIBUTING.md
+      - SECURITY.md
+      - CHANGELOG.md
+  pull_request:
+    paths:
+      - documentation/**
+      - mkdocs.yml
+      - mkdocs-requirements.txt
+      - scripts/docs-mirror.js
+      - scripts/mkdocs_hooks.py
+      - .github/workflows/docs.yml
+      # Mirrored at build time — see scripts/docs-mirror.js.
+      - docs/adr/**
+      - ARCHITECTURE.md
+      - CONVENTIONS.md
+      - STRUCTURE.md
+      - CONTRIBUTING.md
+      - SECURITY.md
+      - CHANGELOG.md
+  workflow_dispatch:
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The changelog page is a release history, and Material can only show a
+          # page's last-updated date if the commit that touched it is in the
+          # clone. A shallow one has neither.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: mkdocs-requirements.txt
+
+      - run: pip install -r mkdocs-requirements.txt
+
+      - name: Mirror the root documents into the site
+        run: node scripts/docs-mirror.js
+
+      # `strict` is already set in mkdocs.yml; passing it here as well means the
+      # flag survives someone relaxing the config for a local debugging session.
+      - name: Build
+        run: mkdocs build --strict
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    name: Deploy
+    # Never from a pull request: a fork's PR must not be able to publish to the
+    # repository's own domain, and `pull_request` runs with the base repo's
+    # permissions.
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5

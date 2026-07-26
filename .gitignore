@@ -25,4 +25,17 @@ stacks/**/.venv/
 .env.*
 !_env.example
 
+# The documentation site's build output.
+#
+# documentation/project/ is not hand-written: scripts/docs-mirror.js copies the
+# root markdown files into it before every build, so a change made there survives
+# until the next one. The real files are ARCHITECTURE.md, CONVENTIONS.md and the
+# rest, at the root, where they are read far more often than they would be on a
+# website.
+/site/
+/documentation/project/
+.cache/
+# MkDocs imports scripts/mkdocs_hooks.py, and Python caches what it imports.
+/scripts/__pycache__/
+
 .DS_Store

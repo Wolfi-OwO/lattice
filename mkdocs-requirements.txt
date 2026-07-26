@@ -1,0 +1,17 @@
+# The documentation toolchain — https://wolfi-owo.github.io/lattice/
+#
+#   pip install -r mkdocs-requirements.txt
+#   npm run docs:serve
+#
+# Deliberately not npm devDependencies. The CLI ships no runtime dependencies and
+# avoids dev ones (ADR-0001), and a docs toolchain in package.json would be that
+# rule broken with a different label on it. Nothing here is needed to use lattice,
+# to develop it, or to run its tests — only to render this one folder as a website.
+#
+# Pinned exactly, because the site is built by CI on a schedule nobody watches. A
+# floating range means a theme release can turn a docs build red on a morning when
+# nothing in this repository changed.
+
+mkdocs==1.6.1
+mkdocs-material==9.7.7
+mkdocs-awesome-nav==3.3.0
