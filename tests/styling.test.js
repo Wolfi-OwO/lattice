@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -214,4 +215,55 @@ test('an unknown variant is rejected rather than silently defaulted', () => {
   assert.ok(!STYLING.tailwing, 'guard against this test rotting if a variant is renamed');
   const vars = buildVars({ projectName: 'shop', styling: 'tailwing' });
   assert.equal(vars.stylesEntry, STYLING[DEFAULT_STYLING].entry);
+});
+
+// --------------------------------------------------------------- the CLI path
+
+test('a non-interactive run without --styling gets the default, not an error', async () => {
+  // The regression this exists to stop: adding the picker made --styling
+  // *required* in any script, because a select with no TTY refuses rather than
+  // guessing. That broke every existing `--stack react-vite` invocation,
+  // including this repository's own CI.
+  //
+  // A database has no defensible default and must refuse. Styling does: `plain`
+  // is what these templates shipped before the choice existed.
+  const cwd = tempDir();
+  const target = path.join(cwd, 'demo');
+  const cli = path.resolve(import.meta.dirname, '..', 'bin', 'lattice.js');
+
+  const { status, stderr } = spawnSync(
+    process.execPath,
+    [cli, 'demo', '--stack', 'react-vite', '--no-install', '--no-database-start'],
+    { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+
+  assert.equal(status, 0, `scaffolding without --styling failed:\n${stderr}`);
+  assert.ok(
+    fs.existsSync(path.join(target, 'src', STYLING[DEFAULT_STYLING].entry)),
+    `expected the default (${DEFAULT_STYLING}) stylesheet`,
+  );
+  assert.ok(
+    !fs.existsSync(path.join(target, 'src', 'styles')),
+    'the unchosen variants should still have been pruned',
+  );
+});
+
+test('a non-interactive run still refuses an unknown --styling', () => {
+  // Defaulting when the flag is absent must not become defaulting when it is
+  // wrong. A typo has to fail.
+  const cwd = tempDir();
+  const cli = path.resolve(import.meta.dirname, '..', 'bin', 'lattice.js');
+
+  const { status, stderr } = spawnSync(
+    process.execPath,
+    [cli, 'demo', '--stack', 'react-vite', '--styling', 'tailwing', '--no-install'],
+    { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+
+  assert.notEqual(status, 0, 'a misspelled variant must not scaffold');
+  assert.match(stderr, /tailwing/, 'the error should name the variant that was not understood');
+  assert.ok(
+    !fs.existsSync(path.join(cwd, 'demo')),
+    'a refused run must leave nothing behind at the destination',
+  );
 });

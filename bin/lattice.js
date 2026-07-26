@@ -15,12 +15,12 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { parseArgs } from '../src/args.js';
-import { c, select, text, PromptCancelled } from '../src/prompts.js';
+import { c, select, text, isInteractive, PromptCancelled } from '../src/prompts.js';
 import { logger } from '../src/logger.js';
 import { inspect, renderReport } from '../src/doctor.js';
 import { buildVars, copyTemplate, isEmptyDir } from '../src/scaffold.js';
 import { STORAGE, storageChoices, depsFor } from '../src/storage.js';
-import { STYLING, stylingChoices } from '../src/styling.js';
+import { STYLING, DEFAULT_STYLING, stylingChoices } from '../src/styling.js';
 import {
   detectPackageManager,
   findFreePort,
@@ -313,6 +313,18 @@ async function resolveStyling(template, client, flags) {
     }
     return flag;
   }
+
+  // Unlike the database, styling has a defensible default, so a non-interactive
+  // run without the flag gets it rather than an error.
+  //
+  // The asymmetry is the point. There is no safe default database — picking one
+  // silently builds the project against storage nobody asked for, and finding out
+  // costs a rewrite. `plain` is exactly what these templates shipped before this
+  // choice existed, so a script that says nothing gets what it got yesterday, and
+  // changing its mind later is one file. Failing instead would have broken every
+  // existing `--stack react-vite` invocation — including this repository's own CI,
+  // which is how it was caught — and a new feature does not get to do that.
+  if (!isInteractive()) return DEFAULT_STYLING;
 
   return select('Styling:', stylingChoices());
 }

@@ -1,0 +1,9 @@
+title: About the project
+nav:
+  - architecture.md
+  - conventions.md
+  - structure.md
+  - contributing.md
+  - security.md
+  - changelog.md
+  - adr
