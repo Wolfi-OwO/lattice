@@ -320,3 +320,38 @@ A comment says **why**, never what. It states a constraint the code cannot: a
 trap in a library, an ordering that is load-bearing, a decision that looks wrong
 until you know the reason. It never narrates the next line, and it never says
 where the code came from.
+
+## 12. Every exported function is documented in the ecosystem's own format
+
+Rule 11 is about *why* — an inline note on a constraint the code cannot state
+itself. This rule is about a different surface entirely: the doc comment on an
+exported function, class or module, which feeds IDE tooltips, generated docs
+and type-checkers. The two are not interchangeable, and neither substitutes for
+the other.
+
+The format is never invented — it is whatever the ecosystem's own tools already
+read:
+
+| Language               | Convention                                                 |
+| ----------------------- | ----------------------------------------------------------- |
+| JavaScript / TypeScript | JSDoc (`/** ... */`, `@param`, `@returns`)                   |
+| Python                  | docstrings (Google-style: `Args:` / `Returns:` / `Raises:`)  |
+| Java / Kotlin           | Javadoc / KDoc                                               |
+| C# (.NET)               | XML doc comments (`///`)                                     |
+| Go                      | godoc — a comment directly above the identifier, starting with its name |
+| Rust                    | rustdoc (`///` for items, `//!` for module-level)             |
+| Swift                   | `///` (DocC markup)                                           |
+
+Same reasoning as rule 1: use the ecosystem's own vocabulary rather than an
+invented one that reads as written by someone who had never opened that
+language's documentation.
+
+Document parameters, return shape and thrown/rejected error cases — not a
+restatement of the function's name. A private, unexported helper does not need
+one unless its contract is genuinely non-obvious; a doc comment on every
+one-line private function is noise a reviewer learns to skip past, which is
+worse than no comment at all.
+
+This rule is documentation-only for now, the same as rule 11 — `tests/registry.test.js`
+enforces rule 1 mechanically, but a doc-comment presence check across nine
+languages is a project of its own, not a small addition to this one.
