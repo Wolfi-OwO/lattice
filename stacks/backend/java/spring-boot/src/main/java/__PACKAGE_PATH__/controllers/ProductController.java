@@ -1,4 +1,4 @@
-package {{javaPackage}}.product;
+package {{javaPackage}}.controllers;
 
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -10,10 +10,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import {{javaPackage}}.common.PageResponse;
-import {{javaPackage}}.product.dto.AdjustStockRequest;
-import {{javaPackage}}.product.dto.CreateProductRequest;
-import {{javaPackage}}.product.dto.ProductDto;
-import {{javaPackage}}.product.dto.UpdateProductRequest;
+import {{javaPackage}}.dtos.product.AdjustStockRequest;
+import {{javaPackage}}.dtos.product.CreateProductRequest;
+import {{javaPackage}}.dtos.product.ProductDto;
+import {{javaPackage}}.dtos.product.UpdateProductRequest;
+import {{javaPackage}}.services.ProductService;
 
 /**
  * HTTP surface only: bind, delegate, shape the response. Any logic here that

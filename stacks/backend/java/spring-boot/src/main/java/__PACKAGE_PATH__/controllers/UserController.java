@@ -1,4 +1,4 @@
-package {{javaPackage}}.user;
+package {{javaPackage}}.controllers;
 
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -10,9 +10,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import {{javaPackage}}.common.PageResponse;
-import {{javaPackage}}.user.dto.CreateUserRequest;
-import {{javaPackage}}.user.dto.UpdateUserRequest;
-import {{javaPackage}}.user.dto.UserDto;
+import {{javaPackage}}.dtos.user.CreateUserRequest;
+import {{javaPackage}}.dtos.user.UpdateUserRequest;
+import {{javaPackage}}.dtos.user.UserDto;
+import {{javaPackage}}.services.UserService;
 
 /**
  * HTTP surface only: bind, delegate, shape the response. Any logic here that

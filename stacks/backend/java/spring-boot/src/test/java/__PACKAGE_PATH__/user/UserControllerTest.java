@@ -17,7 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import {{javaPackage}}.user.dto.CreateUserRequest;
+import {{javaPackage}}.dtos.user.CreateUserRequest;
 
 @SpringBootTest
 @AutoConfigureMockMvc

@@ -1,4 +1,4 @@
-package {{javaPackage}}.user;
+package {{javaPackage}}.models;
 
 import jakarta.persistence.*;
 import java.time.Instant;

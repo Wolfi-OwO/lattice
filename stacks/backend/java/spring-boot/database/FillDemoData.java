@@ -25,10 +25,10 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import {{javaPackage}}.product.Product;
-import {{javaPackage}}.product.ProductRepository;
-import {{javaPackage}}.user.User;
-import {{javaPackage}}.user.UserRepository;
+import {{javaPackage}}.models.Product;
+import {{javaPackage}}.models.User;
+import {{javaPackage}}.repositories.ProductRepository;
+import {{javaPackage}}.repositories.UserRepository;
 
 /**
  * Loads database/data/&lt;domain&gt;.json into whatever storage this project was

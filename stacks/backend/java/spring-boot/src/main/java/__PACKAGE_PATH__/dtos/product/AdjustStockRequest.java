@@ -1,4 +1,4 @@
-package {{javaPackage}}.product.dto;
+package {{javaPackage}}.dtos.product;
 
 import jakarta.validation.constraints.NotNull;
 

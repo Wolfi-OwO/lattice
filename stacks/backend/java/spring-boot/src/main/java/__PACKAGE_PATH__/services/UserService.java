@@ -1,4 +1,4 @@
-package {{javaPackage}}.user;
+package {{javaPackage}}.services;
 
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -8,9 +8,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import {{javaPackage}}.common.ApiException;
-import {{javaPackage}}.user.dto.CreateUserRequest;
-import {{javaPackage}}.user.dto.UpdateUserRequest;
-import {{javaPackage}}.user.dto.UserDto;
+import {{javaPackage}}.dtos.user.CreateUserRequest;
+import {{javaPackage}}.dtos.user.UpdateUserRequest;
+import {{javaPackage}}.dtos.user.UserDto;
+import {{javaPackage}}.mappers.UserMapper;
+import {{javaPackage}}.models.User;
+import {{javaPackage}}.repositories.UserRepository;
 
 /**
  * Business rules live here. No HTTP types cross this boundary, which is what

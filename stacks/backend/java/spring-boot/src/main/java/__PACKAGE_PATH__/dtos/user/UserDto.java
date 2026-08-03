@@ -1,8 +1,8 @@
-package {{javaPackage}}.user.dto;
+package {{javaPackage}}.dtos.user;
 
 import java.time.Instant;
 import java.util.UUID;
-import {{javaPackage}}.user.User;
+import {{javaPackage}}.models.User;
 
 /**
  * What the API returns. Deliberately has no passwordHash — the entity is never

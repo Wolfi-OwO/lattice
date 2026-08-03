@@ -75,7 +75,7 @@ test('scaffolding spring-boot expands the package into real directories', () => 
 
   const base = path.join(target, 'src/main/java/at/htlvillach/shop');
   assert.ok(fs.existsSync(path.join(base, 'ShopApplication.java')));
-  assert.ok(fs.existsSync(path.join(base, 'user/UserController.java')));
+  assert.ok(fs.existsSync(path.join(base, 'controllers/UserController.java')));
 
   const main = fs.readFileSync(path.join(base, 'ShopApplication.java'), 'utf8');
   assert.match(main, /package at\.htlvillach\.shop;/);
