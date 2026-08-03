@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-export const healthRoutes = Router();
+export const healthRouter = Router();
 
 /**
  * Liveness — "is this process alive", and nothing more.
@@ -19,6 +19,6 @@ export const healthRoutes = Router();
  *      exists to prevent. So liveness is deliberately served here by Express and
  *      not handed to terminus.
  */
-healthRoutes.get('/liveness', (_req, res) => {
+healthRouter.get('/liveness', (_req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
 });

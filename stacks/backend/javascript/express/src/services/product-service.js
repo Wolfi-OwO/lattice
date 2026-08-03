@@ -1,5 +1,5 @@
-import { database } from '../../database/index.js';
-import { ApiError } from '../../utils/ApiError.js';
+import { database } from '../database/index.js';
+import { ApiError } from '../utils/ApiError.js';
 
 /**
  * Business logic for the products domain. The same two boundaries the users

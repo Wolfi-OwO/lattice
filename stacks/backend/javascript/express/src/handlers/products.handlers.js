@@ -1,4 +1,4 @@
-import * as service from './product.service.js';
+import * as service from '../services/product-service.js';
 
 /**
  * Translates HTTP to a service call and a status code, and nothing else. There
