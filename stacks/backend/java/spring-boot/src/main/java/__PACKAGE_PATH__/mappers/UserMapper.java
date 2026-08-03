@@ -1,7 +1,8 @@
-package {{javaPackage}}.user;
+package {{javaPackage}}.mappers;
 
-import {{javaPackage}}.user.dto.UserDto;
 import org.mapstruct.Mapper;
+import {{javaPackage}}.dtos.user.UserDto;
+import {{javaPackage}}.models.User;
 
 /** MapStruct generates the implementation at compile time — no reflection. */
 @Mapper(componentModel = "spring")

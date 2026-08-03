@@ -1,4 +1,4 @@
-package {{javaPackage}}.product;
+package {{javaPackage}}.services;
 
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -7,9 +7,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import {{javaPackage}}.common.ApiException;
-import {{javaPackage}}.product.dto.CreateProductRequest;
-import {{javaPackage}}.product.dto.ProductDto;
-import {{javaPackage}}.product.dto.UpdateProductRequest;
+import {{javaPackage}}.dtos.product.CreateProductRequest;
+import {{javaPackage}}.dtos.product.ProductDto;
+import {{javaPackage}}.dtos.product.UpdateProductRequest;
+import {{javaPackage}}.mappers.ProductMapper;
+import {{javaPackage}}.models.Product;
+import {{javaPackage}}.repositories.ProductRepository;
 
 /**
  * Business rules live here. No HTTP types cross this boundary, which is what

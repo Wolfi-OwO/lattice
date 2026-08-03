@@ -1,4 +1,4 @@
-package {{javaPackage}}.product.dto;
+package {{javaPackage}}.dtos.product;
 
 import java.time.Instant;
 import java.util.UUID;
