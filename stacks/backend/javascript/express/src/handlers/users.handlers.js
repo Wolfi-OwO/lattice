@@ -1,7 +1,7 @@
-import * as service from './user.service.js';
+import * as service from '../services/user-service.js';
 
 /**
- * Controllers only translate HTTP <-> service calls. Any `if` in here that is
+ * Handlers only translate HTTP <-> service calls. Any `if` in here that is
  * not about HTTP belongs in the service.
  */
 

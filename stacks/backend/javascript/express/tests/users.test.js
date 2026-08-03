@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import request from 'supertest';
-import { createApp } from '../src/app.js';
-
-const app = createApp();
+import { app } from '../src/server.js';
 
 describe('POST /api/users', () => {
   it('creates a user and never returns the password hash', async () => {
