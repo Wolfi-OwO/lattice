@@ -27,7 +27,10 @@ app/
 │   ├── router.py           Mounts every route module
 │   ├── deps.py             Reusable dependencies: DatabaseSession, CurrentUser, require_admin
 │   └── routes/             One file per resource — HTTP surface only
-├── services/               Business rules. No FastAPI types cross this boundary.
+├── services/               Business rules. No FastAPI types, no SQLAlchemy
+│                           queries — everything goes through repository/.
+├── repository/             The only layer that queries. One file per entity
+│                           (user_repository.py, product_repository.py).
 ├── models/                 SQLAlchemy ORM (the database)
 ├── schemas/                Pydantic (the API contract)
 └── database/session.py     Engine, SessionLocal, Base, get_database
@@ -38,6 +41,12 @@ database/                   Demo data and its loader — see database/README.md
 The split that does the work here is **models vs schemas**. The ORM object is
 never returned from a route — a `UserRead` schema is. That is why
 `password_hash` cannot leak: it has nowhere to go.
+
+The other split is **services vs repository**. A service owns business rules
+(uniqueness checks, the stock-can't-go-negative invariant, password hashing);
+a repository owns nothing but the `Session` calls that read and write a row.
+A service that needs data asks its repository for it — it never imports
+`sqlalchemy` itself.
 
 Routes stay thin because everything reusable is a dependency (`app/api/deps.py`).
 `DatabaseSession` and `CurrentUser` are just annotated types — add them to a
