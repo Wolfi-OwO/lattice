@@ -19,12 +19,7 @@ export const productsRouter = Router();
 productsRouter.get('/', validate(listProductsSchema, 'query'), asyncHandler(handlers.list));
 productsRouter.get('/:id', asyncHandler(handlers.get));
 
-productsRouter.post(
-  '/',
-  requireAuth,
-  validate(createProductSchema),
-  asyncHandler(handlers.create),
-);
+productsRouter.post('/', requireAuth, validate(createProductSchema), asyncHandler(handlers.create));
 productsRouter.patch(
   '/:id',
   requireAuth,

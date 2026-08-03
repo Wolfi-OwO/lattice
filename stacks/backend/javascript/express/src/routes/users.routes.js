@@ -3,7 +3,11 @@ import * as handlers from '../handlers/users.handlers.js';
 import { validate } from '../middlewares/validate.js';
 import { requireAuth, requireRole } from '../middlewares/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { createUserSchema, listUsersSchema, updateUserSchema } from '../validation/user.validation.js';
+import {
+  createUserSchema,
+  listUsersSchema,
+  updateUserSchema,
+} from '../validation/user.validation.js';
 
 export const usersRouter = Router();
 
