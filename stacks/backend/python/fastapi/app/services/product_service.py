@@ -2,11 +2,11 @@ import math
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
 from app.models.product import Product
+from app.repository import product_repository
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.schemas.user import Page
 
@@ -19,15 +19,7 @@ def _normalise_sku(sku: str) -> str:
 
 
 def list_products(database: Session, *, page: int, limit: int, q: str | None) -> Page[ProductRead]:
-    stmt = select(Product)
-    if q:
-        pattern = f"%{q}%"
-        stmt = stmt.where(or_(Product.name.ilike(pattern), Product.sku.ilike(pattern)))
-
-    total = database.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-    rows = database.scalars(
-        stmt.order_by(Product.created_at.desc()).offset((page - 1) * limit).limit(limit)
-    ).all()
+    rows, total = product_repository.list_products(database, page=page, limit=limit, q=q)
 
     return Page[ProductRead](
         items=[ProductRead.model_validate(row) for row in rows],
@@ -39,16 +31,14 @@ def list_products(database: Session, *, page: int, limit: int, q: str | None) ->
 
 
 def get_product(database: Session, product_id: uuid.UUID) -> Product:
-    product = database.get(Product, product_id)
+    product = product_repository.get_by_id(database, product_id)
     if product is None:
         raise ApiError.not_found(f"Product {product_id} not found")
     return product
 
 
 def find_product_by_sku(database: Session, sku: str) -> Product | None:
-    """SKU is the natural key. Returns None instead of raising, because a caller
-    deciding between create and update is not in an error case."""
-    return database.scalar(select(Product).where(Product.sku == _normalise_sku(sku)))
+    return product_repository.find_by_sku(database, _normalise_sku(sku))
 
 
 def create_product(database: Session, payload: ProductCreate) -> Product:
@@ -62,10 +52,7 @@ def create_product(database: Session, payload: ProductCreate) -> Product:
         price_cents=payload.price_cents,
         stock=payload.stock,
     )
-    database.add(product)
-    database.commit()
-    database.refresh(product)
-    return product
+    return product_repository.add(database, product)
 
 
 def update_product(database: Session, product_id: uuid.UUID, payload: ProductUpdate) -> Product:
@@ -89,14 +76,11 @@ def update_product(database: Session, product_id: uuid.UUID, payload: ProductUpd
     # service is the only layer allowed to write and this keeps the rule visible.
     product.updated_at = datetime.now(UTC)
 
-    database.commit()
-    database.refresh(product)
-    return product
+    return product_repository.save(database, product)
 
 
 def delete_product(database: Session, product_id: uuid.UUID) -> None:
-    database.delete(get_product(database, product_id))
-    database.commit()
+    product_repository.delete(database, get_product(database, product_id))
 
 
 def adjust_stock(database: Session, product_id: uuid.UUID, delta: int) -> Product:
@@ -123,6 +107,4 @@ def adjust_stock(database: Session, product_id: uuid.UUID, delta: int) -> Produc
     product.stock = nxt
     product.updated_at = datetime.now(UTC)
 
-    database.commit()
-    database.refresh(product)
-    return product
+    return product_repository.save(database, product)
