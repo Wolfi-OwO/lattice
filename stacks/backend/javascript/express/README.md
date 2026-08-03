@@ -26,29 +26,39 @@ real `JWT_SECRET`, and started the database if this project needs one.
 
 ```
 src/
-├── server.js          Boot: connect storage, listen, graceful shutdown
-├── app.js             Express app (no port) — tests import this
-├── config/            The only place that reads process.env
-├── api/
-│   ├── index.js       Mounts every resource router
-│   ├── health/        Liveness + readiness probes
-│   └── users/         One resource = one folder
-│       ├── user.routes.js       HTTP surface + middleware chain
-│       ├── user.controller.js   Translates HTTP <-> service
-│       ├── user.service.js      Business logic, no Express types
-│       └── user.validation.js   Joi schemas
-├── middlewares/       auth, validate, error, requestLogger
-├── database/          The storage seam — see below
-└── utils/             ApiError, asyncHandler, logger
+├── server.js           The ONLY startup file: builds and exports the Express
+│                        app (module scope, no createApp() factory), mounts
+│                        routes, and — guarded so importing it for tests never
+│                        triggers this — connects storage, starts the HTTP
+│                        server, and wires graceful shutdown.
+├── config/              The only place that reads process.env
+├── routes/
+│   ├── index.js          Mounts every resource router
+│   ├── health.routes.js
+│   ├── users.routes.js         HTTP surface + middleware chain
+│   └── products.routes.js
+├── handlers/             One file per resource — translates HTTP <-> service
+│   ├── users.handlers.js
+│   └── products.handlers.js
+├── services/              Business logic, no Express types. One file per
+│   ├── user-service.js     entity.
+│   └── product-service.js
+├── validation/            Joi schemas, one file per resource
+│   ├── user.validation.js
+│   └── product.validation.js
+├── middlewares/          auth, validate, error, requestLogger
+├── database/             The storage seam — see below
+└── utils/                ApiError, asyncHandler, logger
 ```
 
-**Adding a resource:** copy `api/users/`, rename the files, mount it in
-`api/index.js`. Nothing else changes.
+**Adding a resource:** copy `users.routes.js` / `users.handlers.js` /
+`user-service.js` / `user.validation.js`, rename them for the new resource,
+mount the route in `routes/index.js`. Nothing else changes.
 
 The layering rule that keeps this maintainable: **routes** declare the HTTP
-surface, **controllers** do nothing but call a service and shape a response,
+surface, **handlers** do nothing but call a service and shape a response,
 **services** hold the business rules and never see `req`/`res`. When a
-controller starts growing `if`s that aren't about status codes, that logic
+handler starts growing `if`s that aren't about status codes, that logic
 belongs in the service.
 
 ## The storage seam
@@ -82,7 +92,7 @@ Anything else becomes a 500 and gets logged with a stack trace — in production
 the message is not leaked to the client.
 
 ```js
-import { ApiError } from '../../utils/ApiError.js';
+import { ApiError } from '../utils/ApiError.js';
 
 if (!order) throw ApiError.notFound(`Order ${id} not found`);
 ```

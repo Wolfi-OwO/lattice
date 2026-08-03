@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
-import { database } from '../../database/index.js';
-import { ApiError } from '../../utils/ApiError.js';
+import { database } from '../database/index.js';
+import { ApiError } from '../utils/ApiError.js';
 
 /**
  * Business logic lives here. Two boundaries are enforced:

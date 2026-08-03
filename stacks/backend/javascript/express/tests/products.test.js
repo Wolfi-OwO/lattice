@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
-import { createApp } from '../src/app.js';
+import { app } from '../src/server.js';
 import { config } from '../src/config/index.js';
-
-const app = createApp();
 
 /**
  * The template ships JWT verification but no endpoint that issues one — how a
