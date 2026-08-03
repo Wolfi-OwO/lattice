@@ -49,7 +49,7 @@ becomes a logged 500 whose internals never reach the caller.
 
 ### Layers, and the rule that keeps them honest
 
-Routes → controller → **service** → repository/model.
+Routes → controller → **service** → repository → model.
 
 The load-bearing rule is: **no HTTP type crosses into the service.** No `req`,
 no `res`, no `HttpServletRequest`, no FastAPI `Request`. That single constraint
@@ -74,19 +74,19 @@ The original `express-mongo` template welded Mongoose into the model *and* the
 service layer: `User.find({ $or: [...] })` sat in business logic. Changing the
 database meant rewriting the service.
 
-It is now a seam. `src/db/index.js` exposes a six-method repository, and the
+It is now a seam. `src/database/index.js` exposes a six-method repository, and the
 service talks only to that:
 
 ```
-routes → controller → service → db.users → adapter → driver
-                                 ^^^^^^^^
-                       nothing above this line imports a driver
+routes → handler → service → database.users → adapter → driver
+                              ^^^^^^^^^^^^^^^
+                    nothing above this line imports a driver
 ```
 
 Six adapters implement it — MongoDB, PostgreSQL, MySQL, SQLite, plain files,
 in-memory — and the scaffolder keeps exactly one, adds exactly its dependencies,
 and deletes the rest. The invariant is greppable: no `mongoose` / `pg` /
-`mysql2` / `better-sqlite3` import exists outside `src/db/adapters/`.
+`mysql2` / `better-sqlite3` import exists outside `src/database/adapters/`.
 
 The payoff is that the *same test suite* runs green against all six. A test that
 passes on the in-memory adapter is a test that passes on Postgres, because
@@ -98,6 +98,46 @@ mutation goes through one promise chain (so two concurrent requests cannot both
 read the array, each append a row, and each write back a file missing the
 other's). What it is *not* is safe across multiple processes — at that point,
 use SQLite, which is the same "just a file" deal with real locking.
+
+### Layer-first, one file per entity — not package-by-feature
+
+An earlier version of every template grouped by feature: Spring's `user/`
+held its controller, service, repository, entity and DTOs together; the JS
+templates mirrored it as `api/users/`. That reads well in a slide about
+team-sized apps, and it was wrong for what these templates actually
+generate — a two-to-three-entity CRUD scaffold, not a twenty-team monorepo.
+At that size package-by-feature does not pay for itself: two people never
+collide in the same folder, because there is only ever one person adding one
+entity at a time. The day-to-day habit stayed "open the repository, now open
+the service" — just three directories per entity instead of three files in
+one.
+
+Checked against real precedent instead of a slide: the HTL Villach Java
+coursework this scaffolder is meant to match (`5BHIF-POS`, `SYP`) and a real
+production repo in the same account (`nutrilens`) both use flat,
+layer-first directories — one file per entity per layer — and that is what
+all three backend templates now do:
+
+```
+controllers/ (Java) or handlers/ (Node)   HTTP <-> service, nothing else
+services/                                  business rules, no HTTP type, no driver
+repository/                                the only layer that queries — one file per entity
+models/                                    the record, as the selected storage stores it
+```
+
+`routes/` (Node) sits above `handlers/` as its own flat folder — Spring's
+`@RestController` folds routing into the controller itself, so Java has no
+separate routes layer. FastAPI's routes are thin enough (a decorator calling
+straight into `services/`) that a separate handlers layer would be an empty
+pass-through, so `app/api/routes/` *is* the handler there — FastAPI is the
+one template where `services/` talks to a `repository/` package directly
+without an intermediate HTTP-translation file.
+
+Package-by-feature is not wrong in general — it is the right call once a
+domain's controller, service and repository stop fitting in one glance and
+start landing together in every PR anyway. These templates are not at that
+size, and a convention with an escape hatch nobody will ever reach for is not
+a convention worth documenting twice.
 
 ### Liveness and readiness are not the same probe
 
@@ -149,20 +189,6 @@ drifted entity fails at **boot** instead of quietly altering a production table.
 One module reads `process.env` / `os.environ` (`src/config`, `app/core/config.py`),
 validates at startup, and everything else imports the validated object. A missing
 `JWT_SECRET` fails at boot, not on the first login attempt at 3am.
-
-### Package by feature, not by layer
-
-For the Spring template specifically: `user/` contains its controller, service,
-repository, entity and DTOs together. Not `controllers/` + `services/` +
-`repositories/` each containing a slice of every feature.
-
-This is where the industry has landed for team-sized apps — a feature can be
-read, reviewed, moved or deleted without touching five sibling directories, and
-two people on two features stop colliding in the same folders. The layer-first
-split is fine for a small CRUD app and becomes a tax the moment it isn't one.
-
-The JS/Python backends do the same thing under different names: `api/users/`
-and `routes/` + `services/` per resource.
 
 ### Floors, not exact pins, in Python
 

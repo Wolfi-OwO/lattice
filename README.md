@@ -86,7 +86,7 @@ mid-write cannot corrupt the file and two concurrent requests cannot clobber
 each other's rows.
 
 Every option implements the same six-method repository, so the routes, the
-controllers, the services and **the test suite are identical** whichever you
+handlers, the services and **the test suite are identical** whichever you
 pick. All twelve combinations — two backends against six databases — are verified
 green on every push.
 
@@ -94,7 +94,9 @@ green on every push.
 
 ```
 src/
-  api/users/          routes → controller → service     (never touches a driver)
+  routes/             routes → handlers → services     (never touches a driver)
+  handlers/
+  services/
   database/
     index.js          the seam: database.users, connectDatabase(), ping()
     serialize.js      toPublicUser — the reason passwordHash cannot leak
@@ -105,7 +107,7 @@ src/
 Everything above `src/database/` talks to `database.users` and imports no driver,
 which is enforceable by grep: no `mongoose` / `pg` / `mysql2` import exists
 anywhere outside `src/database/adapters/`. Swapping Postgres for Mongo is one
-adapter file, and no service or controller changes.
+adapter file, and no service or handler changes.
 
 Adding a seventh database is one entry in `src/storage.js` plus one adapter file.
 
