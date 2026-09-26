@@ -5,6 +5,11 @@
 **Pick a stack, pick a database, get a project that already runs.**
 A zero-dependency scaffolder whose output boots on the first command — no `npm install`, no `.env` to copy, no database to remember to start.
 
+### `npm create lattice@latest`
+
+Published as [**create-lattice**](https://www.npmjs.com/package/create-lattice) — currently v1.4.0.
+[Read the documentation](https://wolfi-owo.github.io/lattice/)
+
 [![Unit](https://github.com/Wolfi-OwO/lattice/actions/workflows/unit.yml/badge.svg)](https://github.com/Wolfi-OwO/lattice/actions/workflows/unit.yml)
 [![Storages](https://github.com/Wolfi-OwO/lattice/actions/workflows/storages.yml/badge.svg)](https://github.com/Wolfi-OwO/lattice/actions/workflows/storages.yml)
 [![Templates · JavaScript](https://github.com/Wolfi-OwO/lattice/actions/workflows/templates-javascript.yml/badge.svg)](https://github.com/Wolfi-OwO/lattice/actions/workflows/templates-javascript.yml)
@@ -14,11 +19,9 @@ A zero-dependency scaffolder whose output boots on the first command — no `npm
 [![Documentation](https://github.com/Wolfi-OwO/lattice/actions/workflows/docs.yml/badge.svg)](https://wolfi-owo.github.io/lattice/)
 
 [![npm](https://img.shields.io/npm/v/create-lattice?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/create-lattice)
-[![npm downloads](https://img.shields.io/npm/dm/create-lattice?color=cb3837&label=downloads)](https://www.npmjs.com/package/create-lattice)
 [![Release](https://img.shields.io/github/v/release/Wolfi-OwO/lattice?label=release&color=blue)](https://github.com/Wolfi-OwO/lattice/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 ![Runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-brightgreen)
-![Repo views](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Wolfi-OwO/Wolfi-OwO/main/traffic/badges/lattice.json)
 
 ![Node](https://img.shields.io/badge/Node-%E2%89%A520-339933?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-000000?logo=express&logoColor=white)
@@ -32,8 +35,6 @@ A zero-dependency scaffolder whose output boots on the first command — no `npm
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Open issues](https://img.shields.io/github/issues/Wolfi-OwO/lattice)](https://github.com/Wolfi-OwO/lattice/issues)
 [![Contributors](https://img.shields.io/github/contributors/Wolfi-OwO/lattice)](https://github.com/Wolfi-OwO/lattice/graphs/contributors)
-
-### 📖 [Read the documentation](https://wolfi-owo.github.io/lattice/)
 
 </div>
 
