@@ -5,7 +5,7 @@
 **Pick a stack, pick a database, get a project that already runs.**
 A zero-dependency scaffolder whose output boots on the first command — no `npm install`, no `.env` to copy, no database to remember to start.
 
-### `npm create lattice@latest`
+**`npm create lattice@latest`**
 
 Published as [**create-lattice**](https://www.npmjs.com/package/create-lattice) — currently v1.4.0.
 [Read the documentation](https://wolfi-owo.github.io/lattice/)
@@ -263,12 +263,12 @@ missing or too old, says so with both versions and leaves the project complete.
 
 ## Tech stack
 
-| Layer      | Tech                                                                 |
-| ---------- | --------------------------------------------------------------------- |
+| Layer      | Tech                                                                   |
+| ---------- | ---------------------------------------------------------------------- |
 | Runtime    | Node.js ≥ 20, zero runtime dependencies of its own                     |
 | CLI        | Hand-rolled flag parsing and prompts (`src/args.js`, `src/prompts.js`) |
 | Testing    | Node's built-in `node:test` runner                                     |
-| Docs site  | MkDocs, deployed to GitHub Pages                                        |
+| Docs site  | MkDocs, deployed to GitHub Pages                                       |
 | Publishing | GitHub Actions, npm trusted publishing (OIDC, no `NPM_TOKEN`)          |
 
 The stacks it *scaffolds* are a separate matter — see [Language coverage](#language-coverage-and-the-two-tiers) above for what lattice can generate.
@@ -313,16 +313,16 @@ Every push and pull request runs the workflows below. They do not merely test th
 scaffolder — a scaffolder cannot be tested by testing the scaffolder — they
 **scaffold real projects and run their suites**:
 
-| Workflow                  | What it proves                                                  |
-| ------------------------- | --------------------------------------------------------------- |
-| `unit.yml`                | The CLI's own suite, on Node 20/22/24 × Linux/macOS/Windows.     |
-| `storages.yml`            | `express` **and** `fastify`, each scaffolded against **all six databases**, installed, and the generated suite run — with Postgres, MySQL and Mongo as real containers the CLI starts itself. Twelve jobs. |
-| `templates-javascript.yml`| Every JS/TS template, plus the fullstack composition, run through **every check its own `package.json` declares** — lint, build, typecheck, formatting. The four styling variants are each scaffolded and built, and their compiled CSS checked for the class contract. |
-| `templates-python.yml`    | `fastapi` and `ml-project` install and pass pytest.              |
-| `templates-java.yml`      | `spring-boot` runs `mvn test`; `javafx` packages; `android-compose` builds a debug APK on a runner with no Gradle installed. |
-| `generators.yml`          | All **28** `--generator` delegations, scaffolded with `--enterprise`, installed and built — and each asserted to have received the CI of its own build tool. |
-| `template-drift.yml`      | That the templates have not drifted from the conventions they claim to share. |
-| `docs.yml`                | The documentation site builds with no broken links, and deploys to Pages from `main` only. |
+| Workflow                   | What it proves                                                                                                                                                                                                                                                          |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unit.yml`                 | The CLI's own suite, on Node 20/22/24 × Linux/macOS/Windows.                                                                                                                                                                                                            |
+| `storages.yml`             | `express` **and** `fastify`, each scaffolded against **all six databases**, installed, and the generated suite run — with Postgres, MySQL and Mongo as real containers the CLI starts itself. Twelve jobs.                                                              |
+| `templates-javascript.yml` | Every JS/TS template, plus the fullstack composition, run through **every check its own `package.json` declares** — lint, build, typecheck, formatting. The four styling variants are each scaffolded and built, and their compiled CSS checked for the class contract. |
+| `templates-python.yml`     | `fastapi` and `ml-project` install and pass pytest.                                                                                                                                                                                                                     |
+| `templates-java.yml`       | `spring-boot` runs `mvn test`; `javafx` packages; `android-compose` builds a debug APK on a runner with no Gradle installed.                                                                                                                                            |
+| `generators.yml`           | All **28** `--generator` delegations, scaffolded with `--enterprise`, installed and built — and each asserted to have received the CI of its own build tool.                                                                                                            |
+| `template-drift.yml`       | That the templates have not drifted from the conventions they claim to share.                                                                                                                                                                                           |
+| `docs.yml`                 | The documentation site builds with no broken links, and deploys to Pages from `main` only.                                                                                                                                                                              |
 
 `release.yml` reuses `unit.yml` rather than restating the matrix, so the suite
 that guards a publish is the same suite that guards a pull request — by
