@@ -11,18 +11,10 @@ Published as [**create-lattice**](https://www.npmjs.com/package/create-lattice) 
 [Read the documentation](https://wolfi-owo.github.io/lattice/)
 
 [![Unit](https://github.com/Wolfi-OwO/lattice/actions/workflows/unit.yml/badge.svg)](https://github.com/Wolfi-OwO/lattice/actions/workflows/unit.yml)
-[![Storages](https://github.com/Wolfi-OwO/lattice/actions/workflows/storages.yml/badge.svg)](https://github.com/Wolfi-OwO/lattice/actions/workflows/storages.yml)
-[![Templates · JavaScript](https://github.com/Wolfi-OwO/lattice/actions/workflows/templates-javascript.yml/badge.svg)](https://github.com/Wolfi-OwO/lattice/actions/workflows/templates-javascript.yml)
-[![Templates · Java](https://github.com/Wolfi-OwO/lattice/actions/workflows/templates-java.yml/badge.svg)](https://github.com/Wolfi-OwO/lattice/actions/workflows/templates-java.yml)
-[![Templates · Python](https://github.com/Wolfi-OwO/lattice/actions/workflows/templates-python.yml/badge.svg)](https://github.com/Wolfi-OwO/lattice/actions/workflows/templates-python.yml)
-
-[![Documentation](https://github.com/Wolfi-OwO/lattice/actions/workflows/docs.yml/badge.svg)](https://wolfi-owo.github.io/lattice/)
-
-[![npm](https://img.shields.io/npm/v/create-lattice?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/create-lattice)
 [![Release](https://img.shields.io/github/v/release/Wolfi-OwO/lattice?label=release&color=blue)](https://github.com/Wolfi-OwO/lattice/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-![Runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-brightgreen)
 
+[![npm](https://img.shields.io/npm/v/create-lattice?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/create-lattice)
 ![Node](https://img.shields.io/badge/Node-%E2%89%A520-339933?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-000000?logo=express&logoColor=white)
 ![Fastify](https://img.shields.io/badge/Fastify-000000?logo=fastify&logoColor=white)
@@ -31,10 +23,6 @@ Published as [**create-lattice**](https://www.npmjs.com/package/create-lattice) 
 ![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black)
 ![Vite](https://img.shields.io/badge/Vite-646cff?logo=vite&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin_+_Compose-7F52FF?logo=kotlin&logoColor=white)
-
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-[![Open issues](https://img.shields.io/github/issues/Wolfi-OwO/lattice)](https://github.com/Wolfi-OwO/lattice/issues)
-[![Contributors](https://img.shields.io/github/contributors/Wolfi-OwO/lattice)](https://github.com/Wolfi-OwO/lattice/graphs/contributors)
 
 </div>
 
@@ -67,7 +55,9 @@ Next steps
 That is the point: no `npm install`, no `cp .env.example .env`, no "remember to
 start the database first". The project you land in **boots**.
 
-## Choosing a database
+## Features
+
+### Choosing a database
 
 The Express stack is storage-agnostic. The database is a choice made at scaffold
 time, not a rewrite:
@@ -91,7 +81,7 @@ handlers, the services and **the test suite are identical** whichever you
 pick. All twelve combinations — two backends against six databases — are verified
 green on every push.
 
-## Where the database lives
+### Where the database lives
 
 ```
 src/
@@ -112,7 +102,7 @@ adapter file, and no service or handler changes.
 
 Adding a seventh database is one entry in `src/storage.js` plus one adapter file.
 
-## Choosing a look
+### Choosing a look
 
 The React stacks take `--styling`, and it works the same way the database does:
 the template ships every variant and the scaffold keeps exactly one.
@@ -139,7 +129,7 @@ defaults.
 Sass and Tailwind land in `devDependencies`. They are compile-time tools and have
 no business in a production install.
 
-## Commands
+### Commands
 
 ```bash
 lattice [name] [options]
@@ -160,7 +150,7 @@ lattice [name] [options]
   --version             print the version
 ```
 
-### `--generator` — delegate to the real tool
+#### `--generator` — delegate to the real tool
 
 The built-in stacks are the ones lattice promises will boot. For everything else,
 `--generator` runs the framework's own official tool and then layers lattice's
@@ -177,7 +167,7 @@ guarantee: it needs the network, it needs that toolchain installed, and its outp
 is whatever the upstream tool ships today rather than something lattice verified.
 `--list` shows every generator.
 
-### Language coverage, and the two tiers
+#### Language coverage, and the two tiers
 
 The tiers are not equal, and the difference is the point. A **built-in stack** is
 held to [CONVENTIONS.md](CONVENTIONS.md) — the same `users` resource, the same error
@@ -208,7 +198,7 @@ layout and calling it standard. That is a gap, stated as one.
 Everything in either column gets `--enterprise`, and gets the CI of its own build
 tool: eleven toolchains, from `npm ci` to `swift test` to `bundle install`.
 
-### `--enterprise` — the overlay
+#### `--enterprise` — the overlay
 
 Adds the scaffolding a repository needs to be worked on by more than one person:
 `docs/adr/`, `todo/`, `organizational/`, community-health files, a Trivy security
@@ -234,7 +224,7 @@ underspecified run there does not hang and does not guess: a missing choice
 silently taking the first option would build the project against a database
 nobody asked for.
 
-## Health probes
+### Health probes
 
 Generated backends expose two probes, served by different layers on purpose:
 
@@ -251,7 +241,7 @@ which would kill the graceful shutdown mid-drain.
 A scaffolded app also survives its database going away: it reports `storage:
 down`, keeps running, and recovers on its own when the database comes back.
 
-## Three things it does that most scaffolders don't
+## Why it is built this way
 
 **It picks a free port.** If something already listens on 27017, the Mongo
 container is published on 27018 and `.env` is written to match. A scaffolder
@@ -271,7 +261,35 @@ it checks what is installed against the floor the project itself declares
 (`<java.version>` in the pom, `requires-python` in the pyproject) and, if it is
 missing or too old, says so with both versions and leaves the project complete.
 
-## Layout
+## Tech stack
+
+| Layer      | Tech                                                                 |
+| ---------- | --------------------------------------------------------------------- |
+| Runtime    | Node.js ≥ 20, zero runtime dependencies of its own                     |
+| CLI        | Hand-rolled flag parsing and prompts (`src/args.js`, `src/prompts.js`) |
+| Testing    | Node's built-in `node:test` runner                                     |
+| Docs site  | MkDocs, deployed to GitHub Pages                                        |
+| Publishing | GitHub Actions, npm trusted publishing (OIDC, no `NPM_TOKEN`)          |
+
+The stacks it *scaffolds* are a separate matter — see [Language coverage](#language-coverage-and-the-two-tiers) above for what lattice can generate.
+
+## Getting started
+
+```bash
+npm create lattice@latest
+```
+
+Answer the prompts (name, what you're building, language, framework,
+database) and it scaffolds, wires up `.env`, starts the database, and
+installs dependencies — see the transcript at the top of this README for
+what that looks like end to end. Then:
+
+```bash
+cd my-api
+npm run dev
+```
+
+## Project structure
 
 ```
 lattice/
