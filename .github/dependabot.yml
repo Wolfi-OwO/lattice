@@ -29,6 +29,11 @@ updates:
       prefix: ci
     labels:
       - dependencies
+    # v3 of setup-swift is still a beta that dies on a missing GPG key
+    # (swift-actions/setup-swift#798); the generators workflow stays on v2.
+    ignore:
+      - dependency-name: swift-actions/setup-swift
+        update-types: ["version-update:semver-major"]
     groups:
       github-actions:
         patterns: ["*"]
