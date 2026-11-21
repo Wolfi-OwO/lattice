@@ -291,7 +291,8 @@ jobs:
 
   # ------------------------------------------------------------------ swift
   swift:
-    runs-on: ubuntu-latest
+    # Pinned: setup-swift v2 does not support Ubuntu 26.04, which ubuntu-latest now is.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
