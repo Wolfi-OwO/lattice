@@ -13,6 +13,8 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-21
+
 ### Changed
 
 - **One layer-first layout across the backend templates.** The `spring-boot`, `fastapi` and
@@ -464,7 +466,8 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
   both shipped green, because the test guarding the spelling only looked at the
   templates and never at the scaffolder itself. It looks at both now.
 
-[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/Wolfi-OwO/lattice/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Wolfi-OwO/lattice/compare/v1.0.1...v1.2.0
