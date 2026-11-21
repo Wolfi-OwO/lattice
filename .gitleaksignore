@@ -1,0 +1,5 @@
+# Reviewed false positives, one fingerprint per line. Re-run `gitleaks detect --no-git` after adding anything here.
+# throwaway JWT secret for the Spring test profile
+649d4c123e9427fef41b2d605c6c557e9dd60de9:stacks/backend/java/spring-boot/src/test/resources/application-test.yml:generic-api-key:14
+# reviewed, working-tree or later-found form of the findings above
+stacks/backend/java/spring-boot/src/test/resources/application-test.yml:generic-api-key:14
