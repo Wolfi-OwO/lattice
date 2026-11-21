@@ -13,6 +13,27 @@ whose `[Unreleased]` section is empty is refused before any of that happens.
 
 ## [Unreleased]
 
+### Changed
+
+- **One layer-first layout across the backend templates.** The `spring-boot`, `fastapi` and
+  `express` templates now share the same structure: controllers or routers, services, a
+  repository layer and models in their own directories. FastAPI services no longer query the
+  database themselves, Spring Boot is flattened to layer-first packages, and Express merges
+  `app.js` into `server.js`.
+
+### Documentation
+
+- `CONVENTIONS.md` gets rule 12 on per-language function and API documentation, and the docs
+  describe the unified layer-first backend convention.
+- The README is restructured with a tech stack section and a shorter badge header, and documents the
+  `npm create lattice` install command.
+
+### Maintenance
+
+- The GitHub Actions group is updated, `setup-swift` stays on v2, and the Swift generator job runs on
+  Ubuntu 24.04 because setup-swift does not support the newest runner.
+- Reviewed secret-scan false positives are listed in the gitleaks ignore file.
+
 ## [1.4.0] - 2026-07-26
 
 ### Added
