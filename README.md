@@ -7,7 +7,7 @@ A zero-dependency scaffolder whose output boots on the first command — no `npm
 
 **`npm create lattice@latest`**
 
-Published as [**create-lattice**](https://www.npmjs.com/package/create-lattice) — currently v1.4.0.
+Published as [**create-lattice**](https://www.npmjs.com/package/create-lattice) — currently v1.5.0.
 [Read the documentation](https://wolfi-owo.github.io/lattice/)
 
 [![Unit](https://github.com/Wolfi-OwO/lattice/actions/workflows/unit.yml/badge.svg)](https://github.com/Wolfi-OwO/lattice/actions/workflows/unit.yml)
